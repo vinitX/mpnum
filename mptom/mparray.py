@@ -77,9 +77,10 @@ class MPArray(object):
         The result is a chain of local tensors with `plegs` physical legs at
         each location and has array.ndim // plegs number of sites.
 
-        :param np.ndarray array: Array representation with structure
+        :param np.ndarray array: Array representation with global structure
             array[(i1), ..., (iN)], i.e. the legs which are factorized into
-            the same factor are already adiacent.
+            the same factor are already adiacent. (For me details see
+            :func:`_qmtools.global_to_local`)
         :param int plegs: Number of physical legs per site
 
         """
@@ -159,3 +160,57 @@ class MPArray(object):
     def C(self):
         """Complex conjugate"""
         return type(self)(np.conjugate(self._ltens))
+
+    @staticmethod
+    def _local_dot(ltens_l, ltens_r, axes):
+        """Computes the local tensors of a dot product dot(l, r).
+
+        Besides computing the normal dot product, this function rearranges the
+        bond legs in such a way that the result is a valid local tensor again.
+
+        :param ltens_l: Array with ndim > 1
+        :param ltens_r: Array with ndim > 1
+        :param axes: Axes to compute dot product using the convention of
+            np.tensordot. Note that these correspond to the true (and not the
+            physical) legs of the local tensors
+
+        """
+        res = np.tensordot(ltens_l, ltens_r, axes=axes)
+        # Rearrange the bond-dimension legs
+        res = np.rollaxis(res, ltens_l.ndim - 1, 1)
+        res = np.rollaxis(res, ltens_l.ndim - 1, ltens_l.ndim + ltens_r.ndim - 3)
+        return res.reshape((ltens_l.shape[0] * ltens_r.shape[0], ) +
+                           res.shape[2:-2] +
+                           (ltens_l.shape[-1] * ltens_r.shape[-1],))
+
+    def dot(self, fact, axes=(-1, 0)):
+        """Compute the matrix product representation of a.b over the given
+        (physical) axes.
+
+        :param fact: Second factor
+        :param axes: 2-tuple of axes to sum over. Note the difference in
+            convention compared to np.tensordot(default: last axis of `left`
+            and first axis of `fact`)
+        :returns: @todo
+
+        """
+        if len(self) != len(fact):
+            raise ValueError("mparrays have different lengths: {} != {}"
+                            .format(len(self), len(fact)))
+
+        # adapt the axes from physical to true legs
+        ax_l, ax_r = axes
+        ax_l = ax_l + 1 if ax_l >= 0 else ax_l - 1
+        ax_r = ax_r + 1 if ax_r >= 0 else ax_r - 1
+
+        ltens = [self._local_dot(l, r, (ax_l, ax_r))
+                 for l, r in izip(self._ltens, fact._ltens)]
+
+        return type(self)(ltens)
+
+
+###################################################
+#  Alternative functions to call member function  #
+###################################################
+dot = MPArray.dot
+
