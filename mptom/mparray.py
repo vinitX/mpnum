@@ -5,7 +5,7 @@
 TODO
 """
 
-from __future__ import division, print_function
+from __future__ import division, print_function, absolute_import
 
 import numpy as np
 from numpy.linalg import qr, svd
@@ -65,28 +65,10 @@ class MPArray(object):
                                  .format(i, ten.shape[-1], nten.shape[0]))
         self._ltens = np.asarray(ltens)
 
-    @classmethod
-    def from_array(cls, array, plegs):
-        """Computes the (exact) representation of `array` as MPA with open
-        boundary conditions, i.e. bond dimension 1 at the boundary. This
-        is done by factoring the off the left and the "physical" legs from
-        the rest of the tensor by a QR decomposition and working its way
-        through the tensor from the left. This yields a left-canonical
-        representation of `array`.
-
-        The result is a chain of local tensors with `plegs` physical legs at
-        each location and has array.ndim // plegs number of sites.
-
-        :param np.ndarray array: Array representation with global structure
-            array[(i1), ..., (iN)], i.e. the legs which are factorized into
-            the same factor are already adiacent. (For me details see
-            :func:`_qmtools.global_to_local`)
-        :param int plegs: Number of physical legs per site
-
-        """
-        assert array.ndim % plegs == 0, \
-           "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
-        return cls(_extract_factors(array[None], plegs=plegs))
+        # Elements _ltens[m] with m < self._lnorm are in left-cannon. form
+        self._lnormalized = None
+        # Elements _ltens[n] with n >= self._rnorm are in right-cannon. form
+        self._rnormalized = None
 
     def __len__(self):
         return len(self._ltens)
@@ -116,6 +98,39 @@ class MPArray(object):
         """Tuple of number of physical legs per site"""
         return tuple(lten.ndim - 2 for lten in self._ltens)
 
+    @property
+    def normal_form(self):
+        """Tensors which are currently in left/right-cannonical form."""
+        return self._lnormalized or 0, self._rnormalized or len(self)
+
+    def __getitem__(self, index):
+        return self._ltens[index]
+
+    @classmethod
+    def from_array(cls, array, plegs):
+        """Computes the (exact) representation of `array` as MPA with open
+        boundary conditions, i.e. bond dimension 1 at the boundary. This
+        is done by factoring the off the left and the "physical" legs from
+        the rest of the tensor by a QR decomposition and working its way
+        through the tensor from the left. This yields a left-canonical
+        representation of `array`.
+
+        The result is a chain of local tensors with `plegs` physical legs at
+        each location and has array.ndim // plegs number of sites.
+
+        :param np.ndarray array: Array representation with global structure
+            array[(i1), ..., (iN)], i.e. the legs which are factorized into
+            the same factor are already adiacent. (For me details see
+            :func:`_qmtools.global_to_local`)
+        :param int plegs: Number of physical legs per site
+
+        """
+        assert array.ndim % plegs == 0, \
+           "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
+        mpa = cls(_extract_factors(array[None], plegs=plegs))
+        mpa._lnormalized = len(mpa) - 1
+        return mpa
+
     def to_array(self):
         """Returns the full array representation of the MPT
         :returns: Full matrix A as array of shape [(i1),...,(iN)]
@@ -129,6 +144,9 @@ class MPArray(object):
         # open boundary conditions anyway
         return np.trace(res, axis1=0, axis2=-1)
 
+    ##########################
+    #  Algebraic operations  #
+    ##########################
     @staticmethod
     def _local_transpose(ltens):
         """Transposes the physical legs of the local tensor `ltens`
@@ -245,8 +263,53 @@ class MPArray(object):
     def __rmul__(self, fact):
         return self.__mul__(fact)
 
+    ################################
+    #  Normalizaton & Compression  #
+    ################################
+    def normalize(self, **kwargs):
+        """Brings the MPA to canonnical form in place
+
+        Possible combinations:
+            normalize() = normalize(left=len(self) - 1)
+                -> full left-normalization
+            normalize(left=m) for m < len(self)
+                -> self[0],..., self[m-1] are left-normalized
+            normalize(right=n) for n > 0
+                -> self[n],..., self[-1] are right-normalized
+            normalize(left=m, right=n) valid for m < n
+                -> self[0],...,self[m-1] are left normalized and
+                   self[n],...,self[-1] are right-normalized
+
+        """
+        if ('left' not in kwargs) and ('right' not in kwargs):
+            self._lnormalize(len(self) - 1)
+            return
+
+        m = kwargs.get('left', 0)
+        n = kwargs.get('left', -1)
+
+        assert m < n, "Normalization {}:{} invalid".format(m, n)
+        self._lnormalize(m)
+        self._rnormalize(n)
+
 
 ###################################################
 #  Alternative functions to call member function  #
 ###################################################
 dot = MPArray.dot
+
+
+######################
+#  Helper functions  #
+######################
+# def is_lcannonical(ltens):
+    # """Checks whether the local tensor `ltens` is left-cannoncial, i.e. if
+    # we treat it as a Matrix A=ltens[(k, j_1,...,j_n), l] with the physical
+    # indices (j_1,...,j_N), it fullfills dot(A^+,A) = I
+
+    # :param ltens: @todo
+    # :returns: @todo
+
+    # """
+    # ltens = ltens.reshape((np.prod(ltens.shape[:-1]), ltens.shape[-1]))
+    # return np.

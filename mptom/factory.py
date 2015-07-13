@@ -4,13 +4,13 @@
 
 from __future__ import division, print_function
 import numpy as np
-import mparray as mp
+import mptom.mparray as mp
 
 
-def _zrandn(*args):
-    """Shortcut for np.random.randn(*args) + 1.j * np.random.randn(*args)
+def _zrandn(shape):
+    """Shortcut for np.random.randn(*shape) + 1.j * np.random.randn(*shape)
     """
-    return np.random.randn(*args) + 1.j * np.random.randn(*args)
+    return np.random.randn(*shape) + 1.j * np.random.randn(*shape)
 
 
 def random_vec(sites, ldim):
@@ -28,7 +28,7 @@ def random_vec(sites, ldim):
     True
     """
     shape = (ldim, ) * sites
-    psi = _zrandn(*shape)
+    psi = _zrandn(shape)
     psi /= np.sqrt(np.vdot(psi, psi))
     return psi
 
@@ -45,7 +45,7 @@ def random_op(sites, ldim):
     (2, 2, 2, 2, 2, 2)
     """
     shape = (ldim, ldim) * sites
-    return _zrandn(*shape)
+    return _zrandn(shape)
 
 
 def random_state(sites, ldim):
@@ -67,27 +67,53 @@ def random_state(sites, ldim):
     True
     """
     shape = (ldim**sites, ldim**sites)
-    mat = _zrandn(*shape)
+    mat = _zrandn(shape)
     rho = np.conj(mat.T).dot(mat)
     rho /= np.trace(rho)
     return rho.reshape((ldim,) * 2 * sites)
 
 
-def random_mpa(sites, ldim, bdim):
-    """Returns a random complex matrix product operator with identical number
-    and dimensions of the physical legs
+def _generate(sites, ldim, bdim, func):
+    """Returns a matrix product operator with identical number and dimensions
+    of the physical legs. The local tensors are generated using `func`
 
     :param sites: Number of sites
     :param ldim: Tuple of int-like of local dimensions
     :param bdim: Bond dimension
-    :returns: @todo
+    :param func: Generator function for local tensors, should accept shape as
+        tuple in first argument and should return numpy.ndarray of given shape
+    :returns: randomly choosen matrix product array
 
     """
     assert sites > 1, "Cannot generate MPA with sites {} < 2".format(sites)
     # if ldim is passed as scalar, make it 1-element tuple
     ldim = ldim if hasattr(ldim, '__iter__') else (ldim, )
-    ltens_l = _zrandn(*((1, ) + ldim + (bdim, )))
-    ltenss = [_zrandn(*((bdim, ) + ldim + (bdim, )))
+    ltens_l = func((1, ) + ldim + (bdim, ))
+    ltenss = [func((bdim, ) + ldim + (bdim, ))
               for _ in xrange(sites - 2)]
-    ltens_r = _zrandn(*((bdim, ) + ldim + (bdim, )))
+    ltens_r = func((bdim, ) + ldim + (bdim, ))
     return mp.MPArray([ltens_l] + ltenss + [ltens_r])
+
+
+def random_mpa(sites, ldim, bdim):
+    """Returns a MPA with randomly choosen local tensors
+
+    :param sites: Number of sites
+    :param ldim: Tuple of int-like of local dimensions
+    :param bdim: Bond dimension
+    :returns: randomly choosen matrix product array
+
+    """
+    return _generate(sites, ldim, bdim, _zrandn)
+
+
+def zero_mpa(sites, ldim, bdim):
+    """Returns a MPA with localtensors beeing zero (but of given shape)
+
+    :param sites: Number of sites
+    :param ldim: Tuple of int-like of local dimensions
+    :param bdim: Bond dimension
+    :returns: Representation of the zero-array as MPA
+
+    """
+    return _generate(sites, ldim, bdim, np.zeros)

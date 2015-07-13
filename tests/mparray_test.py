@@ -109,3 +109,39 @@ def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim):
 
     res = qm.local_to_global((2 * mpo).to_array(), nr_sites)
     np.testing.assert_array_almost_equal(2 * op, res)
+
+
+###############################################################################
+#                         Normalization & Compression                         #
+###############################################################################
+def assert_lcannonical(ltens):
+    ltens = ltens.reshape((np.prod(ltens.shape[:-1]), ltens.shape[-1]))
+    prod = ltens.conj().T.dot(ltens)
+    np.testing.assert_array_almost_equal(prod, np.identity(prod.shape[0]))
+
+
+def assert_rcannonical(ltens):
+    ltens = ltens.reshape((ltens.shape[0], np.prod(ltens.shape[1:])))
+    prod = ltens.dot(ltens.conj().T)
+    np.testing.assert_array_almost_equal(prod, np.identity(prod.shape[0]))
+
+
+def assert_correct_normalzation(mpo, lnormal_target, rnormal_target):
+    lnormal, rnormal = mpo.normal_form
+
+    assert lnormal == lnormal_target, \
+        "Wrong lnormal={} != {}".format(lnormal, lnormal_target)
+    assert rnormal == rnormal_target, \
+        "Wrong rnormal={} != {}".format(rnormal, rnormal_target)
+
+    for n, ltens in enumerate(mpo[:lnormal]):
+        assert_lcannonical(ltens)
+    for n, ltens in enumerate(mpo[rnormal:]):
+        assert_rcannonical(ltens)
+
+
+@pt.mark.parametrize('nr_sites, local_dim', FULL_TEST_PARAMETERS)
+def test_from_full_normalization(nr_sites, local_dim):
+    op = factory.random_op(nr_sites, local_dim)
+    mpo = mp.MPArray.from_array(op, 2)
+    assert_correct_normalzation(mpo, nr_sites - 1, nr_sites)
