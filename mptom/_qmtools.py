@@ -38,8 +38,8 @@ def global_to_local(array, sites):
     (1, 3, 5, 2, 4, 6)
 
     """
-    if array.ndim % sites != 0:
-        raise ValueError("ndim is not a multiple of {}".format(sites))
+    assert array.ndim % sites == 0, \
+        "ndim={} is not a multiple of {}".format(array.ndim, sites)
     plegs = array.ndim // sites
     order = [i // plegs + sites * (i % plegs) for i in range(plegs * sites)]
     return np.transpose(array, order)
@@ -52,14 +52,15 @@ def local_to_global(array, sites):
     :param int sites: Number of distinct sites
     :returns: Array with same ndim as array, but reshaped
 
-    >>> local_to_global(global_to_local(np.zeros((1, 2, 3, 4, 5, 6)), 3), 3).shape
+    >>> ltg, gtl = local_to_global, global_to_local
+    >>> ltg(gtl(np.zeros((1, 2, 3, 4, 5, 6)), 3), 3).shape
     (1, 2, 3, 4, 5, 6)
-    >>> local_to_global(global_to_local(np.zeros((1, 2, 3, 4, 5, 6)), 2), 2).shape
+    >>> ltg(gtl(np.zeros((1, 2, 3, 4, 5, 6)), 2), 2).shape
     (1, 2, 3, 4, 5, 6)
 
     """
-    if array.ndim % sites != 0:
-        raise ValueError("ndim is not a multiple of {}".format(sites))
+    assert array.ndim % sites == 0, \
+        "ndim={} is not a multiple of {}".format(array.ndim, sites)
     plegs = array.ndim // sites
     order = sum(([plegs*i + j for i in range(sites)] for j in range(plegs)),
                 [])

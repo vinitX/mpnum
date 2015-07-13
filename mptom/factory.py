@@ -83,8 +83,7 @@ def random_mpa(sites, ldim, bdim):
     :returns: @todo
 
     """
-    if sites < 2:
-        return ValueError("Cannot generate MPA with sites {} < 2".format(sites))
+    assert sites > 1, "Cannot generate MPA with sites {} < 2".format(sites)
     # if ldim is passed as scalar, make it 1-element tuple
     ldim = ldim if hasattr(ldim, '__iter__') else (ldim, )
     ltens_l = _zrandn(*((1, ) + ldim + (bdim, )))

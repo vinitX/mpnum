@@ -24,7 +24,7 @@ def _extract_factors(tens, plegs):
     if tens.ndim == plegs + 1:
         return [tens.reshape(tens.shape + (1,))]
     elif tens.ndim < plegs + 1:
-        raise ValueError("Number of remaining legs insufficient.")
+        raise AssertionError("Number of remaining legs insufficient.")
     else:
         unitary, rest = qr(tens.reshape((np.prod(tens.shape[:plegs + 1]),
                                          np.prod(tens.shape[plegs + 1:]))))
@@ -84,9 +84,8 @@ class MPArray(object):
         :param int plegs: Number of physical legs per site
 
         """
-        if array.ndim % plegs != 0:
-            raise ValueError("plegs invalid: {} is not multiple of {}"
-                             .format(array.ndim, plegs))
+        assert array.ndim % plegs == 0, \
+           "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
         return cls(_extract_factors(array[None], plegs=plegs))
 
     def __len__(self):
@@ -188,9 +187,8 @@ class MPArray(object):
         :returns: @todo
 
         """
-        if len(self) != len(fact):
-            raise ValueError("mparrays have different lengths: {} != {}"
-                            .format(len(self), len(fact)))
+        assert len(self) == len(fact), \
+            "mparrays have different lengths: {} != {}".format(len(self), len(fact))
 
         # adapt the axes from physical to true legs
         ax_l, ax_r = axes
@@ -223,9 +221,8 @@ class MPArray(object):
         return res
 
     def __add__(self, summand):
-        if len(self) != len(summand):
-            raise ValueError("mparrays have different lengths: {} != {}"
-                            .format(len(self), len(summand)))
+        assert len(self) == len(summand), \
+            "mparrays have different lengths: {} != {}".format(len(self), len(summand))
 
         ltens = [np.concatenate((self._ltens[0], summand._ltens[0]), axis=-1)]
         ltens += [self._local_add(l, r)
