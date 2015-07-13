@@ -37,7 +37,7 @@ def _extract_factors(tens, plegs):
 
 class MPArray(object):
     """Efficient representation of a general N-partite array A in matrix
-    product form with closed boundary conditions:
+    product form with open boundary conditions:
 
             A^((i1),...,(iN)) = prod_k A^[k]_(ik)   (*)
 
@@ -91,12 +91,6 @@ class MPArray(object):
 
     def __len__(self):
         return len(self._ltens)
-
-    def __mul__(self, fact):
-        if np.isscalar(fact):
-            return MPArray(fact * self._ltens)
-
-        raise NotImplementedError("Multiplication by non-scalar not supported")
 
     @property
     def dims(self):
@@ -208,9 +202,54 @@ class MPArray(object):
 
         return type(self)(ltens)
 
+    @staticmethod
+    def _local_add(ltens_l, ltens_r):
+        """Computes the local tensors of a sum l + r (except for the boundary
+        tensors)
+
+        :param ltens_l: Array with ndim > 1
+        :param ltens_r: Array with ndim > 1
+
+        """
+        np.testing.assert_array_equal(ltens_l.shape[1:-1], ltens_r.shape[1:-1])
+
+        shape = (ltens_l.shape[0] + ltens_r.shape[0], )
+        shape += ltens_l.shape[1:-1]
+        shape += (ltens_l.shape[-1] + ltens_r.shape[-1], )
+        res = np.zeros(shape, dtype=ltens_l.dtype)
+
+        res[:ltens_l.shape[0], ..., :ltens_l.shape[-1]] = ltens_l
+        res[ltens_l.shape[0]:, ..., ltens_l.shape[-1]:] = ltens_r
+        return res
+
+    def __add__(self, summand):
+        if len(self) != len(summand):
+            raise ValueError("mparrays have different lengths: {} != {}"
+                            .format(len(self), len(summand)))
+
+        ltens = [np.concatenate((self._ltens[0], summand._ltens[0]), axis=-1)]
+        ltens += [self._local_add(l, r)
+                  for l, r in izip(self._ltens[1:-1], summand._ltens[1:-1])]
+        ltens += [np.concatenate((self._ltens[-1], summand._ltens[-1]), axis=0)]
+        return MPArray(ltens)
+
+    # FIXME Make this normalization-aware
+    def __sub__(self, subtr):
+        return self + (-1) * subtr
+
+    # FIXME Make this normalization-aware
+    def __mul__(self, fact):
+        if np.isscalar(fact):
+            return MPArray([self._ltens[0] * fact] +
+                           [ltens for ltens in self._ltens[1:]])
+
+        raise NotImplementedError("Multiplication by non-scalar not supported")
+
+    def __rmul__(self, fact):
+        return self.__mul__(fact)
+
 
 ###################################################
 #  Alternative functions to call member function  #
 ###################################################
 dot = MPArray.dot
-

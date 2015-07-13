@@ -86,3 +86,26 @@ def test_dot(nr_sites, local_dim, bond_dim):
     dot_mp = mp.dot(mpo1, mpo2, axes=(-2, -1)).to_array()
     dot_mp = qm.local_to_global(dot_mp, nr_sites)
     np.testing.assert_array_almost_equal(dot_np, dot_mp)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_add_and_subtr(nr_sites, local_dim, bond_dim):
+    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op1 = qm.local_to_global(mpo1.to_array(), nr_sites)
+    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op2 = qm.local_to_global(mpo2.to_array(), nr_sites)
+
+    sum_mp = qm.local_to_global((mpo1 + mpo2).to_array(), nr_sites)
+    np.testing.assert_array_almost_equal(op1 + op2, sum_mp)
+
+    sum_mp = qm.local_to_global((mpo1 - mpo2).to_array(), nr_sites)
+    np.testing.assert_array_almost_equal(op1 - op2, sum_mp)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = qm.local_to_global(mpo.to_array(), nr_sites)
+
+    res = qm.local_to_global((2 * mpo).to_array(), nr_sites)
+    np.testing.assert_array_almost_equal(2 * op, res)
