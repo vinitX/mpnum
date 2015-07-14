@@ -9,6 +9,8 @@ import mptom.mparray as mp
 import mptom.factory as factory
 import mptom._qmtools as qm
 
+from numpy.testing import assert_array_almost_equal
+
 
 # List of test parameters (sites, local_dim) that still allow for treatment of
 # full representation
@@ -26,18 +28,18 @@ MP_TEST_PARAMETERS = [(6, 2, 4), (4, 3, 5)]
 def test_from_full(nr_sites, local_dim):
     psi = factory.random_vec(nr_sites, local_dim)
     mps = mp.MPArray.from_array(psi, 1)
-    np.testing.assert_array_almost_equal(psi, mps.to_array())
+    assert_array_almost_equal(psi, mps.to_array())
 
     op = factory.random_op(nr_sites, local_dim)
     mpo = mp.MPArray.from_array(op, 2)
-    np.testing.assert_array_almost_equal(op, mpo.to_array())
+    assert_array_almost_equal(op, mpo.to_array())
 
 
 @pt.mark.parametrize('nr_sites, local_dim', FULL_TEST_PARAMETERS)
 def test_conjugations(nr_sites, local_dim):
     op = factory.random_op(nr_sites, local_dim)
     mpo = mp.MPArray.from_array(op, 2)
-    np.testing.assert_array_almost_equal(np.conj(op), mpo.C().to_array())
+    assert_array_almost_equal(np.conj(op), mpo.C().to_array())
 
 
 @pt.mark.parametrize('nr_sites, local_dim', FULL_TEST_PARAMETERS)
@@ -48,7 +50,7 @@ def test_transposition(nr_sites, local_dim):
     opT = op.reshape((local_dim**nr_sites,) * 2).T \
         .reshape((local_dim,) * 2 * nr_sites)
     res = qm.local_to_global(mpo.T().to_array(), nr_sites)
-    np.testing.assert_array_almost_equal(opT, res)
+    assert_array_almost_equal(opT, res)
 
 
 ###############################################################################
@@ -68,11 +70,11 @@ def test_dot(nr_sites, local_dim, bond_dim):
     dot_np = dot_np.reshape(op1.shape)
     dot_mp = mp.dot(mpo1, mpo2, axes=(1, 0)).to_array()
     dot_mp = qm.local_to_global(dot_mp, nr_sites)
-    np.testing.assert_array_almost_equal(dot_np, dot_mp)
+    assert_array_almost_equal(dot_np, dot_mp)
     # this should also be the default axes
     dot_mp = mp.dot(mpo1, mpo2).to_array()
     dot_mp = qm.local_to_global(dot_mp, nr_sites)
-    np.testing.assert_array_almost_equal(dot_np, dot_mp)
+    assert_array_almost_equal(dot_np, dot_mp)
 
     # Dotproduct of all 0th physical with 1st physical legs = np.dot
     dot_np = np.tensordot(op1.reshape((local_dim**nr_sites, ) * 2),
@@ -81,11 +83,11 @@ def test_dot(nr_sites, local_dim, bond_dim):
     dot_np = dot_np.reshape(op1.shape)
     dot_mp = mp.dot(mpo1, mpo2, axes=(0, 1)).to_array()
     dot_mp = qm.local_to_global(dot_mp, nr_sites)
-    np.testing.assert_array_almost_equal(dot_np, dot_mp)
+    assert_array_almost_equal(dot_np, dot_mp)
     # this should also be the default axes
     dot_mp = mp.dot(mpo1, mpo2, axes=(-2, -1)).to_array()
     dot_mp = qm.local_to_global(dot_mp, nr_sites)
-    np.testing.assert_array_almost_equal(dot_np, dot_mp)
+    assert_array_almost_equal(dot_np, dot_mp)
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
@@ -96,10 +98,10 @@ def test_add_and_subtr(nr_sites, local_dim, bond_dim):
     op2 = qm.local_to_global(mpo2.to_array(), nr_sites)
 
     sum_mp = qm.local_to_global((mpo1 + mpo2).to_array(), nr_sites)
-    np.testing.assert_array_almost_equal(op1 + op2, sum_mp)
+    assert_array_almost_equal(op1 + op2, sum_mp)
 
     sum_mp = qm.local_to_global((mpo1 - mpo2).to_array(), nr_sites)
-    np.testing.assert_array_almost_equal(op1 - op2, sum_mp)
+    assert_array_almost_equal(op1 - op2, sum_mp)
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
@@ -108,22 +110,24 @@ def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim):
     op = qm.local_to_global(mpo.to_array(), nr_sites)
 
     res = qm.local_to_global((2 * mpo).to_array(), nr_sites)
-    np.testing.assert_array_almost_equal(2 * op, res)
+    assert_array_almost_equal(2 * op, res)
 
 
 ###############################################################################
 #                         Normalization & Compression                         #
 ###############################################################################
-def assert_lcannonical(ltens):
+def assert_lcannonical(ltens, msg=''):
     ltens = ltens.reshape((np.prod(ltens.shape[:-1]), ltens.shape[-1]))
     prod = ltens.conj().T.dot(ltens)
-    np.testing.assert_array_almost_equal(prod, np.identity(prod.shape[0]))
+    assert_array_almost_equal(prod, np.identity(prod.shape[0]),
+                                         err_msg=msg)
 
 
-def assert_rcannonical(ltens):
+def assert_rcannonical(ltens, msg=''):
     ltens = ltens.reshape((ltens.shape[0], np.prod(ltens.shape[1:])))
     prod = ltens.dot(ltens.conj().T)
-    np.testing.assert_array_almost_equal(prod, np.identity(prod.shape[0]))
+    assert_array_almost_equal(prod, np.identity(prod.shape[0]),
+                                         err_msg=msg)
 
 
 def assert_correct_normalzation(mpo, lnormal_target, rnormal_target):
@@ -134,10 +138,12 @@ def assert_correct_normalzation(mpo, lnormal_target, rnormal_target):
     assert rnormal == rnormal_target, \
         "Wrong rnormal={} != {}".format(rnormal, rnormal_target)
 
-    for n, ltens in enumerate(mpo[:lnormal]):
-        assert_lcannonical(ltens)
-    for n, ltens in enumerate(mpo[rnormal:]):
-        assert_rcannonical(ltens)
+    for n in xrange(lnormal):
+        assert_lcannonical(mpo[n], msg="Failure left cannonical (n={}/{})"
+                           .format(n, lnormal_target))
+    for n in xrange(rnormal, len(mpo)):
+        assert_rcannonical(mpo[n], msg="Failure right cannonical (n={}/{})"
+                           .format(n, rnormal_target))
 
 
 @pt.mark.parametrize('nr_sites, local_dim', FULL_TEST_PARAMETERS)
@@ -145,3 +151,36 @@ def test_from_full_normalization(nr_sites, local_dim):
     op = factory.random_op(nr_sites, local_dim)
     mpo = mp.MPArray.from_array(op, 2)
     assert_correct_normalzation(mpo, nr_sites - 1, nr_sites)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_incremental_normalization(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = qm.local_to_global(mpo.to_array(), nr_sites)
+    assert_correct_normalzation(mpo, 0, nr_sites)
+    assert_array_almost_equal(op, qm.local_to_global(mpo.to_array(), nr_sites))
+
+    for site in xrange(1, nr_sites):
+        mpo.normalize(left=site)
+        assert_correct_normalzation(mpo, site, nr_sites)
+        assert_array_almost_equal(op,
+                                  qm.local_to_global(mpo.to_array(), nr_sites))
+
+    for site in xrange(nr_sites - 1, 0, -1):
+        mpo.normalize(right=site)
+        assert_correct_normalzation(mpo, site - 1, site)
+        assert_array_almost_equal(op,
+                                  qm.local_to_global(mpo.to_array(), nr_sites))
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_jump_normalization(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = qm.local_to_global(mpo.to_array(), nr_sites)
+    assert_correct_normalzation(mpo, 0, nr_sites)
+    assert_array_almost_equal(op, qm.local_to_global(mpo.to_array(), nr_sites))
+
+    center = nr_sites // 2
+    mpo.normalize(left=center - 1, right=center)
+    assert_correct_normalzation(mpo, center - 1, center)
+    assert_array_almost_equal(op, qm.local_to_global(mpo.to_array(), nr_sites))

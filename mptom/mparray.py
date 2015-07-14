@@ -286,30 +286,61 @@ class MPArray(object):
             return
 
         m = kwargs.get('left', 0)
-        n = kwargs.get('left', -1)
+        n = kwargs.get('right', len(self))
 
         assert m < n, "Normalization {}:{} invalid".format(m, n)
-        self._lnormalize(m)
-        self._rnormalize(n)
+        current_normalization = self.normal_form
+        if current_normalization[0] < m:
+            self._lnormalize(m)
+        if current_normalization[1] > n:
+            self._rnormalize(n)
+
+    def _lnormalize(self, site):
+        """Left-normalizes all local tensors _ltens[site:] in place
+
+        :param site: Index of the site up to which normalization is to be
+            performed
+
+        """
+        assert site < len(self), "Cannot left-normalize rightmost site: {} >= {}" \
+            .format(site, len(self))
+
+        lnormal, rnormal = self.normal_form
+        for n in xrange(lnormal, site):
+            ltens = self._ltens[n]
+            matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
+            q, r = qr(ltens.reshape(matshape))
+            self._ltens[n][:] = q.reshape(ltens.shape)
+            self._ltens[n + 1][:] = np.tensordot(r, self._ltens[n + 1],
+                                                 axes=((-1, ), (0, )))
+
+        self._lnormalized = site
+        self._rnormalized = max(site + 1, rnormal)
+
+    def _rnormalize(self, site):
+        """Right-normalizes all local tensors _ltens[:site] in place
+
+        :param site: Index of the site up to which normalization is to be
+            performed
+
+        """
+        assert site > 0, "Cannot right-normalize leftmost site: {} >= {}" \
+            .format(site, len(self))
+
+        lnormal, rnormal = self.normal_form
+        for n in xrange(rnormal - 1, site - 1, -1):
+            ltens = self._ltens[n]
+            matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
+            q, r = qr(ltens.reshape(matshape).T)
+            self._ltens[n][:] = q.T.reshape(ltens.shape)
+            self._ltens[n - 1][:] = np.tensordot(self._ltens[n - 1], r.T,
+                                                 axes=((-1, ), (0, )))
+
+        self._lnormalized = min(site - 1, lnormal)
+        self._rnormalized = site
 
 
 ###################################################
 #  Alternative functions to call member function  #
 ###################################################
 dot = MPArray.dot
-
-
-######################
-#  Helper functions  #
-######################
-# def is_lcannonical(ltens):
-    # """Checks whether the local tensor `ltens` is left-cannoncial, i.e. if
-    # we treat it as a Matrix A=ltens[(k, j_1,...,j_n), l] with the physical
-    # indices (j_1,...,j_N), it fullfills dot(A^+,A) = I
-
-    # :param ltens: @todo
-    # :returns: @todo
-
-    # """
-    # ltens = ltens.reshape((np.prod(ltens.shape[:-1]), ltens.shape[-1]))
-    # return np.
