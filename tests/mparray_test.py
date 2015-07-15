@@ -3,19 +3,21 @@
 
 from __future__ import division, print_function
 
-import pytest as pt
 import numpy as np
-import mptom.mparray as mp
-import mptom.factory as factory
+import pytest as pt
+from numpy.testing import assert_array_almost_equal, assert_array_equal
+
 import mptom._qmtools as qm
-
-from numpy.testing import assert_array_almost_equal
-
+import mptom.factory as factory
+import mptom.mparray as mp
 
 # List of test parameters (sites, local_dim, bond_dim)
 MP_TEST_PARAMETERS = [(6, 2, 4), (4, 3, 5)]
 
 
+# We choose to use a global reperentation of multipartite arrays throughout our
+# tests to be consistent and a few operations (i.e. matrix multiplication) are
+# easier to express
 def mpo_to_global(mpo):
     return qm.local_to_global(mpo.to_array(), len(mpo))
 
@@ -176,10 +178,25 @@ def test_jump_normalization(nr_sites, local_dim, bond_dim):
     assert_array_almost_equal(op, mpo_to_global(mpo))
 
 
-# @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-# def test_(nr_sites, local_dim, bond_dim):
-    # mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    # zero = factory.zero_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    # mpo_ = mpo + zero
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_compression_svd(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    zero = factory.zero_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo_new = mpo + zero
 
-    # assert_array_almost_equal(op, qm.local_to_global(mpo.to_array(), nr_sites))
+    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+    for bdims in zip(mpo.bdims, zero.bdims, mpo_new.bdims):
+        assert bdims[0] + bdims[1] == bdims[2]
+
+    # Right-compression
+    mpo_new.compress(max_bdim=bond_dim, method='svd', direction='right')
+    assert_array_equal(mpo_new.bdims, bond_dim)
+    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+    assert_correct_normalzation(mpo_new, nr_sites - 1, nr_sites)
+
+    # Left-compression
+    # mpo_new = mpo + zero
+    mpo_new.compress(max_bdim=bond_dim, method='svd', direction='left')
+    assert_array_equal(mpo_new.bdims, bond_dim)
+    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+    assert_correct_normalzation(mpo_new, 0, 1)

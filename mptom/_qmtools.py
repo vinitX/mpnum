@@ -65,3 +65,8 @@ def local_to_global(array, sites):
     order = sum(([plegs*i + j for i in range(sites)] for j in range(plegs)),
                 [])
     return np.transpose(array, order)
+
+
+def matdot(A, B, axes=((-1,), (0,))):
+    """np.tensordot with sane defaults for matrix multiplication"""
+    return np.tensordot(A, B, axes=axes)

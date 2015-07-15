@@ -2,14 +2,26 @@
 # encoding: utf-8
 """Module containing routines for dealing with general matrix product arrays.
 
-TODO
-"""
+References:
+    [Sch11] U. Schollwöck, The density-matrix renormalization group in the age
+        of matrix product states
 
-from __future__ import division, print_function, absolute_import
+"""
+# FIXME Possible Optimization:
+#   - replace integer-for loops with iterataor (not obviously possible
+#   everwhere)
+#   - replace internal structure as list of arrays with lazy generator of
+#   arrays (might not be possible, since we often iterate both ways!)
+#   - more in place operations for addition, subtraction, multiplication
+
+from __future__ import absolute_import, division, print_function
+
+from itertools import izip
 
 import numpy as np
 from numpy.linalg import qr, svd
-from itertools import izip
+
+from mptom._qmtools import matdot
 
 
 def _extract_factors(tens, plegs):
@@ -80,8 +92,8 @@ class MPArray(object):
 
     @property
     def bdims(self):
-        """Tuple of bond dimensions; 0th entry is 1 for open boundary cond."""
-        return tuple(m.shape[0] for m in self._ltens)
+        """Tuple of bond dimensions"""
+        return tuple(m.shape[0] for m in self._ltens[1:])
 
     @property
     def pdims(self):
@@ -113,7 +125,7 @@ class MPArray(object):
         is done by factoring the off the left and the "physical" legs from
         the rest of the tensor by a QR decomposition and working its way
         through the tensor from the left. This yields a left-canonical
-        representation of `array`.
+        representation of `array`. [Sch11, Sec. 4.3.1]
 
         The result is a chain of local tensors with `plegs` physical legs at
         each location and has array.ndim // plegs number of sites.
@@ -139,7 +151,7 @@ class MPArray(object):
         """
         res = self._ltens[0]
         for tens in self._ltens[1:]:
-            res = np.tensordot(res, tens, axes=(-1, 0))
+            res = matdot(res, tens)
         # trace doesnt really do anything here, since we are dealing with
         # open boundary conditions anyway
         return np.trace(res, axis1=0, axis2=-1)
@@ -196,7 +208,7 @@ class MPArray(object):
 
     def dot(self, fact, axes=(-1, 0)):
         """Compute the matrix product representation of a.b over the given
-        (physical) axes.
+        (physical) axes. [Sch11, Sec. 4.2]
 
         :param fact: Second factor
         :param axes: 2-tuple of axes to sum over. Note the difference in
@@ -248,7 +260,7 @@ class MPArray(object):
         ltens += [np.concatenate((self._ltens[-1], summand._ltens[-1]), axis=0)]
         return MPArray(ltens)
 
-    # FIXME Make this normalization-aware
+    # NOTE Can we gain anything by making this normalization aware?
     def __sub__(self, subtr):
         return self + (-1) * subtr
 
@@ -266,15 +278,18 @@ class MPArray(object):
     ################################
     #  Normalizaton & Compression  #
     ################################
+    # FIXME Maybe we should extract site-normalization logic to seperate funcs
     def normalize(self, **kwargs):
-        """Brings the MPA to canonnical form in place
+        """Brings the MPA to canonnical form in place.
+
+        [Sch11, Sec. 4.4]
 
         Possible combinations:
             normalize() = normalize(left=len(self) - 1)
                 -> full left-normalization
-            normalize(left=m) for m < len(self)
+            normalize(left=m) for 0 <= m < len(self) - 1
                 -> self[0],..., self[m-1] are left-normalized
-            normalize(right=n) for n > 0
+            normalize(right=n) for 0 < n < len(self)
                 -> self[n],..., self[-1] are right-normalized
             normalize(left=m, right=n) valid for m < n
                 -> self[0],...,self[m-1] are left normalized and
@@ -311,8 +326,7 @@ class MPArray(object):
             matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
             q, r = qr(ltens.reshape(matshape))
             self._ltens[n][:] = q.reshape(ltens.shape)
-            self._ltens[n + 1][:] = np.tensordot(r, self._ltens[n + 1],
-                                                 axes=((-1, ), (0, )))
+            self._ltens[n + 1][:] = matdot(r, self._ltens[n + 1])
 
         self._lnormalized = site
         self._rnormalized = max(site + 1, rnormal)
@@ -333,12 +347,84 @@ class MPArray(object):
             matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
             q, r = qr(ltens.reshape(matshape).T)
             self._ltens[n][:] = q.T.reshape(ltens.shape)
-            self._ltens[n - 1][:] = np.tensordot(self._ltens[n - 1], r.T,
-                                                 axes=((-1, ), (0, )))
+            self._ltens[n - 1][:] = matdot(self._ltens[n - 1], r.T)
 
         self._lnormalized = min(site - 1, lnormal)
         self._rnormalized = site
 
+    # FIXME Also return overlap? Should be simple to calculate from SVD
+    def compress(self, max_bdim, method='svd', **kwargs):
+        """Compresses the MPA to a fixed maximal bond dimension in place
+
+        :param max_bdim: Maximal bond dimension for the compressed MPA
+        :param method: Which implemention should be used for compression
+            'svd': Compression based on SVD [Sch11, Sec. 4.5.1]
+
+        For method='svd':
+        -----------------
+        :param direction: In which direction the compression should operate.
+            (default: depending on the current normalization, such that the
+             number of sites that need to be normalized is smaller)
+            'right': Starting on the leftmost site, the compression sweeps
+                     to the right yielding a completely left-cannonical MPA
+            'left': Starting on rightmost site, the compression sweeps
+                    to the left yielding a completely right-cannoncial MPA
+
+        """
+        if method == 'svd':
+            ln, rn = self.normal_form
+            default_direction = 'left' if len(self) - rn > ln else 'right'
+            direction = kwargs.get('direction', default_direction)
+
+            if direction == 'right':
+                self.normalize(left=0, right=1)
+                self._compress_svd_r(max_bdim)
+            elif direction == 'left':
+                self.normalize(left=len(self) - 1, right=len(self))
+                self._compress_svd_l(max_bdim)
+        else:
+            raise ValueError("{} is not a valid method.".format(method))
+
+    def _compress_svd_r(self, max_bdim):
+        """Compresses the MPA in place from left to right using SVD;
+        yields a left-cannonical state
+
+        :param max_bdim: Maximal bond dimension for the compressed MPA
+
+        """
+        assert self.normal_form == (0, 1)
+        for n in xrange(len(self) - 1):
+            ltens = self._ltens[n]
+            matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
+            u, sv, v = svd(ltens.reshape(matshape))
+            newshape = ltens.shape[:-1] + (min(ltens.shape[-1], max_bdim), )
+            self._ltens[n] = u[:, :max_bdim].reshape(newshape)
+            self._ltens[n + 1] = matdot(sv[:max_bdim, None] * v[:max_bdim, :],
+                                        self._ltens[n + 1])
+
+        self._lnormalized = len(self) - 1
+        self._rnormalized = len(self)
+
+    def _compress_svd_l(self, max_bdim):
+        """Compresses the MPA in place from right to left using SVD;
+        yields a -cannonical state
+
+        :param max_bdim: Maximal bond dimension for the compressed MPA
+
+        """
+        assert self.normal_form == (len(self) - 1, len(self))
+        for n in xrange(len(self) - 1, 0, -1):
+            ltens = self._ltens[n]
+            matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
+            u, sv, v = svd(ltens.reshape(matshape))
+            newshape = (min(ltens.shape[0], max_bdim), ) + ltens.shape[1:]
+            self._ltens[n] = v[:max_bdim, :].reshape(newshape)
+            self._ltens[n - 1] = matdot(self._ltens[n - 1],
+                                        u[:, :max_bdim] * sv[None, :max_bdim])
+
+        self._lnormalized = 0
+        self._rnormalized = 1
+    # TODO Adaptive/error based compression method
 
 ###################################################
 #  Alternative functions to call member function  #
