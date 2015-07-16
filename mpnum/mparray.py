@@ -16,8 +16,6 @@ References:
 
 from __future__ import absolute_import, division, print_function
 
-from itertools import izip
-
 import numpy as np
 from numpy.linalg import qr, svd
 
@@ -71,7 +69,7 @@ class MPArray(object):
                     shape(tens[i])[-1] == shape(tens[i])[0].
 
         """
-        for i, (ten, nten) in enumerate(izip(ltens[:-1], ltens[1:])):
+        for i, (ten, nten) in enumerate(zip(ltens[:-1], ltens[1:])):
             if ten.shape[-1] != nten.shape[0]:
                 raise ValueError("Shape mismatch on {}: {} != {}"
                                  .format(i, ten.shape[-1], nten.shape[0]))
@@ -174,7 +172,7 @@ class MPArray(object):
         :returns: Transpose of ltens except for first and last dimension
 
         """
-        return np.transpose(ltens, axes=[0] + range(ltens.ndim - 2, 0, -1) +
+        return np.transpose(ltens, axes=[0] + list(range(ltens.ndim - 2, 0, -1)) +
                             [ltens.ndim - 1])
 
     def T(self):
@@ -233,7 +231,7 @@ class MPArray(object):
         ax_r = ax_r + 1 if ax_r >= 0 else ax_r - 1
 
         ltens = [self._local_dot(l, r, (ax_l, ax_r))
-                 for l, r in izip(self._ltens, fact._ltens)]
+                 for l, r in zip(self._ltens, fact._ltens)]
 
         return type(self)(ltens)
 
@@ -263,7 +261,7 @@ class MPArray(object):
 
         ltens = [np.concatenate((self._ltens[0], summand._ltens[0]), axis=-1)]
         ltens += [self._local_add(l, r)
-                  for l, r in izip(self._ltens[1:-1], summand._ltens[1:-1])]
+                  for l, r in zip(self._ltens[1:-1], summand._ltens[1:-1])]
         ltens += [np.concatenate((self._ltens[-1], summand._ltens[-1]), axis=0)]
         return MPArray(ltens)
 
@@ -328,7 +326,7 @@ class MPArray(object):
             .format(site, len(self))
 
         lnormal, rnormal = self.normal_form
-        for n in xrange(lnormal, site):
+        for n in range(lnormal, site):
             ltens = self._ltens[n]
             matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
             q, r = qr(ltens.reshape(matshape))
@@ -349,7 +347,7 @@ class MPArray(object):
             .format(site, len(self))
 
         lnormal, rnormal = self.normal_form
-        for n in xrange(rnormal - 1, site - 1, -1):
+        for n in range(rnormal - 1, site - 1, -1):
             ltens = self._ltens[n]
             matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
             q, r = qr(ltens.reshape(matshape).T)
@@ -400,7 +398,7 @@ class MPArray(object):
 
         """
         assert self.normal_form == (0, 1)
-        for n in xrange(len(self) - 1):
+        for n in range(len(self) - 1):
             ltens = self._ltens[n]
             matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
             u, sv, v = svd(ltens.reshape(matshape))
@@ -420,7 +418,7 @@ class MPArray(object):
 
         """
         assert self.normal_form == (len(self) - 1, len(self))
-        for n in xrange(len(self) - 1, 0, -1):
+        for n in range(len(self) - 1, 0, -1):
             ltens = self._ltens[n]
             matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
             u, sv, v = svd(ltens.reshape(matshape))

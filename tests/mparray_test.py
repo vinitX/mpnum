@@ -130,10 +130,10 @@ def assert_correct_normalzation(mpo, lnormal_target, rnormal_target):
     assert rnormal == rnormal_target, \
         "Wrong rnormal={} != {}".format(rnormal, rnormal_target)
 
-    for n in xrange(lnormal):
+    for n in range(lnormal):
         assert_lcannonical(mpo[n], msg="Failure left cannonical (n={}/{})"
                            .format(n, lnormal_target))
-    for n in xrange(rnormal, len(mpo)):
+    for n in range(rnormal, len(mpo)):
         assert_rcannonical(mpo[n], msg="Failure right cannonical (n={}/{})"
                            .format(n, rnormal_target))
 
@@ -153,12 +153,12 @@ def test_incremental_normalization(nr_sites, local_dim, bond_dim):
     assert_correct_normalzation(mpo, 0, nr_sites)
     assert_array_almost_equal(op, mpo_to_global(mpo))
 
-    for site in xrange(1, nr_sites):
+    for site in range(1, nr_sites):
         mpo.normalize(left=site)
         assert_correct_normalzation(mpo, site, nr_sites)
         assert_array_almost_equal(op, mpo_to_global(mpo))
 
-    for site in xrange(nr_sites - 1, 0, -1):
+    for site in range(nr_sites - 1, 0, -1):
         mpo.normalize(right=site)
         assert_correct_normalzation(mpo, site - 1, site)
         assert_array_almost_equal(op, mpo_to_global(mpo))

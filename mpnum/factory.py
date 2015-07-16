@@ -90,7 +90,7 @@ def _generate(sites, ldim, bdim, func):
     ldim = ldim if hasattr(ldim, '__iter__') else (ldim, )
     ltens_l = func((1, ) + ldim + (bdim, ))
     ltenss = [func((bdim, ) + ldim + (bdim, ))
-              for _ in xrange(sites - 2)]
+              for _ in range(sites - 2)]
     ltens_r = func((bdim, ) + ldim + (bdim, ))
     return mp.MPArray([ltens_l] + ltenss + [ltens_r])
 
