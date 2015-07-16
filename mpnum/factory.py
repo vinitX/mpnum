@@ -4,7 +4,7 @@
 
 from __future__ import division, print_function
 import numpy as np
-import mptom.mparray as mp
+import mpnum.mparray as mp
 
 
 def _zrandn(shape):
@@ -53,7 +53,7 @@ def random_state(sites, ldim):
     sites normalized to Tr rho = 1, i.e. a mixed state with local dimension
     `ldim` living on `sites` sites. Note that the returned state is positive
     semidefinite only when interpreted in global form (see
-    :func:`_qmtools.global_to_local`)
+    :func:`_tools.global_to_local`)
 
     :param sites: Number of local sites
     :param ldim: Local ldimension

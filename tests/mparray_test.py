@@ -7,9 +7,9 @@ import numpy as np
 import pytest as pt
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 
-import mptom._qmtools as qm
-import mptom.factory as factory
-import mptom.mparray as mp
+import mpnum.factory as factory
+import mpnum.mparray as mp
+from mpnum._tools import global_to_local, local_to_global
 
 # List of test parameters (sites, local_dim, bond_dim)
 MP_TEST_PARAMETERS = [(6, 2, 4), (4, 3, 5)]
@@ -19,7 +19,7 @@ MP_TEST_PARAMETERS = [(6, 2, 4), (4, 3, 5)]
 # tests to be consistent and a few operations (i.e. matrix multiplication) are
 # easier to express
 def mpo_to_global(mpo):
-    return qm.local_to_global(mpo.to_array(), len(mpo))
+    return local_to_global(mpo.to_array(), len(mpo))
 
 
 ###############################################################################
@@ -46,7 +46,7 @@ def test_conjugations(nr_sites, local_dim, _):
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
 def test_transposition(nr_sites, local_dim, _):
     op = factory.random_op(nr_sites, local_dim)
-    mpo = mp.MPArray.from_array(qm.global_to_local(op, nr_sites), 2)
+    mpo = mp.MPArray.from_array(global_to_local(op, nr_sites), 2)
 
     opT = op.reshape((local_dim**nr_sites,) * 2).T \
         .reshape((local_dim,) * 2 * nr_sites)

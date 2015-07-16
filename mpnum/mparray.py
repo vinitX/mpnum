@@ -21,7 +21,7 @@ from itertools import izip
 import numpy as np
 from numpy.linalg import qr, svd
 
-from mptom._qmtools import matdot
+from mpnum._tools import matdot
 
 
 def _extract_factors(tens, plegs):
@@ -82,6 +82,12 @@ class MPArray(object):
         # Elements _ltens[n] with n >= self._rnorm are in right-cannon. form
         self._rnormalized = None
 
+    def copy(self):
+        result = type(self)([ltens.copy() for ltens in self._ltens])
+        result._lnormalized = self._lnormalized
+        result._rnormalized = self._rnormalized
+        return result
+
     def __len__(self):
         return len(self._ltens)
 
@@ -133,7 +139,7 @@ class MPArray(object):
         :param np.ndarray array: Array representation with global structure
             array[(i1), ..., (iN)], i.e. the legs which are factorized into
             the same factor are already adiacent. (For me details see
-            :func:`_qmtools.global_to_local`)
+            :func:`_tools.global_to_local`)
         :param int plegs: Number of physical legs per site
 
         """

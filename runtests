@@ -4,4 +4,4 @@ DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 cd "${DIR}"
 
 stty cols 80
-py.test tests mptom --doctest-modules
+py.test tests mpnum --doctest-modules
