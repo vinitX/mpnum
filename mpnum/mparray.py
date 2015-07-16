@@ -84,6 +84,7 @@ class MPArray(object):
 
     def copy(self):
         result = type(self)([ltens.copy() for ltens in self._ltens])
+        # XXX should we copy those too?
         result._lnormalized = self._lnormalized
         result._rnormalized = self._rnormalized
         return result
