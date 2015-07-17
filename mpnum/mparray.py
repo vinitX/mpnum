@@ -18,6 +18,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 from numpy.linalg import qr, svd
+from six.moves import zip
 
 from mpnum._tools import matdot
 

@@ -6,6 +6,7 @@ from __future__ import division, print_function
 import numpy as np
 import pytest as pt
 from numpy.testing import assert_array_almost_equal, assert_array_equal
+from six.moves import range
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
