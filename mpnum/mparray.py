@@ -212,7 +212,8 @@ class MPArray(object):
         res = np.tensordot(ltens_l, ltens_r, axes=axes)
         # Rearrange the bond-dimension legs
         res = np.rollaxis(res, ltens_l.ndim - 1, 1)
-        res = np.rollaxis(res, ltens_l.ndim - 1, ltens_l.ndim + ltens_r.ndim - 3)
+        res = np.rollaxis(res, ltens_l.ndim - 1,
+                          ltens_l.ndim + ltens_r.ndim - 3)
         return res.reshape((ltens_l.shape[0] * ltens_r.shape[0], ) +
                            res.shape[2:-2] +
                            (ltens_l.shape[-1] * ltens_r.shape[-1],))
@@ -229,7 +230,7 @@ class MPArray(object):
 
         """
         assert len(self) == len(fact), \
-            "mparrays have different lengths: {} != {}".format(len(self), len(fact))
+            "Length is not equal: {} != {}".format(len(self), len(fact))
 
         # adapt the axes from physical to true legs
         ax_l, ax_r = axes
@@ -246,7 +247,7 @@ class MPArray(object):
         axes[0] referes to the physical axes of `self` after transposition
         """
         assert len(self) == len(fact), \
-            "mparrays have different lengths: {} != {}".format(len(self), len(fact))
+            "Length is not equal: {} != {}".format(len(self), len(fact))
 
         # adapt the axes from physical to true legs
         ax_l, ax_r = axes
@@ -281,7 +282,7 @@ class MPArray(object):
 
     def __add__(self, summand):
         assert len(self) == len(summand), \
-            "mparrays have different lengths: {} != {}".format(len(self), len(summand))
+            "Length is not equal: {} != {}".format(len(self), len(summand))
 
         ltens = [np.concatenate((self[0], summand[0]), axis=-1)]
         ltens += [self._local_add(l, r)
@@ -428,14 +429,14 @@ class MPArray(object):
 
         """
         assert self.normal_form == (0, 1)
-        for n in xrange(len(self) - 1):
-            ltens = self._ltens[n]
+        for site in xrange(len(self) - 1):
+            ltens = self._ltens[site]
             matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
             u, sv, v = svd(ltens.reshape(matshape))
             newshape = ltens.shape[:-1] + (min(ltens.shape[-1], max_bdim), )
-            self._ltens[n] = u[:, :max_bdim].reshape(newshape)
-            self._ltens[n + 1] = matdot(sv[:max_bdim, None] * v[:max_bdim, :],
-                                        self._ltens[n + 1])
+            self._ltens[site] = u[:, :max_bdim].reshape(newshape)
+            self._ltens[site + 1] = matdot(sv[:max_bdim, None] * v[:max_bdim, :],
+                                           self._ltens[site + 1])
 
         self._lnormalized = len(self) - 1
         self._rnormalized = len(self)
@@ -448,14 +449,14 @@ class MPArray(object):
 
         """
         assert self.normal_form == (len(self) - 1, len(self))
-        for n in xrange(len(self) - 1, 0, -1):
-            ltens = self._ltens[n]
+        for site in xrange(len(self) - 1, 0, -1):
+            ltens = self._ltens[site]
             matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
             u, sv, v = svd(ltens.reshape(matshape))
             newshape = (min(ltens.shape[0], max_bdim), ) + ltens.shape[1:]
-            self._ltens[n] = v[:max_bdim, :].reshape(newshape)
-            self._ltens[n - 1] = matdot(self._ltens[n - 1],
-                                        u[:, :max_bdim] * sv[None, :max_bdim])
+            self._ltens[site] = v[:max_bdim, :].reshape(newshape)
+            self._ltens[site - 1] = matdot(self._ltens[site - 1],
+                                           u[:, :max_bdim] * sv[None, :max_bdim])
 
         self._lnormalized = 0
         self._rnormalized = 1
@@ -466,5 +467,3 @@ class MPArray(object):
 ###################################################
 dot = MPArray.dot
 vdot = MPArray.vdot
-
-
