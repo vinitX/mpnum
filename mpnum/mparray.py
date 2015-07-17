@@ -18,7 +18,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 from numpy.linalg import qr, svd
-from six.moves import zip
+from six.moves import range, zip
 
 from mpnum._tools import matdot
 
@@ -82,14 +82,24 @@ class MPArray(object):
         self._rnormalized = None
 
     def copy(self):
+        """Makes a deep copy of the MPA"""
         result = type(self)([ltens.copy() for ltens in self._ltens])
-        # XXX should we copy those too?
         result._lnormalized = self._lnormalized
         result._rnormalized = self._rnormalized
         return result
 
     def __len__(self):
         return len(self._ltens)
+
+    # FIXME Can we return immutable view into array without having to set the
+    #   WRITEABLE flag for the local copy?
+    def __iter__(self):
+        """Use only for read-only access! Do not change arrays in place!"""
+        return iter(self._ltens)
+
+    def __getitem__(self, index):
+        """Use only for read-only access! Do not change arrays in place!"""
+        return self._ltens[index]
 
     @property
     def dims(self):
@@ -120,9 +130,6 @@ class MPArray(object):
     def normal_form(self):
         """Tensors which are currently in left/right-cannonical form."""
         return self._lnormalized or 0, self._rnormalized or len(self)
-
-    def __getitem__(self, index):
-        return self._ltens[index]
 
     @classmethod
     def from_array(cls, array, plegs):
@@ -158,112 +165,31 @@ class MPArray(object):
         res = self._ltens[0]
         for tens in self._ltens[1:]:
             res = matdot(res, tens)
-        # trace doesnt really do anything here, since we are dealing with
-        # open boundary conditions anyway
-        return np.trace(res, axis1=0, axis2=-1)
+        return res[0, ..., 0]
 
     ##########################
     #  Algebraic operations  #
     ##########################
-    @staticmethod
-    def _local_transpose(ltens):
-        """Transposes the physical legs of the local tensor `ltens`
-
-        :param ltens: Local tensor as numpy.ndarray with ndim >= 2
-        :returns: Transpose of ltens except for first and last dimension
-
-        """
-        return np.transpose(ltens, axes=[0] + list(range(ltens.ndim - 2, 0, -1)) +
-                            [ltens.ndim - 1])
-
     def T(self):
         """Transpose of the physical legs"""
-        return type(self)([self._local_transpose(tens)
-                           for tens in self._ltens])
+        return type(self)([_local_transpose(tens) for tens in self._ltens])
 
     def adj(self):
         """Hermitian adjoint"""
-        return type(self)([self._local_transpose(tens).conjugate()
+        return type(self)([_local_transpose(tens).conjugate()
                            for tens in self._ltens])
 
     def C(self):
         """Complex conjugate"""
         return type(self)(np.conjugate(self._ltens))
 
-    @staticmethod
-    def _local_dot(ltens_l, ltens_r, axes):
-        """Computes the local tensors of a dot product dot(l, r).
-
-        Besides computing the normal dot product, this function rearranges the
-        bond legs in such a way that the result is a valid local tensor again.
-
-        :param ltens_l: Array with ndim > 1
-        :param ltens_r: Array with ndim > 1
-        :param axes: Axes to compute dot product using the convention of
-            np.tensordot. Note that these correspond to the true (and not the
-            physical) legs of the local tensors
-
-        """
-        res = np.tensordot(ltens_l, ltens_r, axes=axes)
-        # Rearrange the bond-dimension legs
-        res = np.rollaxis(res, ltens_l.ndim - 1, 1)
-        res = np.rollaxis(res, ltens_l.ndim - 1, ltens_l.ndim + ltens_r.ndim - 3)
-        return res.reshape((ltens_l.shape[0] * ltens_r.shape[0], ) +
-                           res.shape[2:-2] +
-                           (ltens_l.shape[-1] * ltens_r.shape[-1],))
-
-    def dot(self, fact, axes=(-1, 0)):
-        """Compute the matrix product representation of a.b over the given
-        (physical) axes. [Sch11, Sec. 4.2]
-
-        :param fact: Second factor
-        :param axes: 2-tuple of axes to sum over. Note the difference in
-            convention compared to np.tensordot(default: last axis of `left`
-            and first axis of `fact`)
-        :returns: @todo
-
-        """
-        assert len(self) == len(fact), \
-            "mparrays have different lengths: {} != {}".format(len(self), len(fact))
-
-        # adapt the axes from physical to true legs
-        ax_l, ax_r = axes
-        ax_l = ax_l + 1 if ax_l >= 0 else ax_l - 1
-        ax_r = ax_r + 1 if ax_r >= 0 else ax_r - 1
-
-        ltens = [self._local_dot(l, r, (ax_l, ax_r))
-                 for l, r in zip(self._ltens, fact._ltens)]
-
-        return type(self)(ltens)
-
-    @staticmethod
-    def _local_add(ltens_l, ltens_r):
-        """Computes the local tensors of a sum l + r (except for the boundary
-        tensors)
-
-        :param ltens_l: Array with ndim > 1
-        :param ltens_r: Array with ndim > 1
-
-        """
-        np.testing.assert_array_equal(ltens_l.shape[1:-1], ltens_r.shape[1:-1])
-
-        shape = (ltens_l.shape[0] + ltens_r.shape[0], )
-        shape += ltens_l.shape[1:-1]
-        shape += (ltens_l.shape[-1] + ltens_r.shape[-1], )
-        res = np.zeros(shape, dtype=ltens_l.dtype)
-
-        res[:ltens_l.shape[0], ..., :ltens_l.shape[-1]] = ltens_l
-        res[ltens_l.shape[0]:, ..., ltens_l.shape[-1]:] = ltens_r
-        return res
-
     def __add__(self, summand):
         assert len(self) == len(summand), \
-            "mparrays have different lengths: {} != {}".format(len(self), len(summand))
+            "Length is not equal: {} != {}".format(len(self), len(summand))
 
-        ltens = [np.concatenate((self._ltens[0], summand._ltens[0]), axis=-1)]
-        ltens += [self._local_add(l, r)
-                  for l, r in zip(self._ltens[1:-1], summand._ltens[1:-1])]
-        ltens += [np.concatenate((self._ltens[-1], summand._ltens[-1]), axis=0)]
+        ltens = [np.concatenate((self[0], summand[0]), axis=-1)]
+        ltens += [_local_add(l, r) for l, r in zip(self[1:-1], summand[1:-1])]
+        ltens += [np.concatenate((self[-1], summand[-1]), axis=0)]
         return MPArray(ltens)
 
     # NOTE Can we gain anything by making this normalization aware?
@@ -280,6 +206,11 @@ class MPArray(object):
 
     def __rmul__(self, fact):
         return self.__mul__(fact)
+
+    def __div__(self, divisor):
+        if np.isscalar(divisor):
+            return self * (1 / divisor)
+        raise NotImplementedError("Division by non-scalar not supported")
 
     ################################
     #  Normalizaton & Compression  #
@@ -306,57 +237,58 @@ class MPArray(object):
             self._lnormalize(len(self) - 1)
             return
 
-        m = kwargs.get('left', 0)
-        n = kwargs.get('right', len(self))
+        lnormalize = kwargs.get('left', 0)
+        rnormalize = kwargs.get('right', len(self))
 
-        assert m < n, "Normalization {}:{} invalid".format(m, n)
+        assert lnormalize < rnormalize, \
+            "Normalization {}:{} invalid".format(lnormalize, rnormalize)
         current_normalization = self.normal_form
-        if current_normalization[0] < m:
-            self._lnormalize(m)
-        if current_normalization[1] > n:
-            self._rnormalize(n)
+        if current_normalization[0] < lnormalize:
+            self._lnormalize(lnormalize)
+        if current_normalization[1] > rnormalize:
+            self._rnormalize(rnormalize)
 
-    def _lnormalize(self, site):
-        """Left-normalizes all local tensors _ltens[site:] in place
+    def _lnormalize(self, to_site):
+        """Left-normalizes all local tensors _ltens[to_site:] in place
 
-        :param site: Index of the site up to which normalization is to be
+        :param to_site: Index of the site up to which normalization is to be
             performed
 
         """
-        assert site < len(self), "Cannot left-normalize rightmost site: {} >= {}" \
-            .format(site, len(self))
+        assert to_site < len(self), "Cannot left-normalize rightmost site: {} >= {}" \
+            .format(to_site, len(self))
 
         lnormal, rnormal = self.normal_form
-        for n in range(lnormal, site):
-            ltens = self._ltens[n]
+        for site in range(lnormal, to_site):
+            ltens = self._ltens[site]
             matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
-            q, r = qr(ltens.reshape(matshape))
-            self._ltens[n][:] = q.reshape(ltens.shape)
-            self._ltens[n + 1][:] = matdot(r, self._ltens[n + 1])
+            unitary, triangle = qr(ltens.reshape(matshape))
+            self._ltens[site][:] = unitary.reshape(ltens.shape)
+            self._ltens[site + 1][:] = matdot(triangle, self._ltens[site + 1])
 
-        self._lnormalized = site
-        self._rnormalized = max(site + 1, rnormal)
+        self._lnormalized = to_site
+        self._rnormalized = max(to_site + 1, rnormal)
 
-    def _rnormalize(self, site):
-        """Right-normalizes all local tensors _ltens[:site] in place
+    def _rnormalize(self, to_site):
+        """Right-normalizes all local tensors _ltens[:to_site] in place
 
-        :param site: Index of the site up to which normalization is to be
+        :param to_site: Index of the site up to which normalization is to be
             performed
 
         """
-        assert site > 0, "Cannot right-normalize leftmost site: {} >= {}" \
-            .format(site, len(self))
+        assert to_site > 0, "Cannot right-normalize leftmost to_site: {} >= {}" \
+            .format(to_site, len(self))
 
         lnormal, rnormal = self.normal_form
-        for n in range(rnormal - 1, site - 1, -1):
-            ltens = self._ltens[n]
+        for site in range(rnormal - 1, to_site - 1, -1):
+            ltens = self._ltens[site]
             matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
             q, r = qr(ltens.reshape(matshape).T)
-            self._ltens[n][:] = q.T.reshape(ltens.shape)
-            self._ltens[n - 1][:] = matdot(self._ltens[n - 1], r.T)
+            self._ltens[site][:] = q.T.reshape(ltens.shape)
+            self._ltens[site - 1][:] = matdot(self._ltens[site - 1], r.T)
 
-        self._lnormalized = min(site - 1, lnormal)
-        self._rnormalized = site
+        self._lnormalized = min(to_site - 1, lnormal)
+        self._rnormalized = to_site
 
     # FIXME Also return overlap? Should be simple to calculate from SVD
     def compress(self, max_bdim, method='svd', **kwargs):
@@ -399,14 +331,14 @@ class MPArray(object):
 
         """
         assert self.normal_form == (0, 1)
-        for n in range(len(self) - 1):
-            ltens = self._ltens[n]
+        for site in range(len(self) - 1):
+            ltens = self._ltens[site]
             matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
             u, sv, v = svd(ltens.reshape(matshape))
             newshape = ltens.shape[:-1] + (min(ltens.shape[-1], max_bdim), )
-            self._ltens[n] = u[:, :max_bdim].reshape(newshape)
-            self._ltens[n + 1] = matdot(sv[:max_bdim, None] * v[:max_bdim, :],
-                                        self._ltens[n + 1])
+            self._ltens[site] = u[:, :max_bdim].reshape(newshape)
+            self._ltens[site + 1] = matdot(sv[:max_bdim, None] * v[:max_bdim, :],
+                                           self._ltens[site + 1])
 
         self._lnormalized = len(self) - 1
         self._rnormalized = len(self)
@@ -419,20 +351,101 @@ class MPArray(object):
 
         """
         assert self.normal_form == (len(self) - 1, len(self))
-        for n in range(len(self) - 1, 0, -1):
-            ltens = self._ltens[n]
+        for site in range(len(self) - 1, 0, -1):
+            ltens = self._ltens[site]
             matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
             u, sv, v = svd(ltens.reshape(matshape))
             newshape = (min(ltens.shape[0], max_bdim), ) + ltens.shape[1:]
-            self._ltens[n] = v[:max_bdim, :].reshape(newshape)
-            self._ltens[n - 1] = matdot(self._ltens[n - 1],
-                                        u[:, :max_bdim] * sv[None, :max_bdim])
+            self._ltens[site] = v[:max_bdim, :].reshape(newshape)
+            self._ltens[site - 1] = matdot(self._ltens[site - 1],
+                                           u[:, :max_bdim] * sv[None, :max_bdim])
 
         self._lnormalized = 0
         self._rnormalized = 1
     # TODO Adaptive/error based compression method
 
-###################################################
-#  Alternative functions to call member function  #
-###################################################
-dot = MPArray.dot
+
+#############################################
+#  General functinos to deal with MPArrays  #
+#############################################
+def dot(mpa1, mpa2, axes=(-1, 0)):
+    """Compute the matrix product representation of a.b over the given
+    (physical) axes. [Sch11, Sec. 4.2]
+
+    :param mpa1, mpa2: Factors as MPArrays
+    :param axes: 2-tuple of axes to sum over. Note the difference in
+        convention compared to np.tensordot(default: last axis of `mpa1`
+        and first axis of `mpa2`)
+    :returns: Dot product of the physical arrays
+
+    """
+    assert len(mpa1) == len(mpa2), \
+        "Length is not equal: {} != {}".format(len(mpa1), len(mpa2))
+
+    # adapt the axes from physical to true legs
+    ax_l, ax_r = axes
+    ax_l = ax_l + 1 if ax_l >= 0 else ax_l - 1
+    ax_r = ax_r + 1 if ax_r >= 0 else ax_r - 1
+
+    ltens = [_local_dot(l, r, (ax_l, ax_r)) for l, r in zip(mpa1, mpa2)]
+
+    return MPArray(ltens)
+
+
+############################################################
+#  Functions for dealing with local operations on tensors  #
+############################################################
+def _local_dot(ltens_l, ltens_r, axes):
+    """Computes the local tensors of a dot product dot(l, r).
+
+    Besides computing the normal dot product, this function rearranges the
+    bond legs in such a way that the result is a valid local tensor again.
+
+    :param ltens_l: Array with ndim > 1
+    :param ltens_r: Array with ndim > 1
+    :param axes: Axes to compute dot product using the convention of
+        np.tensordot. Note that these correspond to the true (and not the
+        physical) legs of the local tensors
+    :returns: Correct local tensor representation
+
+    """
+    res = np.tensordot(ltens_l, ltens_r, axes=axes)
+    # Rearrange the bond-dimension legs
+    res = np.rollaxis(res, ltens_l.ndim - 1, 1)
+    res = np.rollaxis(res, ltens_l.ndim - 1,
+                      ltens_l.ndim + ltens_r.ndim - 3)
+    return res.reshape((ltens_l.shape[0] * ltens_r.shape[0], ) +
+                       res.shape[2:-2] +
+                       (ltens_l.shape[-1] * ltens_r.shape[-1],))
+
+
+def _local_add(ltens_l, ltens_r):
+    """Computes the local tensors of a sum l + r (except for the boundary
+    tensors)
+
+    :param ltens_l: Array with ndim > 1
+    :param ltens_r: Array with ndim > 1
+    :returns: Correct local tensor representation
+
+    """
+    np.testing.assert_array_equal(ltens_l.shape[1:-1], ltens_r.shape[1:-1])
+
+    shape = (ltens_l.shape[0] + ltens_r.shape[0], )
+    shape += ltens_l.shape[1:-1]
+    shape += (ltens_l.shape[-1] + ltens_r.shape[-1], )
+    res = np.zeros(shape, dtype=ltens_l.dtype)
+
+    res[:ltens_l.shape[0], ..., :ltens_l.shape[-1]] = ltens_l
+    res[ltens_l.shape[0]:, ..., ltens_l.shape[-1]:] = ltens_r
+    return res
+
+
+def _local_transpose(ltens):
+    """Transposes the physical legs of the local tensor `ltens`
+
+    :param ltens: Local tensor as numpy.ndarray with ndim >= 2
+    :returns: Transpose of ltens except for first and last dimension
+
+    """
+    return np.transpose(ltens, axes=[0] + list(range(ltens.ndim - 2, 0, -1)) +
+                        [ltens.ndim - 1])

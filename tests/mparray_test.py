@@ -11,9 +11,7 @@ from six.moves import range
 import mpnum.factory as factory
 import mpnum.mparray as mp
 from mpnum._tools import global_to_local, local_to_global
-
-# List of test parameters (sites, local_dim, bond_dim)
-MP_TEST_PARAMETERS = [(6, 2, 4), (4, 3, 5)]
+from testconf import MP_TEST_PARAMETERS
 
 
 # We choose to use a global reperentation of multipartite arrays throughout our
