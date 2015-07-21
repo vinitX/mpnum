@@ -76,7 +76,7 @@ class MPArray(object):
             if ten.shape[-1] != nten.shape[0]:
                 raise ValueError("Shape mismatch on {}: {} != {}"
                                  .format(i, ten.shape[-1], nten.shape[0]))
-        self._ltens = np.asarray(ltens)
+        self._ltens = list(ltens)
 
         # Elements _ltens[m] with m < self._lnorm are in left-cannon. form
         self._lnormalized = kwargs.get('_lnormalized', None)
@@ -194,15 +194,24 @@ class MPArray(object):
         ltens += [np.concatenate((self[-1], summand[-1]), axis=0)]
         return MPArray(ltens)
 
-    # NOTE Can we gain anything by making this normalization aware?
     def __sub__(self, subtr):
         return self + (-1) * subtr
 
-    # FIXME Make this normalization-aware
     def __mul__(self, fact):
         if np.isscalar(fact):
-            return MPArray([self._ltens[0] * fact] +
-                           [ltens for ltens in self._ltens[1:]])
+            lnormal, rnormal = self.normal_form
+            ltens = self._ltens[:lnormal] + [fact * self._ltens[lnormal]] + \
+                self._ltens[lnormal + 1:]
+            return type(self)(ltens, _lnormalized=lnormal,
+                              _rnormalized=rnormal)
+
+        raise NotImplementedError("Multiplication by non-scalar not supported")
+
+    def __imul__(self, fact):
+        if np.isscalar(fact):
+            lnormal, _ = self.normal_form
+            self._ltens[lnormal] *= fact
+            return self
 
         raise NotImplementedError("Multiplication by non-scalar not supported")
 
@@ -211,7 +220,12 @@ class MPArray(object):
 
     def __div__(self, divisor):
         if np.isscalar(divisor):
-            return self * (1 / divisor)
+            return self.__mul__(1 / divisor)
+        raise NotImplementedError("Division by non-scalar not supported")
+
+    def __idiv__(self, divisor):
+        if np.isscalar(divisor):
+            return self.__imul__(1 / divisor)
         raise NotImplementedError("Division by non-scalar not supported")
 
     ################################

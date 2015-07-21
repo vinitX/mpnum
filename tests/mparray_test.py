@@ -103,6 +103,9 @@ def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim):
 
     assert_array_almost_equal(2 * op, mpo_to_global(2 * mpo))
 
+    mpo *= 2
+    assert_array_almost_equal(2 * op, mpo_to_global(mpo))
+
 
 ###############################################################################
 #                         Normalization & Compression                         #
@@ -178,6 +181,23 @@ def test_jump_normalization(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = mpo_to_global(mpo)
+
+    center = nr_sites // 2
+    mpo.normalize(left=center - 1, right=center)
+    mpo_times_two = 2 * mpo
+
+    assert_array_almost_equal(2 * op, mpo_to_global(mpo_times_two))
+    assert_correct_normalzation(mpo_times_two, center - 1, center)
+
+    mpo *= 2
+    assert_array_almost_equal(2 * op, mpo_to_global(mpo))
+    assert_correct_normalzation(mpo, center - 1, center)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_compression_svd(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     zero = factory.zero_mpa(nr_sites, (local_dim, local_dim), bond_dim)
@@ -199,3 +219,5 @@ def test_compression_svd(nr_sites, local_dim, bond_dim):
     assert_array_equal(mpo_new.bdims, bond_dim)
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
     assert_correct_normalzation(mpo_new, 0, 1)
+
+
