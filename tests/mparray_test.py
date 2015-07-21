@@ -5,7 +5,8 @@ from __future__ import division, print_function
 
 import numpy as np
 import pytest as pt
-from numpy.testing import assert_array_almost_equal, assert_array_equal
+from numpy.testing import assert_array_almost_equal, assert_array_equal, \
+    assert_almost_equal, assert_equal
 from six.moves import range
 
 import mpnum.factory as factory
@@ -86,6 +87,30 @@ def test_dot(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_inner_vec(nr_sites, local_dim, bond_dim):
+    mp_psi1 = factory.random_mpa(nr_sites, local_dim, bond_dim)
+    psi1 = mp_psi1.to_array().ravel()
+    mp_psi2 = factory.random_mpa(nr_sites, local_dim, bond_dim)
+    psi2 = mp_psi2.to_array().ravel()
+
+    inner_np = np.vdot(psi1, psi2)
+    inner_mp = mp.inner(mp_psi1, mp_psi2)
+    assert_almost_equal(inner_mp, inner_np)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_inner_mat(nr_sites, local_dim, bond_dim):
+    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op1 = mpo_to_global(mpo1).reshape((local_dim**nr_sites, ) * 2)
+    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op2 = mpo_to_global(mpo2).reshape((local_dim**nr_sites, ) * 2)
+
+    inner_np = np.trace(np.dot(op1.conj().transpose(), op2))
+    inner_mp = mp.inner(mpo1, mpo2)
+    assert_almost_equal(inner_mp, inner_np)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_add_and_subtr(nr_sites, local_dim, bond_dim):
     mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op1 = mpo_to_global(mpo1)
@@ -127,10 +152,8 @@ def assert_rcannonical(ltens, msg=''):
 def assert_correct_normalzation(mpo, lnormal_target, rnormal_target):
     lnormal, rnormal = mpo.normal_form
 
-    assert lnormal == lnormal_target, \
-        "Wrong lnormal={} != {}".format(lnormal, lnormal_target)
-    assert rnormal == rnormal_target, \
-        "Wrong rnormal={} != {}".format(rnormal, rnormal_target)
+    assert_equal(lnormal, lnormal_target)
+    assert_equal(rnormal, rnormal_target)
 
     for n in range(lnormal):
         assert_lcannonical(mpo[n], msg="Failure left cannonical (n={}/{})"
@@ -205,10 +228,9 @@ def test_compression_svd(nr_sites, local_dim, bond_dim):
 
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
     for bdims in zip(mpo.bdims, zero.bdims, mpo_new.bdims):
-        assert bdims[0] + bdims[1] == bdims[2]
+        assert_equal(bdims[0] + bdims[1], bdims[2])
 
     # Right-compression
-    mpo_new.compress(max_bdim=bond_dim, method='svd', direction='right')
     assert_array_equal(mpo_new.bdims, bond_dim)
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
     assert_correct_normalzation(mpo_new, nr_sites - 1, nr_sites)

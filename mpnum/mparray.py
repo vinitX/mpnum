@@ -18,9 +18,10 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 from numpy.linalg import qr, svd
-from six.moves import range, zip
+from numpy.testing import assert_array_equal
 
 from mpnum._tools import matdot
+from six.moves import range, zip
 
 
 def _extract_factors(tens, plegs):
@@ -164,10 +165,7 @@ class MPArray(object):
 
         WARNING: This can be slow for large MPTs!
         """
-        res = self._ltens[0]
-        for tens in self._ltens[1:]:
-            res = matdot(res, tens)
-        return res[0, ..., 0]
+        return _ltens_to_array(iter(self))
 
     ##########################
     #  Algebraic operations  #
@@ -328,14 +326,14 @@ class MPArray(object):
         if method == 'svd':
             ln, rn = self.normal_form
             default_direction = 'left' if len(self) - rn > ln else 'right'
-            direction = kwargs.get('direction', default_direction)
+            direction = kwargs.pop('direction', default_direction)
 
             if direction == 'right':
                 self.normalize(left=0, right=1)
-                self._compress_svd_r(max_bdim)
+                return self._compress_svd_r(max_bdim, **kwargs)
             elif direction == 'left':
                 self.normalize(left=len(self) - 1, right=len(self))
-                self._compress_svd_l(max_bdim)
+                return self._compress_svd_l(max_bdim, **kwargs)
         else:
             raise ValueError("{} is not a valid method.".format(method))
 
@@ -408,6 +406,28 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
     return MPArray(ltens)
 
 
+# NOTE: I think this is a nice example how we could use Python's generator
+#       expression to implement lazy evaluation of the matrix product structure
+#       which is the whole point of doing this in the first place
+def inner(mpa1, mpa2):
+    """Compute the inner product <mpa1|mpa2>. Both have to have the same
+    physical dimensions. If these represent a MPS, inner(...) corresponds to
+    the cannoncial Hilbert space scalar product, if these represent a MPO,
+    inner(...) corresponds to the Frobenius scalar product (with Hermitian
+    conjugation in the first argument)
+
+    :param mpa1: MPArray with same number of physical legs on each site
+    :param mpa2: MPArray with same physical shape as mpa1
+    :returns: <mpa1|mpa2>
+
+    """
+    assert len(mpa1) == len(mpa2), \
+        "Length is not equal: {} != {}".format(len(mpa1), len(mpa2))
+    ltens_new = (_local_dot(_local_ravel(l).conj(), _local_ravel(r), axes=(1, 1))
+                 for l, r in zip(mpa1, mpa2))
+    return _ltens_to_array(ltens_new)
+
+
 ############################################################
 #  Functions for dealing with local operations on tensors  #
 ############################################################
@@ -425,11 +445,16 @@ def _local_dot(ltens_l, ltens_r, axes):
     :returns: Correct local tensor representation
 
     """
+    # number of contracted legs need to be the same
+    clegs_l = len(axes[0]) if hasattr(axes[0], '__len__') else 1
+    clegs_r = len(axes[1]) if hasattr(axes[0], '__len__') else 1
+    assert clegs_l == clegs_r, \
+        "Number of contracted legs differ: {} != {}".format(clegs_l, clegs_r)
     res = np.tensordot(ltens_l, ltens_r, axes=axes)
     # Rearrange the bond-dimension legs
-    res = np.rollaxis(res, ltens_l.ndim - 1, 1)
-    res = np.rollaxis(res, ltens_l.ndim - 1,
-                      ltens_l.ndim + ltens_r.ndim - 3)
+    res = np.rollaxis(res, ltens_l.ndim - clegs_l, 1)
+    res = np.rollaxis(res, ltens_l.ndim - clegs_l,
+                      ltens_l.ndim + ltens_r.ndim - clegs_l - clegs_r - 1)
     return res.reshape((ltens_l.shape[0] * ltens_r.shape[0], ) +
                        res.shape[2:-2] +
                        (ltens_l.shape[-1] * ltens_r.shape[-1],))
@@ -444,7 +469,7 @@ def _local_add(ltens_l, ltens_r):
     :returns: Correct local tensor representation
 
     """
-    np.testing.assert_array_equal(ltens_l.shape[1:-1], ltens_r.shape[1:-1])
+    assert_array_equal(ltens_l.shape[1:-1], ltens_r.shape[1:-1])
 
     shape = (ltens_l.shape[0] + ltens_r.shape[0], )
     shape += ltens_l.shape[1:-1]
@@ -456,6 +481,18 @@ def _local_add(ltens_l, ltens_r):
     return res
 
 
+def _local_ravel(ltens):
+    """Flattens the physical legs of ltens, the bond-legs remain untouched
+
+    :param ltens: numpy.ndarray with ndim > 1
+    :returns: Reshaped ltens with shape (ltens.shape[0], *, ltens.shape[-1]),
+        where * is determined from the size of ltens
+
+    """
+    shape = ltens.shape
+    return ltens.reshape((shape[0], -1, shape[-1]))
+
+
 def _local_transpose(ltens):
     """Transposes the physical legs of the local tensor `ltens`
 
@@ -465,3 +502,17 @@ def _local_transpose(ltens):
     """
     return np.transpose(ltens, axes=[0] + list(range(ltens.ndim - 2, 0, -1)) +
                         [ltens.ndim - 1])
+
+
+def _ltens_to_array(ltens):
+    """Computes the full array representation from an iterator yielding the
+    local tensors.
+
+    :param ltens: Iterator over local tensors
+    :returns: numpy.ndarray representing the contracted MPA
+
+    """
+    res = next(ltens)
+    for tens in ltens:
+        res = matdot(res, tens)
+    return res[0, ..., 0]
