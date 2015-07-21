@@ -61,13 +61,15 @@ class MPArray(object):
     for the auxillary legs.
     """
 
-    def __init__(self, ltens):
+    def __init__(self, ltens, **kwargs):
         """
         :param list ltens: List of local tensors for the MPA. In order to be
             valid the elements of `tens` need to be N-dimensional arrays
             with N > 1 and need to fullfill
 
                     shape(tens[i])[-1] == shape(tens[i])[0].
+        :param **kwargs: Additional paramters to set protected variables, not
+            for use by user
 
         """
         for i, (ten, nten) in enumerate(zip(ltens[:-1], ltens[1:])):
@@ -77,15 +79,15 @@ class MPArray(object):
         self._ltens = np.asarray(ltens)
 
         # Elements _ltens[m] with m < self._lnorm are in left-cannon. form
-        self._lnormalized = None
+        self._lnormalized = kwargs.get('_lnormalized', None)
         # Elements _ltens[n] with n >= self._rnorm are in right-cannon. form
-        self._rnormalized = None
+        self._rnormalized = kwargs.get('_rnormalized', None)
 
     def copy(self):
         """Makes a deep copy of the MPA"""
-        result = type(self)([ltens.copy() for ltens in self._ltens])
-        result._lnormalized = self._lnormalized
-        result._rnormalized = self._rnormalized
+        result = type(self)([ltens.copy() for ltens in self._ltens],
+                            _lnormalized=self._lnormalized,
+                            _rnormalized=self._rnormalized)
         return result
 
     def __len__(self):
@@ -152,8 +154,8 @@ class MPArray(object):
         """
         assert array.ndim % plegs == 0, \
            "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
-        mpa = cls(_extract_factors(array[None], plegs=plegs))
-        mpa._lnormalized = len(mpa) - 1
+        ltens = _extract_factors(array[None], plegs=plegs)
+        mpa = cls(ltens, _lnormalized=len(ltens) - 1)
         return mpa
 
     def to_array(self):
