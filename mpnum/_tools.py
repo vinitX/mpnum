@@ -72,6 +72,6 @@ def matdot(A, B, axes=((-1,), (0,))):
     return np.tensordot(A, B, axes=axes)
 
 
-def norm(x):
+def norm_2(x):
     """l2 norm of the vector x"""
     return np.sqrt(np.vdot(x, x))

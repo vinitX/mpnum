@@ -20,7 +20,7 @@ import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
 
-from mpnum._tools import matdot, norm
+from mpnum._tools import matdot, norm_2
 from six.moves import range, zip
 
 
@@ -357,7 +357,7 @@ class MPArray(object):
             self._ltens[site] = u[:, :max_bdim].reshape(newshape)
             self._ltens[site + 1] = matdot(sv[:max_bdim, None] * v[:max_bdim, :],
                                            self._ltens[site + 1])
-            err += norm(sv[max_bdim:]) / norm(sv)
+            err += norm_2(sv[max_bdim:]) / norm_2(sv)
 
         self._lnormalized = len(self) - 1
         self._rnormalized = len(self)
@@ -382,7 +382,7 @@ class MPArray(object):
             self._ltens[site] = v[:max_bdim, :].reshape(newshape)
             self._ltens[site - 1] = matdot(self._ltens[site - 1],
                                            u[:, :max_bdim] * sv[None, :max_bdim])
-            err += norm(sv[max_bdim:]) / norm(sv)
+            err += norm_2(sv[max_bdim:]) / norm_2(sv)
 
         self._lnormalized = 0
         self._rnormalized = 1
@@ -437,6 +437,19 @@ def inner(mpa1, mpa2):
     ltens_new = (_local_dot(_local_ravel(l).conj(), _local_ravel(r), axes=(1, 1))
                  for l, r in zip(mpa1, mpa2))
     return _ltens_to_array(ltens_new)
+
+
+def norm(mpa):
+    """Computes the norm (Hilbert space norm for MPS, Frobenius norm for MPO)
+    of the matrix product operator. In contrast to `mparray.inner`, this can
+    take advantage of the normalization
+
+    :param mpa: MPArray
+    :returns: l2-norm of that array
+
+    """
+    # FIXME Take advantage of normalization
+    return np.sqrt(inner(mpa, mpa))
 
 
 ############################################################

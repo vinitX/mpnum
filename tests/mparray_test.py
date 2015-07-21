@@ -111,6 +111,12 @@ def test_inner_mat(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_norm(nr_sites, local_dim, bond_dim):
+    psi = factory.random_mpa(nr_sites, local_dim, bond_dim)
+    assert_almost_equal(mp.inner(psi, psi), mp.norm(psi)**2)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_add_and_subtr(nr_sites, local_dim, bond_dim):
     mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op1 = mpo_to_global(mpo1)
