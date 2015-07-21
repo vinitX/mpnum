@@ -20,7 +20,7 @@ import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
 
-from mpnum._tools import matdot
+from mpnum._tools import matdot, norm
 from six.moves import range, zip
 
 
@@ -195,6 +195,7 @@ class MPArray(object):
     def __sub__(self, subtr):
         return self + (-1) * subtr
 
+    # TODO These could be made more stable by rescaling all non-normalized tens
     def __mul__(self, fact):
         if np.isscalar(fact):
             lnormal, rnormal = self.normal_form
@@ -311,6 +312,7 @@ class MPArray(object):
         :param max_bdim: Maximal bond dimension for the compressed MPA
         :param method: Which implemention should be used for compression
             'svd': Compression based on SVD [Sch11, Sec. 4.5.1]
+        :returns: Depends on method and the options passed.
 
         For method='svd':
         -----------------
@@ -342,9 +344,11 @@ class MPArray(object):
         yields a left-cannonical state
 
         :param max_bdim: Maximal bond dimension for the compressed MPA
-
+        :returns: Relative error of the truncation (sum of fractions of the
+            l2-norms of the truncated singular values and all singular values)
         """
         assert self.normal_form == (0, 1)
+        err = 0.
         for site in range(len(self) - 1):
             ltens = self._ltens[site]
             matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
@@ -353,18 +357,23 @@ class MPArray(object):
             self._ltens[site] = u[:, :max_bdim].reshape(newshape)
             self._ltens[site + 1] = matdot(sv[:max_bdim, None] * v[:max_bdim, :],
                                            self._ltens[site + 1])
+            err += norm(sv[max_bdim:]) / norm(sv)
 
         self._lnormalized = len(self) - 1
         self._rnormalized = len(self)
+        return err
 
     def _compress_svd_l(self, max_bdim):
         """Compresses the MPA in place from right to left using SVD;
         yields a -cannonical state
 
         :param max_bdim: Maximal bond dimension for the compressed MPA
+        :returns: Relative error of the truncation (sum of fractions of the
+            l2-norms of the truncated singular values and all singular values)
 
         """
         assert self.normal_form == (len(self) - 1, len(self))
+        err = 0.
         for site in range(len(self) - 1, 0, -1):
             ltens = self._ltens[site]
             matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
@@ -373,9 +382,11 @@ class MPArray(object):
             self._ltens[site] = v[:max_bdim, :].reshape(newshape)
             self._ltens[site - 1] = matdot(self._ltens[site - 1],
                                            u[:, :max_bdim] * sv[None, :max_bdim])
+            err += norm(sv[max_bdim:]) / norm(sv)
 
         self._lnormalized = 0
         self._rnormalized = 1
+        return err
     # TODO Adaptive/error based compression method
 
 

@@ -70,3 +70,8 @@ def local_to_global(array, sites):
 def matdot(A, B, axes=((-1,), (0,))):
     """np.tensordot with sane defaults for matrix multiplication"""
     return np.tensordot(A, B, axes=axes)
+
+
+def norm(x):
+    """l2 norm of the vector x"""
+    return np.sqrt(np.vdot(x, x))

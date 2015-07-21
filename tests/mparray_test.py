@@ -231,15 +231,16 @@ def test_compression_svd(nr_sites, local_dim, bond_dim):
         assert_equal(bdims[0] + bdims[1], bdims[2])
 
     # Right-compression
+    err = mpo_new.compress(max_bdim=bond_dim, method='svd', direction='right')
     assert_array_equal(mpo_new.bdims, bond_dim)
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
     assert_correct_normalzation(mpo_new, nr_sites - 1, nr_sites)
+    assert_almost_equal(err, 0.)
 
     # Left-compression
     # mpo_new = mpo + zero
-    mpo_new.compress(max_bdim=bond_dim, method='svd', direction='left')
+    err = mpo_new.compress(max_bdim=bond_dim, method='svd', direction='left')
     assert_array_equal(mpo_new.bdims, bond_dim)
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
     assert_correct_normalzation(mpo_new, 0, 1)
-
-
+    assert_almost_equal(err, 0.)
