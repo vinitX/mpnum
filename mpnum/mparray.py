@@ -232,16 +232,19 @@ class MPArray(object):
     ################################
     # FIXME Maybe we should extract site-normalization logic to seperate funcs
     def normalize(self, **kwargs):
-        """Brings the MPA to canonnical form in place.
+        """Brings the MPA to canonnical form in place. Note that we do not
+        support full left- or right-normalization. The right- (left- resp.)
+        most local tensor is not normalized since this can be done by
+        simply calculating its norm (instead of using SVD)
 
         [Sch11, Sec. 4.4]
 
         Possible combinations:
             normalize() = normalize(left=len(self) - 1)
                 -> full left-normalization
-            normalize(left=m) for 0 <= m < len(self) - 1
+            normalize(left=m) for 0 <= m <= len(self) - 1
                 -> self[0],..., self[m-1] are left-normalized
-            normalize(right=n) for 0 < n < len(self)
+            normalize(right=n) for 0 < n <= len(self)
                 -> self[n],..., self[-1] are right-normalized
             normalize(left=m, right=n) valid for m < n
                 -> self[0],...,self[m-1] are left normalized and
@@ -277,9 +280,11 @@ class MPArray(object):
         for site in range(lnormal, to_site):
             ltens = self._ltens[site]
             matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
-            unitary, triangle = qr(ltens.reshape(matshape))
-            self._ltens[site][:] = unitary.reshape(ltens.shape)
-            self._ltens[site + 1][:] = matdot(triangle, self._ltens[site + 1])
+            q, r = qr(ltens.reshape(matshape))
+            # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
+            # can be accounted by adapting bond dimension here
+            self._ltens[site] = q.reshape(ltens.shape[:-1] + (-1, ))
+            self._ltens[site + 1] = matdot(r, self._ltens[site + 1])
 
         self._lnormalized = to_site
         self._rnormalized = max(to_site + 1, rnormal)
@@ -299,8 +304,10 @@ class MPArray(object):
             ltens = self._ltens[site]
             matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
             q, r = qr(ltens.reshape(matshape).T)
-            self._ltens[site][:] = q.T.reshape(ltens.shape)
-            self._ltens[site - 1][:] = matdot(self._ltens[site - 1], r.T)
+            # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
+            # can be accounted by adapting bond dimension here
+            self._ltens[site] = q.T.reshape((-1, ) + ltens.shape[1:])
+            self._ltens[site - 1] = matdot(self._ltens[site - 1], r.T)
 
         self._lnormalized = min(to_site - 1, lnormal)
         self._rnormalized = to_site
@@ -331,10 +338,10 @@ class MPArray(object):
             direction = kwargs.pop('direction', default_direction)
 
             if direction == 'right':
-                self.normalize(left=0, right=1)
+                self.normalize(right=1)
                 return self._compress_svd_r(max_bdim, **kwargs)
             elif direction == 'left':
-                self.normalize(left=len(self) - 1, right=len(self))
+                self.normalize(left=len(self) - 1)
                 return self._compress_svd_l(max_bdim, **kwargs)
         else:
             raise ValueError("{} is not a valid method.".format(method))

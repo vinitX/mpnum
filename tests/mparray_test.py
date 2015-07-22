@@ -112,8 +112,11 @@ def test_inner_mat(nr_sites, local_dim, bond_dim):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_norm(nr_sites, local_dim, bond_dim):
-    psi = factory.random_mpa(nr_sites, local_dim, bond_dim)
-    assert_almost_equal(mp.inner(psi, psi), mp.norm(psi)**2)
+    mp_psi = factory.random_mpa(nr_sites, local_dim, bond_dim)
+    psi = mp_psi.to_array()
+
+    assert_almost_equal(mp.inner(mp_psi, mp_psi), mp.norm(mp_psi)**2)
+    assert_almost_equal(np.sum(psi.conj() * psi), mp.norm(mp_psi)**2)
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
@@ -131,11 +134,12 @@ def test_add_and_subtr(nr_sites, local_dim, bond_dim):
 def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo_to_global(mpo)
+    scalar = np.random.randn()
 
-    assert_array_almost_equal(2 * op, mpo_to_global(2 * mpo))
+    assert_array_almost_equal(scalar * op, mpo_to_global(scalar * mpo))
 
-    mpo *= 2
-    assert_array_almost_equal(2 * op, mpo_to_global(mpo))
+    mpo *= scalar
+    assert_array_almost_equal(scalar * op, mpo_to_global(mpo))
 
 
 ###############################################################################
@@ -210,19 +214,56 @@ def test_jump_normalization(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_full_normalization(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = mpo_to_global(mpo)
+    assert_correct_normalzation(mpo, 0, nr_sites)
+    assert_array_almost_equal(op, mpo_to_global(mpo))
+
+    mpo.normalize(right=1)
+    assert_correct_normalzation(mpo, 0, 1)
+    assert_array_almost_equal(op, mpo_to_global(mpo))
+
+    ###########################################################################
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = mpo_to_global(mpo)
+    assert_correct_normalzation(mpo, 0, nr_sites)
+    assert_array_almost_equal(op, mpo_to_global(mpo))
+
+    mpo.normalize(left=len(mpo) - 1)
+    assert_correct_normalzation(mpo, len(mpo) - 1, len(mpo))
+    assert_array_almost_equal(op, mpo_to_global(mpo))
+
+
+def test_normalization_compression():
+    """If the bond dimension is too large at the boundary, qr decompostion
+    in normalization may yield smaller bond dimension"""
+    mpo = factory.random_mpa(sites=2, ldim=2, bdim=20)
+    mpo.normalize(right=1)
+    assert_correct_normalzation(mpo, 0, 1)
+    assert mpo.bdims[0] == 2
+
+    mpo = factory.random_mpa(sites=2, ldim=2, bdim=20)
+    mpo.normalize(left=1)
+    assert_correct_normalzation(mpo, 1, 2)
+    assert mpo.bdims[0] == 2
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo_to_global(mpo)
+    scalar = np.random.randn()
 
     center = nr_sites // 2
     mpo.normalize(left=center - 1, right=center)
-    mpo_times_two = 2 * mpo
+    mpo_times_two = scalar * mpo
 
-    assert_array_almost_equal(2 * op, mpo_to_global(mpo_times_two))
+    assert_array_almost_equal(scalar * op, mpo_to_global(mpo_times_two))
     assert_correct_normalzation(mpo_times_two, center - 1, center)
 
-    mpo *= 2
-    assert_array_almost_equal(2 * op, mpo_to_global(mpo))
+    mpo *= scalar
+    assert_array_almost_equal(scalar * op, mpo_to_global(mpo))
     assert_correct_normalzation(mpo, center - 1, center)
 
 
@@ -237,6 +278,7 @@ def test_compression_svd(nr_sites, local_dim, bond_dim):
         assert_equal(bdims[0] + bdims[1], bdims[2])
 
     # Right-compression
+    mpo_new = mpo + zero
     err = mpo_new.compress(max_bdim=bond_dim, method='svd', direction='right')
     assert_array_equal(mpo_new.bdims, bond_dim)
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
@@ -244,7 +286,7 @@ def test_compression_svd(nr_sites, local_dim, bond_dim):
     assert_almost_equal(err, 0.)
 
     # Left-compression
-    # mpo_new = mpo + zero
+    mpo_new = mpo + zero
     err = mpo_new.compress(max_bdim=bond_dim, method='svd', direction='left')
     assert_array_equal(mpo_new.bdims, bond_dim)
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))

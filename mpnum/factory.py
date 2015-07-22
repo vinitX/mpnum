@@ -93,7 +93,7 @@ def _generate(sites, ldim, bdim, func):
     ltens_l = func((1, ) + ldim + (bdim, ))
     ltenss = [func((bdim, ) + ldim + (bdim, ))
               for _ in range(sites - 2)]
-    ltens_r = func((bdim, ) + ldim + (bdim, ))
+    ltens_r = func((bdim, ) + ldim + (1, ))
     return mp.MPArray([ltens_l] + ltenss + [ltens_r])
 
 
