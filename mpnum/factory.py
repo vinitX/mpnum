@@ -89,7 +89,7 @@ def _generate(sites, ldim, bdim, func):
     """
     assert sites > 1, "Cannot generate MPA with sites {} < 2".format(sites)
     # if ldim is passed as scalar, make it 1-element tuple
-    ldim = ldim if hasattr(ldim, '__iter__') else (ldim, )
+    ldim = tuple(ldim) if hasattr(ldim, '__iter__') else (ldim, )
     ltens_l = func((1, ) + ldim + (bdim, ))
     ltenss = [func((bdim, ) + ldim + (bdim, ))
               for _ in range(sites - 2)]
