@@ -3,4 +3,10 @@
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 cd "${DIR}"
 
-py.test tests mpnum --doctest-modules
+if which py.test > /dev/null; then
+  py.test tests mpnum --doctest-modules
+fi
+if which py.test-3 > /dev/null; then
+  py.test-3 tests mpnum --doctest-modules
+fi
+
