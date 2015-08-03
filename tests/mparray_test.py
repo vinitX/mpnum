@@ -327,6 +327,31 @@ def test_compression_svd_hard_cutoff(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_compression_svd_relerr(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    zero = factory.zero_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo_new = mpo + zero
+
+    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+    for bdims in zip(mpo.bdims, zero.bdims, mpo_new.bdims):
+        assert_equal(bdims[0] + bdims[1], bdims[2])
+
+    # Right-compression
+    mpo_new = mpo + zero
+    mpo_new.compress(relerr=1e-6, method='svd', direction='right')
+    assert_array_equal(mpo_new.bdims, bond_dim)
+    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+    assert_correct_normalzation(mpo_new, nr_sites - 1, nr_sites)
+
+    # Left-compression
+    mpo_new = mpo + zero
+    mpo_new.compress(relerr=1e-6, method='svd', direction='left')
+    assert_array_equal(mpo_new.bdims, bond_dim)
+    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+    assert_correct_normalzation(mpo_new, 0, 1)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_compression_svd_overlap(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     mpo_new = mpo.copy()

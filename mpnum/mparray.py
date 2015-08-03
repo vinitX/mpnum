@@ -312,16 +312,24 @@ class MPArray(object):
         self._lnormalized = min(to_site - 1, lnormal)
         self._rnormalized = to_site
 
-    def compress(self, max_bdim, method='svd', **kwargs):
+    def compress(self, method='svd', **kwargs):
         """Compresses the MPA to a fixed maximal bond dimension in place
 
-        :param max_bdim: Maximal bond dimension for the compressed MPA
         :param method: Which implemention should be used for compression
             'svd': Compression based on SVD [Sch11, Sec. 4.5.1]
         :returns: Depends on method and the options passed.
 
         For method='svd':
         -----------------
+        :param max_bdim: Maximal bond dimension for the compressed MPA (default
+            max of current bond dimensinos, i.e. no compression)
+        :param relerr: Maximal allowed error for each truncation step, that is
+            the fraction of truncated singular values over their sum (default
+            0.0, i.e. no compression)
+
+        If both, max_bdim and relerr is passed, the smaller resulting bond
+        dimension is used.
+
         :param direction: In which direction the compression should operate.
             (default: depending on the current normalization, such that the
              number of sites that need to be normalized is smaller)
@@ -336,30 +344,35 @@ class MPArray(object):
             ln, rn = self.normal_form
             default_direction = 'left' if len(self) - rn > ln else 'right'
             direction = kwargs.pop('direction', default_direction)
+            max_bdim = kwargs.get('max_bdim', max(self.bdims))
+            relerr = kwargs.get('relerr', 0.0)
 
             if direction == 'right':
                 self.normalize(right=1)
-                return self._compress_svd_r(max_bdim, **kwargs)
+                return self._compress_svd_r(max_bdim, relerr)
             elif direction == 'left':
                 self.normalize(left=len(self) - 1)
-                return self._compress_svd_l(max_bdim, **kwargs)
+                return self._compress_svd_l(max_bdim, relerr)
         else:
             raise ValueError("{} is not a valid method.".format(method))
 
-    def _compress_svd_r(self, max_bdim):
+    def _compress_svd_r(self, max_bdim, relerr):
         """Compresses the MPA in place from left to right using SVD;
         yields a left-cannonical state
 
-        :param max_bdim: Maximal bond dimension for the compressed MPA
-        :returns: Relative error of the truncation (sum of fractions of the
-            l2-norms of the truncated singular values and all singular values)
+        See :func:`MPArray.compress` for parameters
         """
         assert self.normal_form == (0, 1)
+        assert (0. <= relerr) and (relerr <= 1.)
         for site in range(len(self) - 1):
             ltens = self._ltens[site]
             matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
             u, sv, v = svd(ltens.reshape(matshape))
-            bdim_t = min(ltens.shape[-1], max_bdim, u.shape[1])
+
+            svsum = np.cumsum(sv) / np.sum(sv)
+            bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
+            bdim_t = min(ltens.shape[-1], u.shape[1], max_bdim, bdim_relerr)
+
             newshape = ltens.shape[:-1] + (bdim_t, )
             self._ltens[site] = u[:, :bdim_t].reshape(newshape)
             self._ltens[site + 1] = matdot(sv[:bdim_t, None] * v[:bdim_t, :],
@@ -369,21 +382,24 @@ class MPArray(object):
         self._rnormalized = len(self)
         return np.sum(np.abs(self._ltens[-1])**2)
 
-    def _compress_svd_l(self, max_bdim):
+    def _compress_svd_l(self, max_bdim, relerr):
         """Compresses the MPA in place from right to left using SVD;
         yields a -cannonical state
 
-        :param max_bdim: Maximal bond dimension for the compressed MPA
-        :returns: Relative error of the truncation (sum of fractions of the
-            l2-norms of the truncated singular values and all singular values)
+        See :func:`MPArray.compress` for parameters
 
         """
         assert self.normal_form == (len(self) - 1, len(self))
+        assert (0. <= relerr) and (relerr <= 1.)
         for site in range(len(self) - 1, 0, -1):
             ltens = self._ltens[site]
             matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
             u, sv, v = svd(ltens.reshape(matshape))
-            bdim_t = min(ltens.shape[0], v.shape[0], max_bdim)
+
+            svsum = np.cumsum(sv) / np.sum(sv)
+            bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
+            bdim_t = min(ltens.shape[0], v.shape[0], max_bdim, bdim_relerr)
+
             newshape = (bdim_t, ) + ltens.shape[1:]
             self._ltens[site] = v[:bdim_t, :].reshape(newshape)
             self._ltens[site - 1] = matdot(self._ltens[site - 1],
