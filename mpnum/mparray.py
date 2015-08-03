@@ -312,7 +312,6 @@ class MPArray(object):
         self._lnormalized = min(to_site - 1, lnormal)
         self._rnormalized = to_site
 
-    # FIXME Also return overlap? Should be simple to calculate from SVD
     def compress(self, max_bdim, method='svd', **kwargs):
         """Compresses the MPA to a fixed maximal bond dimension in place
 
@@ -330,6 +329,7 @@ class MPArray(object):
                      to the right yielding a completely left-cannonical MPA
             'left': Starting on rightmost site, the compression sweeps
                     to the left yielding a completely right-cannoncial MPA
+        :returns: Overlap <M|M'> of the original M and its compression M'
 
         """
         if method == 'svd':
@@ -355,7 +355,6 @@ class MPArray(object):
             l2-norms of the truncated singular values and all singular values)
         """
         assert self.normal_form == (0, 1)
-        err = 0.
         for site in range(len(self) - 1):
             ltens = self._ltens[site]
             matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
@@ -364,11 +363,10 @@ class MPArray(object):
             self._ltens[site] = u[:, :max_bdim].reshape(newshape)
             self._ltens[site + 1] = matdot(sv[:max_bdim, None] * v[:max_bdim, :],
                                            self._ltens[site + 1])
-            err += norm_2(sv[max_bdim:]) / norm_2(sv)
 
         self._lnormalized = len(self) - 1
         self._rnormalized = len(self)
-        return err
+        return np.sum(np.abs(self._ltens[-1])**2)
 
     def _compress_svd_l(self, max_bdim):
         """Compresses the MPA in place from right to left using SVD;
@@ -380,7 +378,6 @@ class MPArray(object):
 
         """
         assert self.normal_form == (len(self) - 1, len(self))
-        err = 0.
         for site in range(len(self) - 1, 0, -1):
             ltens = self._ltens[site]
             matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
@@ -389,11 +386,10 @@ class MPArray(object):
             self._ltens[site] = v[:max_bdim, :].reshape(newshape)
             self._ltens[site - 1] = matdot(self._ltens[site - 1],
                                            u[:, :max_bdim] * sv[None, :max_bdim])
-            err += norm_2(sv[max_bdim:]) / norm_2(sv)
 
         self._lnormalized = 0
         self._rnormalized = 1
-        return err
+        return np.sum(np.abs(self._ltens[0])**2)
     # TODO Adaptive/error based compression method
 
 

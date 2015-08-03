@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 # encoding: utf-8
+# FIXME Is there a better metric to compare two arrays/scalars than
+#       assert_(array)_almost_equal? Something that takes magnitude into
+#       account?
 
 from __future__ import division, print_function
 
@@ -291,16 +294,37 @@ def test_compression_svd(nr_sites, local_dim, bond_dim):
 
     # Right-compression
     mpo_new = mpo + zero
-    err = mpo_new.compress(max_bdim=bond_dim, method='svd', direction='right')
+    overlap = mpo_new.compress(max_bdim=bond_dim, method='svd',
+                               direction='right')
     assert_array_equal(mpo_new.bdims, bond_dim)
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
     assert_correct_normalzation(mpo_new, nr_sites - 1, nr_sites)
-    assert_almost_equal(err, 0.)
+    # since no truncation error should occur
+    assert_almost_equal(overlap, mp.norm(mpo)**2, decimal=5)
 
     # Left-compression
     mpo_new = mpo + zero
-    err = mpo_new.compress(max_bdim=bond_dim, method='svd', direction='left')
+    overlap = mpo_new.compress(max_bdim=bond_dim, method='svd',
+                               direction='left')
     assert_array_equal(mpo_new.bdims, bond_dim)
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
     assert_correct_normalzation(mpo_new, 0, 1)
-    assert_almost_equal(err, 0.)
+    # since no truncation error should occur
+    assert_almost_equal(overlap, mp.norm(mpo)**2, decimal=5)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_compression_svd_overlap(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo_new = mpo.copy()
+
+    overlap = mpo_new.compress(max_bdim=bond_dim // 2, method='svd',
+                               direction='right')
+    assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
+    assert all(bdim_n < bdim_o for bdim_n, bdim_o in zip(mpo_new.bdims, mpo.bdims))
+
+    mpo_new = mpo.copy()
+    overlap = mpo_new.compress(max_bdim=bond_dim // 2, method='svd',
+                               direction='left')
+    assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
+    assert all(bdim_n < bdim_o for bdim_n, bdim_o in zip(mpo_new.bdims, mpo.bdims))
