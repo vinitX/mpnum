@@ -359,9 +359,10 @@ class MPArray(object):
             ltens = self._ltens[site]
             matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
             u, sv, v = svd(ltens.reshape(matshape))
-            newshape = ltens.shape[:-1] + (min(ltens.shape[-1], max_bdim), )
-            self._ltens[site] = u[:, :max_bdim].reshape(newshape)
-            self._ltens[site + 1] = matdot(sv[:max_bdim, None] * v[:max_bdim, :],
+            bdim_t = min(ltens.shape[-1], max_bdim, u.shape[1])
+            newshape = ltens.shape[:-1] + (bdim_t, )
+            self._ltens[site] = u[:, :bdim_t].reshape(newshape)
+            self._ltens[site + 1] = matdot(sv[:bdim_t, None] * v[:bdim_t, :],
                                            self._ltens[site + 1])
 
         self._lnormalized = len(self) - 1
@@ -382,10 +383,11 @@ class MPArray(object):
             ltens = self._ltens[site]
             matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
             u, sv, v = svd(ltens.reshape(matshape))
-            newshape = (min(ltens.shape[0], max_bdim), ) + ltens.shape[1:]
-            self._ltens[site] = v[:max_bdim, :].reshape(newshape)
+            bdim_t = min(ltens.shape[0], v.shape[0], max_bdim)
+            newshape = (bdim_t, ) + ltens.shape[1:]
+            self._ltens[site] = v[:bdim_t, :].reshape(newshape)
             self._ltens[site - 1] = matdot(self._ltens[site - 1],
-                                           u[:, :max_bdim] * sv[None, :max_bdim])
+                                           u[:, :bdim_t] * sv[None, :bdim_t])
 
         self._lnormalized = 0
         self._rnormalized = 1

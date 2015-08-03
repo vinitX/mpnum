@@ -283,7 +283,22 @@ def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_compression_svd(nr_sites, local_dim, bond_dim):
+def test_compression_svd_errors(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+
+    mpo_new = mpo.copy()
+    mpo_new.compress(max_bdim=10*bond_dim, method='svd', direction='right')
+    assert_array_equal(mpo.bdims, mpo_new.bdims)
+    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+
+    mpo_new = mpo.copy()
+    mpo_new.compress(max_bdim=10*bond_dim, method='svd', direction='left')
+    assert_array_equal(mpo.bdims, mpo_new.bdims)
+    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_compression_svd_hard_cutoff(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     zero = factory.zero_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     mpo_new = mpo + zero
@@ -294,8 +309,7 @@ def test_compression_svd(nr_sites, local_dim, bond_dim):
 
     # Right-compression
     mpo_new = mpo + zero
-    overlap = mpo_new.compress(max_bdim=bond_dim, method='svd',
-                               direction='right')
+    overlap = mpo_new.compress(max_bdim=bond_dim, method='svd', direction='right')
     assert_array_equal(mpo_new.bdims, bond_dim)
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
     assert_correct_normalzation(mpo_new, nr_sites - 1, nr_sites)
@@ -304,8 +318,7 @@ def test_compression_svd(nr_sites, local_dim, bond_dim):
 
     # Left-compression
     mpo_new = mpo + zero
-    overlap = mpo_new.compress(max_bdim=bond_dim, method='svd',
-                               direction='left')
+    overlap = mpo_new.compress(max_bdim=bond_dim, method='svd', direction='left')
     assert_array_equal(mpo_new.bdims, bond_dim)
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
     assert_correct_normalzation(mpo_new, 0, 1)
