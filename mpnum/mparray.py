@@ -217,12 +217,12 @@ class MPArray(object):
     def __rmul__(self, fact):
         return self.__mul__(fact)
 
-    def __div__(self, divisor):
+    def __truediv__(self, divisor):
         if np.isscalar(divisor):
             return self.__mul__(1 / divisor)
         raise NotImplementedError("Division by non-scalar not supported")
 
-    def __idiv__(self, divisor):
+    def __itruediv__(self, divisor):
         if np.isscalar(divisor):
             return self.__imul__(1 / divisor)
         raise NotImplementedError("Division by non-scalar not supported")
@@ -242,7 +242,7 @@ class MPArray(object):
         Possible combinations:
             normalize() = normalize(left=len(self) - 1)
                 -> full left-normalization
-            normalize(left=m) for 0 <= m <= len(self) - 1
+            normalize(left=m) for 0 <= m < len(self)
                 -> self[0],..., self[m-1] are left-normalized
             normalize(right=n) for 0 < n <= len(self)
                 -> self[n],..., self[-1] are right-normalized

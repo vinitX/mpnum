@@ -142,6 +142,18 @@ def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim):
     assert_array_almost_equal(scalar * op, mpo_to_global(mpo))
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_div_mpo_scalar(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = mpo_to_global(mpo)
+    scalar = np.random.randn()
+
+    assert_array_almost_equal(op / scalar, mpo_to_global(mpo / scalar))
+
+    mpo /= scalar
+    assert_array_almost_equal(op / scalar, mpo_to_global(mpo))
+
+
 ###############################################################################
 #                         Normalization & Compression                         #
 ###############################################################################
