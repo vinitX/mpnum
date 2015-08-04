@@ -17,7 +17,7 @@ from mpnum import factory, povm
 from testconf import POVM_TEST_PARAMETERS, POVM_TEST_PARAMETERS_MPA # @UnresolvedImport
 
 @pt.mark.parametrize('d', POVM_TEST_PARAMETERS)
-def test_partial_trace(d):
+def test_povm_normalization_ic(d):
     for povm_cls in povm.all_povms:
         # Check that the POVM is normalized: The elements must sum to the identity. 
         p = povm_cls(opts={'d': d})
@@ -32,7 +32,7 @@ def test_partial_trace(d):
             assert np.abs(linear_inversion_reconstruction-np.eye(d**2)).max() > 0.1, 'POVM {} is not supposed to be IC but it is'.format(povm_cls)
 
 @pt.mark.parametrize('nr_sites, d, bond_dim', POVM_TEST_PARAMETERS_MPA)
-def test_partial_trace_mpa(nr_sites, d, bond_dim):
+def test_povm_ic_mpa(nr_sites, d, bond_dim):
     # Check that the tensor product of the PauliGen POVM is IC. 
     p = povm.PauliGen(opts={'d': d})
     probab_map = p.get_probability_map_mpa(nr_sites)
