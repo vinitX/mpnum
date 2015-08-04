@@ -10,7 +10,7 @@ import numpy as np
 import pytest as pt
 from numpy.testing import assert_array_almost_equal, assert_array_equal, \
     assert_almost_equal, assert_equal
-from six.moves import range
+from six.moves import range # @UnresolvedImport
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
@@ -367,6 +367,17 @@ def test_compression_svd_overlap(nr_sites, local_dim, bond_dim):
                                direction='left')
     assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
     assert all(bdim_n < bdim_o for bdim_n, bdim_o in zip(mpo_new.bdims, mpo.bdims))
+    
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_from_kron(nr_sites, local_dim, bond_dim):
+    plegs = 2
+    factors = tuple(factory._zrandn([nr_sites] + ([local_dim] * plegs)))
+    op = _tools.mkron(*factors)
+    op.shape = [local_dim] * (plegs * nr_sites)
+    mpo = mp.MPArray.from_kron(factors)
+    op_from_mpo = mpo.to_array()
+    op_from_mpo = _tools.local_to_global(op_from_mpo, nr_sites)
+    assert_array_almost_equal(op, op_from_mpo)
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', MP_TEST_PARAMETERS_TRACEOUT)
 def test_partial_trace(nr_sites, local_dim, bond_dim, keep_width):

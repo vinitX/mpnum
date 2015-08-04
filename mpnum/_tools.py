@@ -86,6 +86,13 @@ def matdot(A, B, axes=((-1,), (0,))):
     return np.tensordot(A, B, axes=axes)
 
 
+def mkron(*args):
+    """np.kron() with an arbitrary number of n >= 1 arguments"""
+    if len(args) == 1:
+        return args[0]
+    return mkron(np.kron(args[0], args[1]), *args[2:])
+
+
 def norm_2(x):
     """l2 norm of the vector x"""
     return np.sqrt(np.vdot(x, x))

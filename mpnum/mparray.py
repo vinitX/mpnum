@@ -166,6 +166,16 @@ class MPArray(object):
         WARNING: This can be slow for large MPAs!
         """
         return _ltens_to_array(iter(self))
+    
+    @classmethod
+    def from_kron(cls, factors):
+        """Returns the (exact) representation of a Kronecker (tensor) product.
+        
+        :param factors: A list of arrays with arbitrary number of physical legs
+        :returns: The kronecker product of the factors as MPA
+        """
+        return cls(a.reshape((1,) + a.shape + (1,)) for a in factors)
+        
 
     ##########################
     #  Algebraic operations  #
