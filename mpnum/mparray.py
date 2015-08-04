@@ -148,7 +148,7 @@ class MPArray(object):
 
         :param np.ndarray array: Array representation with global structure
             array[(i1), ..., (iN)], i.e. the legs which are factorized into
-            the same factor are already adiacent. (For me details see
+            the same factor are already adjacent. (For me details see
             :func:`_tools.global_to_local`)
         :param int plegs: Number of physical legs per site
 
