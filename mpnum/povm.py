@@ -12,6 +12,8 @@ from mpnum._tools import matdot
 from six.moves import range, zip #@UnresolvedImport
 from numpy import dtype
 from numpy.linalg.linalg import pinv
+import mpnum
+import itertools
 
 
 class Base(object):
@@ -50,20 +52,41 @@ class Base(object):
             self._probability_map = self.elements.conj()
             return self._probability_map
     
-    def get_linear_inversion_map(self, rcond=1e-15):
+    @property
+    def linear_inversion_map(self):
         """Return the map that reconstructs a density matrix with linear inversion.
         
-        Linear inversion is performed by taking the Moore--Penrose pseudoinverse of self.elements.conj().   
-        
-        :param rcond: Singular values with modulus smaller than rcond*largest_singular_value are set to zero.
+        Linear inversion is performed by taking the Moore--Penrose pseudoinverse of self.elements.conj().
         """
         try:
             return self._linear_inversion_map
         except AttributeError:
-            self._linear_inversion_map = pinv(self.probability_map, rcond)
+            self._linear_inversion_map = pinv(self.probability_map, **self.opts.get('pinv_kwargs', {}))
             return self._linear_inversion_map
     
-    linear_inversion_map = property(get_linear_inversion_map)
+    def get_probability_map_mpa(self, nr_sites):
+        """Return the nr_sites-fold Kronecker (tensor) product of the probability map as MPA. 
+        """
+        try:
+            return self._probability_map_mpo[nr_sites]
+        except AttributeError:
+            self._probability_map_mpo = {}
+        except KeyError:
+            pass
+        self._probability_map_mpo[nr_sites] = mpnum.mparray.MPArray.from_kron(itertools.repeat(self.probability_map, nr_sites))
+        return self._probability_map_mpo[nr_sites]
+        
+    def get_linear_inversion_map_mpo(self, nr_sites):
+        """Return the nr_sites-fold Kronecker (tensor) product of the linear inversion map as MPA. 
+        """
+        try:
+            return self._linear_inversion_mpo[nr_sites]
+        except AttributeError:
+            self._linear_inversion_mpo = {}
+        except KeyError:
+            pass
+        self._linear_inversion_mpo[nr_sites] = mpnum.mparray.MPArray.from_kron(itertools.repeat(self.linear_inversion_map, nr_sites))
+        return self._linear_inversion_mpo[nr_sites]
 
 
 class X(Base):
