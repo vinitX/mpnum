@@ -85,6 +85,27 @@ class Base(object):
             pass
         self._linear_inversion_mpo[nr_sites] = mp.MPArray.from_kron(itertools.repeat(self.linear_inversion_map, nr_sites))
         return self._linear_inversion_mpo[nr_sites]
+    
+    def get_element_sum_map_mpa(self, nr_sites):
+        """for self.maxlik_R()
+        """
+        return mp.MPArray.from_kron(itertools.repeat(self.elements.T, nr_sites))
+    
+    def maxlik_R(self, rho_mpa, frequencies):
+        """Implement the local R operator required for the MLE iterations.
+        
+        rho_mpa must be an mpa with 1 physical leg (the two physical legs must be reshaped into one)
+        
+        UNTESTED 
+        """
+        nr_sites = len(rho_mpa)
+        probab_rho = mp.dot(self.get_probability_map_mpa(nr_sites), rho_mpa).to_array()
+        fraction = frequencies / probab_rho
+        fraction_mpa = mp.MPArray.from_array(fraction, 1)
+        m = self.get_element_sum_map_mpa(nr_sites)
+        R = mp.dot(m, fraction_mpa)
+        return R
+        
 
 
 class X(Base):

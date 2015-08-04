@@ -53,5 +53,21 @@ def test_partial_trace_mpa(nr_sites, d, bond_dim):
     diff = mpa - rec
     diff_norm = mp.norm(diff)
     assert diff_norm < 1e-6
+
+@pt.mark.parametrize('nr_sites, d, bond_dim', POVM_TEST_PARAMETERS_MPA)
+def test_maxlik_R(nr_sites, d, bond_dim):
+    # Check that the tensor product of the PauliGen POVM is IC. 
+    p = povm.PauliGen(opts={'d': d})
+    mpa = factory.random_mpa(nr_sites, d**2, bond_dim)
+    # Normalize somehow 
+    mpa /= mp.norm(mpa)
+    probab = mp.dot(p.get_probability_map_mpa(nr_sites), mpa)
+    probab = probab.to_array()
+    mpa = factory.random_mpa(nr_sites, d**2, bond_dim)
+    # Normalize somehow 
+    mpa /= mp.norm(mpa)
+    R = p.maxlik_R(mpa, probab)
+    # UNTESTED -- so far, we the only test is that the code returns something without error
+    assert True
     
 
