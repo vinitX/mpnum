@@ -11,6 +11,7 @@ import numpy as np
 from mpnum._tools import matdot
 from six.moves import range, zip #@UnresolvedImport
 from numpy import dtype
+from numpy.linalg.linalg import pinv
 
 
 class Base(object):
@@ -32,10 +33,37 @@ class Base(object):
         """
         d = self.opts['d']
         num_elements = self.vectors.shape[0]
-        self.elements = np.zeros((num_elements, d**2))
+        self.elements = np.zeros((num_elements, d**2), dtype=complex)
         for k in range(num_elements):
             vec = self.vectors[k, :]
             self.elements[k, :] = np.outer(vec, vec.conj()).reshape(d**2)
+    
+    @property
+    def probability_map(self):
+        """Return the map that takes a (reshaped) density matrix to the POVM probabilities.
+        
+        For the POVMs defined in this module, the ".conj()" doesn't really matter because it amounts to changing only the order of the POVM elements.
+        """
+        try:
+            return self._probability_map
+        except AttributeError:
+            self._probability_map = self.elements.conj()
+            return self._probability_map
+    
+    def get_linear_inversion_map(self, rcond=1e-15):
+        """Return the map that reconstructs a density matrix with linear inversion.
+        
+        Linear inversion is performed by taking the Moore--Penrose pseudoinverse of self.elements.conj().   
+        
+        :param rcond: Singular values with modulus smaller than rcond*largest_singular_value are set to zero.
+        """
+        try:
+            return self._linear_inversion_map
+        except AttributeError:
+            self._linear_inversion_map = pinv(self.probability_map, rcond)
+            return self._linear_inversion_map
+    
+    linear_inversion_map = property(get_linear_inversion_map)
 
 
 class X(Base):
