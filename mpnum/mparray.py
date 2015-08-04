@@ -73,11 +73,11 @@ class MPArray(object):
             for use by user
 
         """
-        for i, (ten, nten) in enumerate(zip(ltens[:-1], ltens[1:])):
+        self._ltens = list(ltens)
+        for i, (ten, nten) in enumerate(zip(self._ltens[:-1], self._ltens[1:])):
             if ten.shape[-1] != nten.shape[0]:
                 raise ValueError("Shape mismatch on {}: {} != {}"
                                  .format(i, ten.shape[-1], nten.shape[0]))
-        self._ltens = list(ltens)
 
         # Elements _ltens[m] with m < self._lnorm are in left-cannon. form
         self._lnormalized = kwargs.get('_lnormalized', None)
