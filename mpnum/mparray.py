@@ -131,7 +131,7 @@ class MPArray(object):
 
     @property
     def normal_form(self):
-        """Tensors which are currently in left/right-cannonical form."""
+        """Tensors which are currently in left/right-canonical form."""
         return self._lnormalized or 0, self._rnormalized or len(self)
 
     @classmethod
@@ -160,10 +160,10 @@ class MPArray(object):
         return mpa
 
     def to_array(self):
-        """Returns the full array representation of the MPT
+        """Returns the full array representation of the MPA
         :returns: Full matrix A as array of shape [(i1),...,(iN)]
 
-        WARNING: This can be slow for large MPTs!
+        WARNING: This can be slow for large MPAs!
         """
         return _ltens_to_array(iter(self))
 
@@ -412,7 +412,7 @@ class MPArray(object):
 
 
 #############################################
-#  General functinos to deal with MPArrays  #
+#  General functions to deal with MPArrays  #
 #############################################
 def dot(mpa1, mpa2, axes=(-1, 0)):
     """Compute the matrix product representation of a.b over the given
