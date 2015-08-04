@@ -473,6 +473,53 @@ def norm(mpa):
     return np.sqrt(inner(mpa, mpa))
 
 
+def partialtrace_operator(mpa, startsites, width):
+    """Take an MPA with two physical legs and perform partial trace 
+    over the complement of range(startsites[i], startsites[i]+width).
+    
+    :param mpa: MPArray with two physical legs (a Matrix Product Operator)
+    :param startsites: list of leftmost sites of the the supports of the results
+    :param width: number of sites in support of the results
+    :returns: 
+    """
+    rem_left = {0: np.array(1, ndmin=2)}
+    rem_right = rem_left.copy()
+    
+    def get_remainder(rem_cache, num_sites, end):
+        """Obtain the vectors resulting from tracing over 
+        the left or right end of a Matrix Product Operator.
+        
+        :param rem_cache: Save remainder terms with smaller num_sites here
+        :param num_sites: Number of sites from left or right that have been traced over
+        :param end: +1 or -1 for tracing over the left or right end
+        """
+        try:
+            return rem_cache[num_sites]
+        except KeyError:
+            rem = get_remainder(rem_cache, num_sites-1, end)
+            last_pos = num_sites-1 if end == 1 else -num_sites
+            add = np.trace(mpa[last_pos], axis1=1, axis2=2)
+            if end == -1:
+                rem, add = add, rem
+            rem_cache[num_sites] = matdot(rem, add)
+            return rem_cache[num_sites]
+        
+    num_sites = len(mpa)
+    for startsite in startsites:
+        # FIXME we could avoid taking copies here, but then in-place 
+        # multiplication would have side effects. We could make the 
+        # affected arrays read-only to turn unnoticed side effects into
+        # errors.  
+        # Is there something like a "lazy copy" or "copy-on-write"-copy? 
+        # I believe not.
+        ltens = [ mpa[pos].copy() for pos in range(startsite, startsite+width) ]
+        rem = get_remainder(rem_left, startsite, 1)
+        ltens[0] = matdot(rem, ltens[0])
+        rem = get_remainder(rem_right, num_sites - (startsite + width), -1)
+        ltens[-1] = matdot(ltens[-1], rem)
+        yield startsite, MPArray(ltens)
+
+
 ############################################################
 #  Functions for dealing with local operations on tensors  #
 ############################################################

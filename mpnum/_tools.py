@@ -67,6 +67,20 @@ def local_to_global(array, sites):
     return np.transpose(array, order)
 
 
+def partial_trace(array, traceout):
+    """Return the partial trace of array over the sites given in traceout.
+    
+    :param np.ndarray array: Array in global from (see :func:`global_to_local` above)
+    :param traceout: List of sites to trace out, must be in *ascending* order
+    :returns: Partial trace over input array
+    """
+    if len(traceout) == 0:
+        return array
+    sites, rem = divmod(array.ndim, 2)
+    assert rem == 0, 'ndim={} is not a multiple of 2'.format(array.ndim)
+    return partial_trace(np.trace(array, axis1=traceout[-1], axis2=traceout[-1]+sites), traceout=traceout[:-1])
+
+
 def matdot(A, B, axes=((-1,), (0,))):
     """np.tensordot with sane defaults for matrix multiplication"""
     return np.tensordot(A, B, axes=axes)

@@ -15,7 +15,8 @@ from six.moves import range
 import mpnum.factory as factory
 import mpnum.mparray as mp
 from mpnum._tools import global_to_local, local_to_global
-from testconf import MP_TEST_PARAMETERS
+from testconf import MP_TEST_PARAMETERS, MP_TEST_PARAMETERS_TRACEOUT # @UnresolvedImport
+from mpnum import _tools
 
 
 # We choose to use a global reperentation of multipartite arrays throughout our
@@ -366,3 +367,16 @@ def test_compression_svd_overlap(nr_sites, local_dim, bond_dim):
                                direction='left')
     assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
     assert all(bdim_n < bdim_o for bdim_n, bdim_o in zip(mpo_new.bdims, mpo.bdims))
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', MP_TEST_PARAMETERS_TRACEOUT)
+def test_partial_trace(nr_sites, local_dim, bond_dim, keep_width):
+    op = factory.random_state(nr_sites, local_dim)
+    mpo = mp.MPArray.from_array(_tools.global_to_local(op, nr_sites), 2)
+    startsites = range(nr_sites - keep_width + 1)
+    for startsite, reduced_mpo in mp.partialtrace_operator(mpo, startsites, keep_width):
+        red_from_mpo = reduced_mpo.to_array()
+        red_from_mpo = _tools.local_to_global(red_from_mpo, keep_width)
+        traceout = tuple(range(startsite)) + tuple(range(startsite+keep_width, nr_sites))
+        red_from_op = _tools.partial_trace(op, traceout)
+        assert_array_almost_equal(red_from_mpo, red_from_op, err_msg='not equal at startsite {}'.format(startsite))
+
