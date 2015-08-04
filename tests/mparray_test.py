@@ -15,8 +15,10 @@ from six.moves import range # @UnresolvedImport
 import mpnum.factory as factory
 import mpnum.mparray as mp
 from mpnum._tools import global_to_local, local_to_global
-from testconf import MP_TEST_PARAMETERS, MP_TEST_PARAMETERS_TRACEOUT # @UnresolvedImport
 from mpnum import _tools
+
+
+MP_TEST_PARAMETERS = [(6, 2, 4), (4, 3, 5)]
 
 
 # We choose to use a global reperentation of multipartite arrays throughout our
@@ -367,7 +369,8 @@ def test_compression_svd_overlap(nr_sites, local_dim, bond_dim):
                                direction='left')
     assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
     assert all(bdim_n < bdim_o for bdim_n, bdim_o in zip(mpo_new.bdims, mpo.bdims))
-    
+
+
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_from_kron(nr_sites, local_dim, bond_dim):
     plegs = 2
@@ -379,7 +382,8 @@ def test_from_kron(nr_sites, local_dim, bond_dim):
     op_from_mpo = _tools.local_to_global(op_from_mpo, nr_sites)
     assert_array_almost_equal(op, op_from_mpo)
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', MP_TEST_PARAMETERS_TRACEOUT)
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_partial_trace(nr_sites, local_dim, bond_dim, keep_width):
     op = factory.random_state(nr_sites, local_dim)
     mpo = mp.MPArray.from_array(_tools.global_to_local(op, nr_sites), 2)
