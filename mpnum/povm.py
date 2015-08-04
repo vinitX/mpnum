@@ -8,11 +8,9 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
-from mpnum._tools import matdot
 from six.moves import range, zip #@UnresolvedImport
-from numpy import dtype
 from numpy.linalg.linalg import pinv
-import mpnum
+import mpnum.mparray as mp
 import itertools
 
 
@@ -73,7 +71,7 @@ class Base(object):
             self._probability_map_mpo = {}
         except KeyError:
             pass
-        self._probability_map_mpo[nr_sites] = mpnum.mparray.MPArray.from_kron(itertools.repeat(self.probability_map, nr_sites))
+        self._probability_map_mpo[nr_sites] = mp.MPArray.from_kron(itertools.repeat(self.probability_map, nr_sites))
         return self._probability_map_mpo[nr_sites]
         
     def get_linear_inversion_map_mpo(self, nr_sites):
@@ -85,7 +83,7 @@ class Base(object):
             self._linear_inversion_mpo = {}
         except KeyError:
             pass
-        self._linear_inversion_mpo[nr_sites] = mpnum.mparray.MPArray.from_kron(itertools.repeat(self.linear_inversion_map, nr_sites))
+        self._linear_inversion_mpo[nr_sites] = mp.MPArray.from_kron(itertools.repeat(self.linear_inversion_map, nr_sites))
         return self._linear_inversion_mpo[nr_sites]
 
 
