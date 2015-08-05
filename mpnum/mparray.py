@@ -484,13 +484,14 @@ def norm(mpa):
 
 
 def partialtrace_operator(mpa, startsites, width):
-    """Take an MPA with two physical legs and perform partial trace
-    over the complement of range(startsites[i], startsites[i]+width).
+    """Take an MPA with two physical legs per site and perform partial trace
+    over the complement the sites startsites[i], ..., startsites[i] + width.
 
     :param mpa: MPArray with two physical legs (a Matrix Product Operator)
-    :param startsites: list of leftmost sites of the the supports of the results
+    :param startsites: Iterator yielding the index of the leftmost sites of the
+        supports of the results
     :param width: number of sites in support of the results
-    :returns:
+    :returns: Iterator over the reduced MPAs in ascending order
     """
     rem_left = {0: np.array(1, ndmin=2)}
     rem_right = rem_left.copy()
@@ -500,17 +501,19 @@ def partialtrace_operator(mpa, startsites, width):
         the left or right end of a Matrix Product Operator.
 
         :param rem_cache: Save remainder terms with smaller num_sites here
-        :param num_sites: Number of sites from left or right that have been traced over
+        :param num_sites: Number of sites from left or right that have been
+            traced over.
         :param end: +1 or -1 for tracing over the left or right end
         """
         try:
             return rem_cache[num_sites]
         except KeyError:
-            rem = get_remainder(rem_cache, num_sites-1, end)
-            last_pos = num_sites-1 if end == 1 else -num_sites
+            rem = get_remainder(rem_cache, num_sites - 1, end)
+            last_pos = num_sites - 1 if end == 1 else -num_sites
             add = np.trace(mpa[last_pos], axis1=1, axis2=2)
             if end == -1:
                 rem, add = add, rem
+
             rem_cache[num_sites] = matdot(rem, add)
             return rem_cache[num_sites]
 
@@ -522,7 +525,7 @@ def partialtrace_operator(mpa, startsites, width):
         # errors.
         # Is there something like a "lazy copy" or "copy-on-write"-copy?
         # I believe not.
-        ltens = [ mpa[pos].copy() for pos in range(startsite, startsite+width) ]
+        ltens = [lten.copy() for lten in mpa[startsite:startsite + width]]
         rem = get_remainder(rem_left, startsite, 1)
         ltens[0] = matdot(rem, ltens[0])
         rem = get_remainder(rem_right, num_sites - (startsite + width), -1)

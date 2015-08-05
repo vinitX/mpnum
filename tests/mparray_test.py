@@ -49,9 +49,7 @@ def test_from_kron(nr_sites, local_dim, bond_dim):
     op = _tools.mkron(*factors)
     op.shape = [local_dim] * (plegs * nr_sites)
     mpo = mp.MPArray.from_kron(factors)
-    op_from_mpo = mpo.to_array()
-    op_from_mpo = _tools.local_to_global(op_from_mpo, nr_sites)
-    assert_array_almost_equal(op, op_from_mpo)
+    assert_array_almost_equal(op, mpo_to_global(mpo))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
@@ -174,15 +172,16 @@ def test_div_mpo_scalar(nr_sites, local_dim, bond_dim):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_partial_trace(nr_sites, local_dim, bond_dim, keep_width):
-    op = factory.random_state(nr_sites, local_dim)
-    mpo = mp.MPArray.from_array(_tools.global_to_local(op, nr_sites), 2)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = mpo_to_global(mpo)
+
     startsites = range(nr_sites - keep_width + 1)
     for startsite, reduced_mpo in mp.partialtrace_operator(mpo, startsites, keep_width):
-        red_from_mpo = reduced_mpo.to_array()
-        red_from_mpo = _tools.local_to_global(red_from_mpo, keep_width)
-        traceout = tuple(range(startsite)) + tuple(range(startsite+keep_width, nr_sites))
+        traceout = tuple(range(startsite)) \
+            + tuple(range(startsite + keep_width, nr_sites))
         red_from_op = _tools.partial_trace(op, traceout)
-        assert_array_almost_equal(red_from_mpo, red_from_op, err_msg='not equal at startsite {}'.format(startsite))
+        assert_array_almost_equal(mpo_to_global(reduced_mpo), red_from_op,
+                                  err_msg="not equal at startsite {}".format(startsite))
 
 
 ###############################################################################
@@ -199,7 +198,7 @@ def assert_rcannonical(ltens, msg=''):
     ltens = ltens.reshape((ltens.shape[0], np.prod(ltens.shape[1:])))
     prod = ltens.dot(ltens.conj().T)
     assert_array_almost_equal(prod, np.identity(prod.shape[0]),
-                                         err_msg=msg)
+                              err_msg=msg)
 
 
 def assert_correct_normalzation(mpo, lnormal_target, rnormal_target):
