@@ -27,12 +27,14 @@ def test_povm_normalization_ic(d):
         element_sum = p.elements.sum(axis=0)
         element_sum.shape = (d, d)
         assert_array_almost_equal(element_sum, np.eye(d))
+
         # Check that the attribute that says whether the POVM is IC is correct.
         linear_inversion_reconstruction = np.dot(p.linear_inversion_map, p.probability_map)
         if p.informationally_complete:
             assert_array_almost_equal(linear_inversion_reconstruction, np.eye(d**2), err_msg='POVM {} is supposed to be IC but is not'.format(povm_cls))
         else:
             assert np.abs(linear_inversion_reconstruction-np.eye(d**2)).max() > 0.1, 'POVM {} is not supposed to be IC but it is'.format(povm_cls)
+
 
 @pt.mark.parametrize('nr_sites, d, bond_dim', POVM_TEST_PARAMETERS_MPA)
 def test_povm_ic_mpa(nr_sites, d, bond_dim):
@@ -45,6 +47,7 @@ def test_povm_ic_mpa(nr_sites, d, bond_dim):
     diff = reconstruction_map - eye
     diff_norm = mp.norm(diff)
     assert diff_norm < 1e-6
+
     # Check linear inversion for a particular example MPA.
     # Linear inversion works for arbitrary matrices, not only for states,
     # so we test it for an arbitrary MPA.
@@ -56,6 +59,7 @@ def test_povm_ic_mpa(nr_sites, d, bond_dim):
     diff = mpa - rec
     diff_norm = mp.norm(diff)
     assert diff_norm < 1e-6
+
 
 @pt.mark.parametrize('nr_sites, d, bond_dim', POVM_TEST_PARAMETERS_MPA)
 def test_maxlik_R(nr_sites, d, bond_dim):

@@ -159,6 +159,16 @@ class MPArray(object):
         mpa = cls(ltens, _lnormalized=len(ltens) - 1)
         return mpa
 
+    @classmethod
+    def from_kron(cls, factors):
+        """Returns the (exact) representation of an n-fold  Kronecker (tensor)
+        product as MPA with bond dimensions 1 and n sites.
+
+        :param factors: A list of arrays with arbitrary number of physical legs
+        :returns: The kronecker product of the factors as MPA
+        """
+        return cls(a[None, ..., None] for a in factors)
+
     def to_array(self):
         """Returns the full array representation of the MPA
         :returns: Full matrix A as array of shape [(i1),...,(iN)]
@@ -166,16 +176,6 @@ class MPArray(object):
         WARNING: This can be slow for large MPAs!
         """
         return _ltens_to_array(iter(self))
-    
-    @classmethod
-    def from_kron(cls, factors):
-        """Returns the (exact) representation of a Kronecker (tensor) product.
-        
-        :param factors: A list of arrays with arbitrary number of physical legs
-        :returns: The kronecker product of the factors as MPA
-        """
-        return cls(a.reshape((1,) + a.shape + (1,)) for a in factors)
-        
 
     ##########################
     #  Algebraic operations  #
@@ -484,21 +484,21 @@ def norm(mpa):
 
 
 def partialtrace_operator(mpa, startsites, width):
-    """Take an MPA with two physical legs and perform partial trace 
+    """Take an MPA with two physical legs and perform partial trace
     over the complement of range(startsites[i], startsites[i]+width).
-    
+
     :param mpa: MPArray with two physical legs (a Matrix Product Operator)
     :param startsites: list of leftmost sites of the the supports of the results
     :param width: number of sites in support of the results
-    :returns: 
+    :returns:
     """
     rem_left = {0: np.array(1, ndmin=2)}
     rem_right = rem_left.copy()
-    
+
     def get_remainder(rem_cache, num_sites, end):
-        """Obtain the vectors resulting from tracing over 
+        """Obtain the vectors resulting from tracing over
         the left or right end of a Matrix Product Operator.
-        
+
         :param rem_cache: Save remainder terms with smaller num_sites here
         :param num_sites: Number of sites from left or right that have been traced over
         :param end: +1 or -1 for tracing over the left or right end
@@ -513,14 +513,14 @@ def partialtrace_operator(mpa, startsites, width):
                 rem, add = add, rem
             rem_cache[num_sites] = matdot(rem, add)
             return rem_cache[num_sites]
-        
+
     num_sites = len(mpa)
     for startsite in startsites:
-        # FIXME we could avoid taking copies here, but then in-place 
-        # multiplication would have side effects. We could make the 
+        # FIXME we could avoid taking copies here, but then in-place
+        # multiplication would have side effects. We could make the
         # affected arrays read-only to turn unnoticed side effects into
-        # errors.  
-        # Is there something like a "lazy copy" or "copy-on-write"-copy? 
+        # errors.
+        # Is there something like a "lazy copy" or "copy-on-write"-copy?
         # I believe not.
         ltens = [ mpa[pos].copy() for pos in range(startsite, startsite+width) ]
         rem = get_remainder(rem_left, startsite, 1)

@@ -42,6 +42,18 @@ def test_from_full(nr_sites, local_dim, _):
     assert_array_almost_equal(op, mpo.to_array())
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_from_kron(nr_sites, local_dim, bond_dim):
+    plegs = 2
+    factors = tuple(factory._zrandn([nr_sites] + ([local_dim] * plegs)))
+    op = _tools.mkron(*factors)
+    op.shape = [local_dim] * (plegs * nr_sites)
+    mpo = mp.MPArray.from_kron(factors)
+    op_from_mpo = mpo.to_array()
+    op_from_mpo = _tools.local_to_global(op_from_mpo, nr_sites)
+    assert_array_almost_equal(op, op_from_mpo)
+
+
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
 def test_conjugations(nr_sites, local_dim, _):
     op = factory.random_op(nr_sites, local_dim)
@@ -158,6 +170,19 @@ def test_div_mpo_scalar(nr_sites, local_dim, bond_dim):
 
     mpo /= scalar
     assert_array_almost_equal(op / scalar, mpo_to_global(mpo))
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
+def test_partial_trace(nr_sites, local_dim, bond_dim, keep_width):
+    op = factory.random_state(nr_sites, local_dim)
+    mpo = mp.MPArray.from_array(_tools.global_to_local(op, nr_sites), 2)
+    startsites = range(nr_sites - keep_width + 1)
+    for startsite, reduced_mpo in mp.partialtrace_operator(mpo, startsites, keep_width):
+        red_from_mpo = reduced_mpo.to_array()
+        red_from_mpo = _tools.local_to_global(red_from_mpo, keep_width)
+        traceout = tuple(range(startsite)) + tuple(range(startsite+keep_width, nr_sites))
+        red_from_op = _tools.partial_trace(op, traceout)
+        assert_array_almost_equal(red_from_mpo, red_from_op, err_msg='not equal at startsite {}'.format(startsite))
 
 
 ###############################################################################
@@ -369,29 +394,3 @@ def test_compression_svd_overlap(nr_sites, local_dim, bond_dim):
                                direction='left')
     assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
     assert all(bdim_n < bdim_o for bdim_n, bdim_o in zip(mpo_new.bdims, mpo.bdims))
-
-
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_from_kron(nr_sites, local_dim, bond_dim):
-    plegs = 2
-    factors = tuple(factory._zrandn([nr_sites] + ([local_dim] * plegs)))
-    op = _tools.mkron(*factors)
-    op.shape = [local_dim] * (plegs * nr_sites)
-    mpo = mp.MPArray.from_kron(factors)
-    op_from_mpo = mpo.to_array()
-    op_from_mpo = _tools.local_to_global(op_from_mpo, nr_sites)
-    assert_array_almost_equal(op, op_from_mpo)
-
-
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
-def test_partial_trace(nr_sites, local_dim, bond_dim, keep_width):
-    op = factory.random_state(nr_sites, local_dim)
-    mpo = mp.MPArray.from_array(_tools.global_to_local(op, nr_sites), 2)
-    startsites = range(nr_sites - keep_width + 1)
-    for startsite, reduced_mpo in mp.partialtrace_operator(mpo, startsites, keep_width):
-        red_from_mpo = reduced_mpo.to_array()
-        red_from_mpo = _tools.local_to_global(red_from_mpo, keep_width)
-        traceout = tuple(range(startsite)) + tuple(range(startsite+keep_width, nr_sites))
-        red_from_op = _tools.partial_trace(op, traceout)
-        assert_array_almost_equal(red_from_mpo, red_from_op, err_msg='not equal at startsite {}'.format(startsite))
-
