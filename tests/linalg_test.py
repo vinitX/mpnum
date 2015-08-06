@@ -4,7 +4,7 @@
 #       assert_(array)_almost_equal? Something that takes magnitude into
 #       account?
 
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import pytest as pt
@@ -19,7 +19,7 @@ import mpnum.mparray as mp
 from mpnum._tools import global_to_local, local_to_global
 from mpnum import _tools
 
-from tests.mparray_test import mpo_to_global, MP_TEST_PARAMETERS
+from mparray_test import mpo_to_global, MP_TEST_PARAMETERS
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mineig(nr_sites, local_dim, bond_dim):
