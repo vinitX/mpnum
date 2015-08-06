@@ -332,12 +332,12 @@ class MPArray(object):
         For method='svd':
         -----------------
         :param max_bdim: Maximal bond dimension for the compressed MPA (default
-            max of current bond dimensinos, i.e. no compression)
+            max of current bond dimensions, i.e. no compression)
         :param relerr: Maximal allowed error for each truncation step, that is
             the fraction of truncated singular values over their sum (default
             0.0, i.e. no compression)
 
-        If both, max_bdim and relerr is passed, the smaller resulting bond
+        If both max_bdim and relerr is passed, the smaller resulting bond
         dimension is used.
 
         :param direction: In which direction the compression should operate.
@@ -376,8 +376,7 @@ class MPArray(object):
         assert (0. <= relerr) and (relerr <= 1.)
         for site in range(len(self) - 1):
             ltens = self._ltens[site]
-            matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
-            u, sv, v = svd(ltens.reshape(matshape))
+            u, sv, v = svd(ltens.reshape((-1, ltens.shape[-1])))
 
             svsum = np.cumsum(sv) / np.sum(sv)
             bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
@@ -394,7 +393,7 @@ class MPArray(object):
 
     def _compress_svd_l(self, max_bdim, relerr):
         """Compresses the MPA in place from right to left using SVD;
-        yields a -cannonical state
+        yields a right-cannonical state
 
         See :func:`MPArray.compress` for parameters
 
@@ -403,7 +402,7 @@ class MPArray(object):
         assert (0. <= relerr) and (relerr <= 1.)
         for site in range(len(self) - 1, 0, -1):
             ltens = self._ltens[site]
-            matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
+            matshape = (ltens.shape[0], -1)
             u, sv, v = svd(ltens.reshape(matshape))
 
             svsum = np.cumsum(sv) / np.sum(sv)
