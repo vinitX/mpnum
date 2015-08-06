@@ -12,6 +12,8 @@ from numpy.testing import assert_array_almost_equal, assert_array_equal, \
     assert_almost_equal, assert_equal
 from six.moves import range # @UnresolvedImport
 
+import mpnum.linalg
+
 import mpnum.factory as factory
 import mpnum.mparray as mp
 from mpnum._tools import global_to_local, local_to_global
@@ -33,7 +35,7 @@ def test_mineig(nr_sites, local_dim, bond_dim):
     mineig_pos = eigvals.argmin()
     mineig = eigvals[mineig_pos]
     mineig_eigvec = eigvec[:, mineig_pos]
-    mineig2, mineig_eigvec2 = mp.mineig(mpo, startvec_bonddim=2*bond_dim)
+    mineig2, mineig_eigvec2 = mpnum.linalg.mineig(mpo, startvec_bonddim=2*bond_dim)
     mineig_eigvec2 = mineig_eigvec2.to_array().flatten()
     overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec2)
     assert_almost_equal(mineig, mineig2)

@@ -3,6 +3,12 @@
 
 import numpy as np
 
+from scipy.sparse.linalg import eigs
+
+import mpnum
+import mpnum.factory
+import mpnum.mparray as mp
+
 
 def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten):
     """Add one column to the left vector.
@@ -38,9 +44,9 @@ def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten):
     leftvec_names = ('mps_bond', 'mpo_bond', 'cc_mps_bond')
     mpo_names = ('left_mpo_bond', 'phys_row', 'phys_col', 'right_mpo_bond')
     mps_names = ('left_mps_bond', 'phys', 'right_mps_bond')
-    leftvec = named_ndarray(leftvec, leftvec_names)
-    mpo_lten = named_ndarray(mpo_lten, mpo_names)
-    mps_lten = named_ndarray(mps_lten, mps_names)
+    leftvec = mpnum.named_ndarray(leftvec, leftvec_names)
+    mpo_lten = mpnum.named_ndarray(mpo_lten, mpo_names)
+    mps_lten = mpnum.named_ndarray(mps_lten, mps_names)
     
     contract_mps = (('mps_bond', 'left_mps_bond'),)
     leftvec = leftvec.tensordot(mps_lten, contract_mps)
@@ -80,9 +86,9 @@ def _mineig_rightvec_add(rightvec, mpo_lten, mps_lten):
     rightvec_names = ('mps_bond', 'mpo_bond', 'cc_mps_bond')
     mpo_names = ('left_mpo_bond', 'phys_row', 'phys_col', 'right_mpo_bond')
     mps_names = ('left_mps_bond', 'phys', 'right_mps_bond')
-    rightvec = named_ndarray(rightvec, rightvec_names)
-    mpo_lten = named_ndarray(mpo_lten, mpo_names)
-    mps_lten = named_ndarray(mps_lten, mps_names)
+    rightvec = mpnum.named_ndarray(rightvec, rightvec_names)
+    mpo_lten = mpnum.named_ndarray(mpo_lten, mpo_names)
+    mps_lten = mpnum.named_ndarray(mps_lten, mps_names)
     
     contract_mps = (('mps_bond', 'right_mps_bond'),)
     rightvec = rightvec.tensordot(mps_lten, contract_mps)
@@ -135,9 +141,9 @@ def _mineig_local_op(leftvec, mpo_lten, rightvec):
     leftvec_names = ('left_mps_bond', 'left_mpo_bond', 'left_cc_mps_bond')
     mpo_names = ('left_mpo_bond', 'phys_row', 'phys_col', 'right_mpo_bond')
     rightvec_names = ('right_mps_bond', 'right_mpo_bond', 'right_cc_mps_bond')
-    leftvec = named_ndarray(leftvec, leftvec_names)
-    mpo_lten = named_ndarray(mpo_lten, mpo_names)
-    rightvec = named_ndarray(rightvec, rightvec_names)
+    leftvec = mpnum.named_ndarray(leftvec, leftvec_names)
+    mpo_lten = mpnum.named_ndarray(mpo_lten, mpo_names)
+    rightvec = mpnum.named_ndarray(rightvec, rightvec_names)
 
     contract = (('left_mpo_bond', 'left_mpo_bond'),)
     op = leftvec.tensordot(mpo_lten, contract)
@@ -226,7 +232,7 @@ def mineig(mpo, startvec=None, startvec_bonddim=None):
         if startvec_bonddim is None:
             startvec_bonddim = max(mpo.bdims)
         eigvec = mpnum.factory.random_mpa(nr_sites, pdims, startvec_bonddim)
-        eigvec /= norm(eigvec)
+        eigvec /= mp.norm(eigvec)
     eigvec.normalize(right=1)
     leftvecs = [np.array(1, ndmin=3)] + [None] * (nr_sites - 1)
     rightvecs = [None] * (nr_sites - 1) + [np.array(1, ndmin=3)]

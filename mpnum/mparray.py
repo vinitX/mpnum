@@ -19,7 +19,6 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
-from scipy.sparse.linalg import eigs
 
 import mpnum
 from mpnum._tools import matdot, norm_2
