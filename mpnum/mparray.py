@@ -19,7 +19,9 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
+from scipy.sparse.linalg import eigs
 
+import mpnum
 from mpnum._tools import matdot, norm_2
 from six.moves import range, zip
 
@@ -103,6 +105,12 @@ class MPArray(object):
     def __getitem__(self, index):
         """Use only for read-only access! Do not change arrays in place!"""
         return self._ltens[index]
+
+    def __setitem__(self, index, value):
+        """Update a local tensor and keep track of normalization."""
+        self._lnormalized = min(self._lnormalized, index)
+        self._rnormalized = max(self._rnormalized, index + 1)
+        self._ltens[index] = value
 
     @property
     def dims(self):
@@ -605,6 +613,289 @@ def mps_as_mpo(mps):
     mps_loc_puri = mps_as_local_purification_mps(mps)
     mpo = local_purification_mps_to_mpo(mps_loc_puri)
     return mpo
+
+
+class named_ndarray(object):
+
+    """Associate names to the axes of a ndarray.
+
+    :property axisnames: The names of the axes.
+
+    All methods which return arrays return named_ndarray instances.
+
+    :method axispos(axisname): Return the position of the named axis
+    :method rename(translate): Rename axes
+    :method conj(): Return the complex conjugate array
+    :method to_array(name_order): Return a ndarray with axis order
+        specified by name_order.
+    :method tensordot(other, axes): numpy.tensordot() with axis names
+        instead of axis indices
+
+    """
+
+    def __init__(self, array, axisnames):
+        """
+        :param numpy.ndarray array: A numpy.ndarray instance
+        :param axisnames: A iterable with a name for each axis
+        """
+        assert(len(array.shape) == len(axisnames)), \
+            'number of names does not match number of dimensions'
+        assert len(axisnames) == len(set(axisnames)), \
+            'axisnames contains duplicates: {}'.format(axisnames)
+        self._array = array
+        self._axisnames = tuple(axisnames)
+
+    def axispos(self, axisname):
+        """Return the position of an axis.
+        """
+        return self._axisnames.index(axisname)
+
+    def rename(self, translate):
+        """Rename axes.
+
+        An error will be raised if the resulting list of names
+        contains duplicates.
+
+        :param translate: List of (old_name, new_name) axis name pairs.
+
+        """
+        new_names = list(self._axisnames)
+        for oldname, newname in translate:
+            new_names[self.axispos(oldname)] = newname
+        return named_ndarray(self._array, new_names)
+
+    def conj(self):
+        """Complex conjugate as named_ndarray.
+        """
+        return named_ndarray(self._array.conj(), self._axisnames)
+
+    def to_array(self, name_order):
+        """Convert to a normal ndarray with given axes ordering.
+
+        :param name_order: Order of axes in the array
+        """
+        name_pos = [self.axispos(name) for name in name_order]
+        array = self._array.transpose(name_pos)
+        return array
+        
+    def tensordot(self, other, axes):
+        """Compute tensor dot product along named axes.
+
+        An error will be raised if the remaining axes of self and
+        other contain duplicate names.
+
+        :param other: Another named_ndarray instance
+        :param axes: List of axis name pairs (self_name, other_name)
+            to be contracted
+        :returns: Result as named_ndarray
+        """
+        axes_self = [names[0] for names in axes]
+        axes_other = [names[1] for names in axes]
+        axespos_self = [self.axispos(name) for name in axes_self]
+        axespos_other = [other.axispos(name) for name in axes_other]
+        new_names = [name for name in self._axisnames if name not in axes_self]
+        new_names += (name for name in other._axisnames if name not in axes_other)
+        array = np.tensordot(self._array, other._array, (axespos_self, axespos_other))
+        return named_ndarray(array, new_names)
+
+    @property
+    def axisnames(self):
+        """The names of the array"""
+        return _axisnames
+
+
+def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten):
+    """Add one column to the left vector.
+
+    :param leftvec: existing left vector
+        It has three indices: mps bond, mpo bond, complex conjugate mps bond
+    :param op_lten: Local tensor of the MPO
+    :param mps_lten: Local tensor of the current MPS eigenstate
+
+    """
+    leftvec_names = ('mps_bond', 'mpo_bond', 'cc_mps_bond')
+    mpo_names = ('left_mpo_bond', 'phys_row', 'phys_col', 'right_mpo_bond')
+    mps_names = ('left_mps_bond', 'phys', 'right_mps_bond')
+    leftvec = named_ndarray(leftvec, leftvec_names)
+    mpo_lten = named_ndarray(mpo_lten, mpo_names)
+    mps_lten = named_ndarray(mps_lten, mps_names)
+    
+    contract_mps = (('mps_bond', 'left_mps_bond'),)
+    leftvec = leftvec.tensordot(mps_lten, contract_mps)
+    rename_mps = (('right_mps_bond', 'mps_bond'),)
+    leftvec = leftvec.rename(rename_mps)
+    
+    contract_mpo = (
+        ('mpo_bond', 'left_mpo_bond'),
+        ('phys', 'phys_col'))
+    leftvec = leftvec.tensordot(mpo_lten, contract_mpo)
+    contract_cc_mps = (
+        ('cc_mps_bond', 'left_mps_bond'),
+        ('phys_row', 'phys'))
+    leftvec = leftvec.tensordot(mps_lten.conj(), contract_cc_mps)
+    rename_mps_mpo = (
+        ('right_mpo_bond', 'mpo_bond'),
+        ('right_mps_bond', 'cc_mps_bond'))
+    leftvec = leftvec.rename(rename_mps_mpo)
+    
+    leftvec = leftvec.to_array(leftvec_names)
+    return leftvec
+
+
+def _mineig_rightvec_add(rightvec, mpo_lten, mps_lten):
+    """Add one column to the right vector.
+
+    :param rightvec: existing right vector
+        It has three indices: mps bond, mpo bond, complex conjugate mps bond
+    :param op_lten: Local tensor of the MPO
+    :param mps_lten: Local tensor of the current MPS eigenstate
+
+    """
+    rightvec_names = ('mps_bond', 'mpo_bond', 'cc_mps_bond')
+    mpo_names = ('left_mpo_bond', 'phys_row', 'phys_col', 'right_mpo_bond')
+    mps_names = ('left_mps_bond', 'phys', 'right_mps_bond')
+    rightvec = named_ndarray(rightvec, rightvec_names)
+    mpo_lten = named_ndarray(mpo_lten, mpo_names)
+    mps_lten = named_ndarray(mps_lten, mps_names)
+    
+    contract_mps = (('mps_bond', 'right_mps_bond'),)
+    rightvec = rightvec.tensordot(mps_lten, contract_mps)
+    rename_mps = (('left_mps_bond', 'mps_bond'),)
+    rightvec = rightvec.rename(rename_mps)
+    
+    contract_mpo = (
+        ('mpo_bond', 'right_mpo_bond'),
+        ('phys', 'phys_col'))
+    rightvec = rightvec.tensordot(mpo_lten, contract_mpo)
+    contract_cc_mps = (
+        ('cc_mps_bond', 'right_mps_bond'),
+        ('phys_row', 'phys'))
+    rightvec = rightvec.tensordot(mps_lten.conj(), contract_cc_mps)
+    rename_mps_mpo = (
+        ('left_mpo_bond', 'mpo_bond'),
+        ('left_mps_bond', 'cc_mps_bond'))
+    rightvec = rightvec.rename(rename_mps_mpo)
+    
+    rightvec = rightvec.to_array(rightvec_names)
+    return rightvec
+
+
+def _mineig_local_op(leftvec, mpo_lten, rightvec):
+    """Create the operator for local eigenvalue minimization on one site.
+
+    :param leftvec: Left vector
+        Three indices: mps bond, mpo bond, complex conjugate mps bond
+    :param mpo_lten: Local tensor of the MPO
+    :param rightvec: Right vector
+        Three indices: mps bond, mpo bond, complex conjugate mps bond
+
+    """
+    leftvec_names = ('left_mps_bond', 'left_mpo_bond', 'left_cc_mps_bond')
+    mpo_names = ('left_mpo_bond', 'phys_row', 'phys_col', 'right_mpo_bond')
+    rightvec_names = ('right_mps_bond', 'right_mpo_bond', 'right_cc_mps_bond')
+    leftvec = named_ndarray(leftvec, leftvec_names)
+    mpo_lten = named_ndarray(mpo_lten, mpo_names)
+    rightvec = named_ndarray(rightvec, rightvec_names)
+
+    contract = (('left_mpo_bond', 'left_mpo_bond'),)
+    op = leftvec.tensordot(mpo_lten, contract)
+    contract = (('right_mpo_bond', 'right_mpo_bond'),)
+    op = op.tensordot(rightvec, contract)
+
+    op_names = (
+        'left_cc_mps_bond', 'phys_row', 'right_cc_mps_bond',
+        'left_mps_bond', 'phys_col', 'right_mps_bond',
+    )
+    op = op.to_array(op_names)
+    op = op.reshape((np.prod(op.shape[0:3]), -1))
+    return op
+
+
+def _mineig_minimize_locally(leftvec, mpo_lten, rightvec, eigvec_lten):
+    """Perform the local eigenvalue minimization on one site on one site.
+
+    Return a new (expectedly smaller) eigenvalue and a new local
+    tensor for the MPS eigenvector.
+
+    :param leftvec: Left vector
+        Three indices: mps bond, mpo bond, complex conjugate mps bond
+    :param mpo_lten: Local tensor of the MPO
+    :param rightvec: Right vector
+        Three indices: mps bond, mpo bond, complex conjugate mps bond
+    :param eigvec_lten: Local tensor of the MPS eigenvector
+    :returns: mineigval, mineigval_eigvec_lten
+
+    """
+    eigs_opts = {'k': 1, 'which': 'SR', 'tol': 1e-6}
+    op = _mineig_local_op(leftvec, mpo_lten, rightvec)
+    eigvals, eigvecs = eigs(op, v0=eigvec_lten.flatten(), **eigs_opts)
+    eigval = eigvals[0]
+    eigvec_lten = eigvecs[:, 0].reshape(eigvec_lten.shape)
+    return eigval, eigvec_lten
+
+
+def mineig(mpo, startvec=None, startvec_bonddim=None):
+    """Iterative search for smallest eigenvalue and eigenvector of an MPO.
+
+    Algorithm: [Sch11, Sec. 6.3]
+
+    :param MPArray mpo: A matrix product operator (MPA with two physical legs)
+
+    :param startvec_bonddim: Bond dimension of random start vector if
+        no start vector is given. Use the bond dimension of the MPA if
+        None.
+
+    :param startvec: Start vector; generate a random start vector if
+        None.
+
+    :returns: mineigval, mineigval_eigvec_mpa
+
+    """
+    nr_sites = len(mpo)
+    eigvec = startvec
+    if eigvec is None:
+        pdims = max(dim[0] for dim in mpo.pdims)
+        if startvec_bonddim is None:
+            startvec_bonddim = max(mpo.bdims)
+        eigvec = mpnum.factory.random_mpa(nr_sites, pdims, startvec_bonddim)
+        eigvec /= norm(eigvec)
+    eigvec.normalize(right=1)
+    leftvecs = [np.array(1, ndmin=3)] + [None] * (nr_sites - 1)
+    rightvecs = [None] * (nr_sites - 1) + [np.array(1, ndmin=3)]
+    for pos in range(nr_sites - 2, -1, -1):
+        rightvecs[pos] = _mineig_rightvec_add(
+            rightvecs[pos + 1], mpo[pos + 1], eigvec[pos + 1])
+
+    num_sweeps = 5
+    for num_sweep in range(num_sweeps):
+        
+        # Sweep from left to right
+        for pos in range(nr_sites):
+            if pos == 0 and num_sweep > 0:
+                # Don't do first site again if we are not in the first
+                # sweep.
+                continue
+            if pos > 0:
+                eigvec.normalize(left=pos)
+                rightvecs[pos - 1] = None
+                leftvecs[pos] = _mineig_leftvec_add(
+                    leftvecs[pos - 1], mpo[pos - 1], eigvec[pos - 1])
+            eigval, eigvec_lten = _mineig_minimize_locally(
+                leftvecs[pos], mpo[pos], rightvecs[pos], eigvec[pos])
+            eigvec[pos] = eigvec_lten
+
+        # Sweep from right to left (don't do last site again)
+        for pos in range(nr_sites - 2, -1, -1):
+            if pos < nr_sites - 1:
+                eigvec.normalize(right=pos + 1)
+                leftvecs[pos + 1] = None
+                rightvecs[pos] = _mineig_rightvec_add(
+                    rightvecs[pos + 1], mpo[pos + 1], eigvec[pos + 1])
+            eigval, eigvec_lten = _mineig_minimize_locally(
+                leftvecs[pos], mpo[pos], rightvecs[pos], eigvec[pos])
+            eigvec[pos] = eigvec_lten
+
+    return eigval, eigvec
 
 
 ############################################################
