@@ -552,6 +552,20 @@ def local_purification_mps_to_mpo(mps):
     return mpo
 
 
+def mps_as_local_purification_mps(mps):
+    """Convert a pure MPS into a local purification MPS mixed state.
+
+    The ancilla legs will have dimension one, not increasing the
+    memory required for the MPS. 
+
+    :param MPArray mps: An MPA with one physical leg
+    :returns: An MPA with two physical legs (system and ancilla)
+
+    """
+    ltens = ( m.reshape(m.shape[0:2] + (1, m.shape[2])) for m in mps )
+    return MPArray(ltens)
+
+
 ############################################################
 #  Functions for dealing with local operations on tensors  #
 ############################################################

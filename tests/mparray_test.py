@@ -202,6 +202,20 @@ def test_local_purification_mps_to_mpo(nr_sites, local_dim, bond_dim):
     state2 = mpo_to_global(mpo)
     assert_array_almost_equal(state, state2)
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_mps_as_local_purification_mps(nr_sites, local_dim, bond_dim):
+    mps = factory.random_mpa(nr_sites, local_dim, bond_dim)
+    mps_as_puri = mp.mps_as_local_purification_mps(mps)
+    # Local purifications are representations of mixed
+    # states. Therefore, compare mps and mps_as_puri by converting
+    # them to mixed states.
+    state = mps.to_array()
+    state = np.outer(state, state.conj())
+    state.shape = (local_dim,) * (2*nr_sites)
+    mpo = mp.local_purification_mps_to_mpo(mps_as_puri)
+    state2 = mpo_to_global(mpo)
+    assert_array_almost_equal(state, state2)
+
 
 ###############################################################################
 #                         Normalization & Compression                         #
