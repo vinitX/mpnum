@@ -154,7 +154,7 @@ class MPArray(object):
 
         """
         assert array.ndim % plegs == 0, \
-           "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
+            "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
         ltens = _extract_factors(array[None], plegs=plegs)
         mpa = cls(ltens, _lnormalized=len(ltens) - 1)
         return mpa

@@ -248,7 +248,7 @@ def assert_lcannonical(ltens, msg=''):
     ltens = ltens.reshape((np.prod(ltens.shape[:-1]), ltens.shape[-1]))
     prod = ltens.conj().T.dot(ltens)
     assert_array_almost_equal(prod, np.identity(prod.shape[0]),
-                                         err_msg=msg)
+                              err_msg=msg)
 
 
 def assert_rcannonical(ltens, msg=''):
@@ -371,12 +371,12 @@ def test_compression_svd_errors(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
 
     mpo_new = mpo.copy()
-    mpo_new.compress(max_bdim=10*bond_dim, method='svd', direction='right')
+    mpo_new.compress(max_bdim=10 * bond_dim, method='svd', direction='right')
     assert_array_equal(mpo.bdims, mpo_new.bdims)
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
 
     mpo_new = mpo.copy()
-    mpo_new.compress(max_bdim=10*bond_dim, method='svd', direction='left')
+    mpo_new.compress(max_bdim=10 * bond_dim, method='svd', direction='left')
     assert_array_equal(mpo.bdims, mpo_new.bdims)
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
 
