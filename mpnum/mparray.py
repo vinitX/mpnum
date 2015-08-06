@@ -33,9 +33,9 @@ def _extract_factors(tens, plegs):
     :returns: List of local tensors with given number of legs yielding a
         factorization of tens
     """
-    if tens.ndim == plegs + 1:
-        return [tens.reshape(tens.shape + (1,))]
-    elif tens.ndim < plegs + 1:
+    if tens.ndim == plegs + 2:
+        return [tens]
+    elif tens.ndim < plegs + 2:
         raise AssertionError("Number of remaining legs insufficient.")
     else:
         unitary, rest = qr(tens.reshape((np.prod(tens.shape[:plegs + 1]),
@@ -161,7 +161,7 @@ class MPArray(object):
         """
         assert array.ndim % plegs == 0, \
             "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
-        ltens = _extract_factors(array[None], plegs=plegs)
+        ltens = _extract_factors(array.reshape((1,) + array.shape + (1,)), plegs=plegs)
         mpa = cls(ltens, _lnormalized=len(ltens) - 1)
         return mpa
 
