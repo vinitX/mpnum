@@ -31,6 +31,9 @@ class POVM(object):
         self._info_complete = info_complete
         self._pinv = pinv
 
+    def __len__(self):
+        return len(self._elements)
+
     @classmethod
     def from_vectors(cls, vecs, info_complete=False):
         """Generates a POVM consisting of rank 1 projectors based on the
@@ -41,17 +44,15 @@ class POVM(object):
         :param info_complete: Is the POVM ic (default False)
         :returns:
         """
-        dim = len(vecs[0])
-        povm_elems = np.array([np.outer(vec, vec.conj()).reshape(dim**2)
-                               for vec in vecs])
+        povm_elems = np.array([np.outer(vec, vec.conj()) for vec in vecs])
         return cls(povm_elems, info_complete=info_complete)
 
     @property
     def probability_map(self):
-        # FIXME RESHAPED HOW???
-        """Map that takes a (reshaped) density matrix to the POVM probabilities
+        """Map that takes a raveled density matrix to the POVM probabilities
         """
-        return self._elements.conj()
+        elems = self._elements
+        return np.conj(elems.reshape(len(self), -1))
 
     @property
     def linear_inversion_map(self):

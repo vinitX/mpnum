@@ -13,6 +13,7 @@ References:
 #   - replace internal structure as list of arrays with lazy generator of
 #   arrays (might not be possible, since we often iterate both ways!)
 #   - more in place operations for addition, subtraction, multiplication
+# FIXME single site MPAs
 
 from __future__ import absolute_import, division, print_function
 

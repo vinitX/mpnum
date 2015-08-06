@@ -24,7 +24,7 @@ def test_povm_normalization_ic(dim):
     for name, constructor in ALL_POVMS.items():
         # Check that the POVM is normalized: elements must sum to the identity
         current_povm = constructor(dim)
-        element_sum = current_povm.elements.sum(axis=0).reshape(dim, dim)
+        element_sum = np.sum(current_povm.elements, axis=0)
         assert_array_almost_equal(element_sum, np.eye(dim))
 
         # Check that the attribute that says whether the POVM is IC is correct.
