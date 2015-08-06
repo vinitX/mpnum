@@ -19,6 +19,8 @@ from mpnum import _tools
 
 
 MP_TEST_PARAMETERS = [(6, 2, 4), (4, 3, 5)]
+# nr_sites, local_dim, bond_dim, sites_per_group
+MP_TEST_PARAMETERS_GROUPS = [(6, 2, 4, 3), (6, 2, 4, 2), (4, 3, 5, 2)]
 
 
 # We choose to use a global reperentation of multipartite arrays throughout our
@@ -237,6 +239,33 @@ def test_mps_as_mpo(nr_sites, local_dim, bond_dim):
     state.shape = (local_dim,) * (2 * nr_sites)
     state2 = mpo_to_global(mpo)
     assert_array_almost_equal(state, state2)
+
+
+###############################################################################
+#                         Shape changes, conversions                          #
+###############################################################################
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, sites_per_group', MP_TEST_PARAMETERS_GROUPS)
+def test_group_sites(nr_sites, local_dim, bond_dim, sites_per_group):
+    assert (nr_sites % sites_per_group) == 0, \
+        'nr_sites not a multiple of sites_per_group'
+    mpa = factory.random_mpa(nr_sites, (local_dim,) * 2, bond_dim)
+    grouped_mpa = mpa.group_sites(sites_per_group)
+    op = mpa.to_array()
+    grouped_op = grouped_mpa.to_array()
+    assert_array_almost_equal(op, grouped_op)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, sites_per_group', MP_TEST_PARAMETERS_GROUPS)
+def test_split_sites(nr_sites, local_dim, bond_dim, sites_per_group):
+    assert (nr_sites % sites_per_group) == 0, \
+        'nr_sites not a multiple of sites_per_group'
+    mpa = factory.random_mpa(nr_sites // sites_per_group,
+                             (local_dim,) * (2 * sites_per_group), bond_dim)
+    split_mpa = mpa.split_sites(sites_per_group)
+    op = mpa.to_array()
+    split_op = split_mpa.to_array()
+    assert_array_almost_equal(op, split_op)
 
 
 ###############################################################################

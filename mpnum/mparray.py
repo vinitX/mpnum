@@ -244,6 +244,52 @@ class MPArray(object):
         raise NotImplementedError("Division by non-scalar not supported")
 
     ################################
+    #  Shape changes, conversions  #
+    ################################
+
+    def group_sites(self, sites_per_group):
+        """Group several MPA sites into one site.
+
+        The resulting MPA has length len(self) // sites_per_group and
+        sites_per_group * self.plegs[i] physical legs on site i. The
+        physical legs on each sites are in local form.
+
+        :param int sites_per_group: Number of sites to be grouped into one
+        :returns: An MPA with sites_per_group fewer sites and more plegs
+
+        """
+        assert (len(self) % sites_per_group) == 0, \
+            'length not a multiple of sites_per_group'
+        if sites_per_group == 1:
+            return self
+        ltens = []
+        for i in range(len(self) // sites_per_group):
+            ten = self[i * sites_per_group]
+            for j in range(1, sites_per_group):
+                ten = matdot(ten, self[i * sites_per_group + j])
+            ltens.append(ten)
+        return MPArray(ltens)
+
+    def split_sites(self, sites_per_group):
+        """Split MPA sites into several sites.
+
+        The resulting MPA has length len(self) * sites_per_group and
+        self.plegs[i] // sites_per_group physical legs on site i. The
+        physical legs on before splitting must be in local form.
+
+        :param int sites_per_group: Split each site in that many sites
+        :returns: An mpa with sites_per_group more sites and fewer plegs
+
+        """
+        ltens = []
+        for i in range(len(self)):
+            plegs = self.plegs[i]
+            assert (plegs % sites_per_group) == 0, \
+                'plegs not a multiple of sites_per_group'
+            ltens += _extract_factors(self[i], plegs//sites_per_group)
+        return MPArray(ltens)
+
+    ################################
     #  Normalizaton & Compression  #
     ################################
     # FIXME Maybe we should extract site-normalization logic to seperate funcs
