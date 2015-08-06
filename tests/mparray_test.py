@@ -190,8 +190,9 @@ def test_outer(nr_sites, local_dim, bond_dim):
 
     # Test 3-factors iteratively (since full form would be too large!!
     diff = mp.outer((mpo, mpo, mpo)) - mp.outer((mpo, mp.outer((mpo, mpo))))
+    diff.normalize()
     assert len(diff) == 3 * len(mpo)
-    assert mp.norm(diff) < 1e-3
+    assert mp.norm(diff) < 1e-6
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
