@@ -491,7 +491,7 @@ def partialtrace_operator(mpa, startsites, width):
     :param startsites: Iterator yielding the index of the leftmost sites of the
         supports of the results
     :param width: number of sites in support of the results
-    :returns: Iterator over the reduced MPAs in ascending order
+    :returns: Iterator over (startsite, reduced_mpa)
     """
     rem_left = {0: np.array(1, ndmin=2)}
     rem_right = rem_left.copy()
@@ -525,7 +525,7 @@ def partialtrace_operator(mpa, startsites, width):
         # errors.
         # Is there something like a "lazy copy" or "copy-on-write"-copy?
         # I believe not.
-        ltens = [lten.copy() for lten in mpa[startsite:startsite + width]]
+        ltens = [lten.copy() for lten in mpa[startsite : startsite + width]]
         rem = get_remainder(rem_left, startsite, 1)
         ltens[0] = matdot(rem, ltens[0])
         rem = get_remainder(rem_right, num_sites - (startsite + width), -1)
