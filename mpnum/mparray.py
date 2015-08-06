@@ -546,6 +546,8 @@ def local_purification_mps_to_mpo(mps):
 
     """
     mps_adj = mps.adj()
+    # The dot product here contracts the physical indices of two
+    # ancilla sites, tracing them out.
     mpo = dot(mps, mps_adj)
     return mpo
 
