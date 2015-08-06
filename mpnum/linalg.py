@@ -162,7 +162,8 @@ def _mineig_local_op(leftvec, mpo_lten, rightvec):
     return op
 
 
-def _mineig_minimize_locally(leftvec, mpo_lten, rightvec, eigvec_lten):
+def _mineig_minimize_locally(leftvec, mpo_lten, rightvec, eigvec_lten,
+                             eigs_opts=None):
     """Perform the local eigenvalue minimization on one site on one site.
 
     Return a new (expectedly smaller) eigenvalue and a new local
@@ -189,15 +190,18 @@ def _mineig_minimize_locally(leftvec, mpo_lten, rightvec, eigvec_lten):
     Middle row: MPO matrices with row (column) indices to bottom (top)
 
     """
-    eigs_opts = {'k': 1, 'which': 'SR', 'tol': 1e-6}
+    if eigs_opts is None:
+        eigs_opts = {'k': 1, 'which': 'SR', 'tol': 1e-6}
     op = _mineig_local_op(leftvec, mpo_lten, rightvec)
     eigvals, eigvecs = eigs(op, v0=eigvec_lten.flatten(), **eigs_opts)
-    eigval = eigvals[0]
-    eigvec_lten = eigvecs[:, 0].reshape(eigvec_lten.shape)
+    eigval_pos = eigvals.real.argmin()
+    eigval = eigvals[eigval_pos]
+    eigvec_lten = eigvecs[:, eigval_pos].reshape(eigvec_lten.shape)
     return eigval, eigvec_lten
 
 
-def mineig(mpo, startvec=None, startvec_bonddim=None):
+def mineig(mpo, startvec=None, startvec_bonddim=None, max_num_sweeps=5,
+           eigs_opts=None):
     """Iterative search for smallest eigenvalue and eigenvector of an MPO.
 
     Algorithm: [Sch11, Sec. 6.3]
@@ -210,6 +214,12 @@ def mineig(mpo, startvec=None, startvec_bonddim=None):
 
     :param startvec: Start vector; generate a random start vector if
         None.
+
+    :param max_num_sweeps: Maximum number of sweeps to do. Currently,
+        always do that many sweeps.
+
+    :param eigs_opts: kwargs for scipy.sparse.linalg.eigs(). You
+        should always set k=1.
 
     :returns: mineigval, mineigval_eigvec_mpa
 
@@ -243,8 +253,7 @@ def mineig(mpo, startvec=None, startvec_bonddim=None):
         rightvecs[pos] = _mineig_rightvec_add(
             rightvecs[pos + 1], mpo[pos + 1], eigvec[pos + 1])
 
-    num_sweeps = 5
-    for num_sweep in range(num_sweeps):
+    for num_sweep in range(max_num_sweeps):
 
         # Sweep from left to right
         for pos in range(nr_sites):
@@ -258,7 +267,7 @@ def mineig(mpo, startvec=None, startvec_bonddim=None):
                 leftvecs[pos] = _mineig_leftvec_add(
                     leftvecs[pos - 1], mpo[pos - 1], eigvec[pos - 1])
             eigval, eigvec_lten = _mineig_minimize_locally(
-                leftvecs[pos], mpo[pos], rightvecs[pos], eigvec[pos])
+                leftvecs[pos], mpo[pos], rightvecs[pos], eigvec[pos], eigs_opts)
             eigvec[pos] = eigvec_lten
 
         # Sweep from right to left (don't do last site again)
@@ -269,7 +278,7 @@ def mineig(mpo, startvec=None, startvec_bonddim=None):
                 rightvecs[pos] = _mineig_rightvec_add(
                     rightvecs[pos + 1], mpo[pos + 1], eigvec[pos + 1])
             eigval, eigvec_lten = _mineig_minimize_locally(
-                leftvecs[pos], mpo[pos], rightvecs[pos], eigvec[pos])
+                leftvecs[pos], mpo[pos], rightvecs[pos], eigvec[pos], eigs_opts)
             eigvec[pos] = eigvec_lten
 
     return eigval, eigvec
