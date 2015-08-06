@@ -20,8 +20,7 @@ import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
 
-import mpnum
-from mpnum._tools import matdot, norm_2
+from mpnum._tools import matdot
 from six.moves import range, zip
 
 
