@@ -478,6 +478,18 @@ def inner(mpa1, mpa2):
     return _ltens_to_array(ltens_new)
 
 
+def outer(mpas):
+    """Performs the tensor product of MPAs given in *args
+
+    :param mpas: Iterable of MPAs same order as they should appear in the chain
+    :returns: MPA of length len(args[0]) + ... + len(args[-1])
+
+    """
+    # TODO Make this normalization aware
+    # FIXME Is copying here a good idea?
+    return MPArray(sum(([ltens.copy() for ltens in mpa] for mpa in mpas), []))
+
+
 def norm(mpa):
     """Computes the norm (Hilbert space norm for MPS, Frobenius norm for MPO)
     of the matrix product operator. In contrast to `mparray.inner`, this can
@@ -488,7 +500,7 @@ def norm(mpa):
 
     """
     # FIXME Take advantage of normalization
-    return np.sqrt(inner(mpa, mpa))
+    return np.sqrt(np.abs(inner(mpa, mpa)))
 
 
 def partialtrace_operator(mpa, startsites, width):

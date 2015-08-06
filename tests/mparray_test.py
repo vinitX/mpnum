@@ -170,6 +170,27 @@ def test_div_mpo_scalar(nr_sites, local_dim, bond_dim):
     assert_array_almost_equal(op / scalar, mpo_to_global(mpo))
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_outer(nr_sites, local_dim, bond_dim):
+    # NOTE: Everything here is in local form!!!
+    assert nr_sites > 1
+
+    mpo = factory.random_mpa(nr_sites // 2, (local_dim, local_dim), bond_dim)
+    op = mpo.to_array()
+
+    # Test with 2-factors with full form
+    mpo_double = mp.outer((mpo, mpo))
+    op_double = np.tensordot(op, op, axes=(tuple(), ) * 2)
+    assert len(mpo_double) == 2 * len(mpo)
+    assert_array_almost_equal(op_double, mpo_double.to_array())
+    assert_array_equal(mpo_double.bdims, mpo.bdims + (1,) + mpo.bdims)
+
+    # Test 3-factors iteratively (since full form would be too large!!
+    diff = mp.outer((mpo, mpo, mpo)) - mp.outer((mpo, mp.outer((mpo, mpo))))
+    assert len(diff) == 3 * len(mpo)
+    assert mp.norm(diff) < 1e-3
+
+
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_partial_trace(nr_sites, local_dim, bond_dim, keep_width):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
