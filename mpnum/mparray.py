@@ -566,6 +566,17 @@ def mps_as_local_purification_mps(mps):
     return MPArray(ltens)
 
 
+def mps_as_mpo(mps):
+    """Convert a pure MPS to a mixed state MPO.
+
+    :param MPArray mps: An MPA with one physical leg
+    :returns: An MPO (density matrix as MPA with two physical legs)
+    """
+    mps_loc_puri = mps_as_local_purification_mps(mps)
+    mpo = local_purification_mps_to_mpo(mps_loc_puri)
+    return mpo
+
+
 ############################################################
 #  Functions for dealing with local operations on tensors  #
 ############################################################
