@@ -533,6 +533,23 @@ def partialtrace_operator(mpa, startsites, width):
         yield startsite, MPArray(ltens)
 
 
+def local_purification_mps_to_mpo(mps):
+    """Convert a local purification MPS to a mixed state MPO.
+
+    A mixed state on n sites is represented in local purification MPS
+    form by a MPA with n sites and two physical legs per site. The
+    first physical leg is a 'system' site, while the second physical
+    leg is an 'ancilla' site.
+
+    :param MPArray mps: An MPA with two physical legs (system and ancilla)
+    :returns: An MPO (density matrix as MPA with two physical legs)
+
+    """
+    mps_adj = mps.adj()
+    mpo = dot(mps, mps_adj)
+    return mpo
+
+
 ############################################################
 #  Functions for dealing with local operations on tensors  #
 ############################################################

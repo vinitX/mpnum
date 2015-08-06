@@ -184,6 +184,25 @@ def test_partial_trace(nr_sites, local_dim, bond_dim, keep_width):
                                   err_msg="not equal at startsite {}".format(startsite))
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_local_purification_mps_to_mpo(nr_sites, local_dim, bond_dim):
+    assert (nr_sites % 2) == 0, 'this test can only be run for even numbers of sites'
+    nr_sites = int(nr_sites / 2)
+    mps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo = mp.local_purification_mps_to_mpo(mps)
+    # Local form is what we will use: One system site, one ancilla site, etc
+    purification = mps.to_array()
+    # Convert to a density matrix
+    purification = np.outer(purification, purification.conj())
+    purification.shape = (local_dim,) * (2*2*nr_sites)
+    # Trace out the ancilla sites
+    traceout = tuple(range(1, 2*nr_sites, 2))
+    state = _tools.partial_trace(purification, traceout)
+    # Here, we need global form
+    state2 = mpo_to_global(mpo)
+    assert_array_almost_equal(state, state2)
+
+
 ###############################################################################
 #                         Normalization & Compression                         #
 ###############################################################################
