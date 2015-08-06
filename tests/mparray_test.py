@@ -18,7 +18,8 @@ from mpnum._tools import global_to_local, local_to_global
 from mpnum import _tools
 
 
-MP_TEST_PARAMETERS = [(6, 2, 4), (4, 3, 5)]
+# nr_sites, local_dim, bond_dim
+MP_TEST_PARAMETERS = [(6, 2, 4), (4, 3, 5), (5, 2, 1)]
 # nr_sites, local_dim, bond_dim, sites_per_group
 MP_TEST_PARAMETERS_GROUPS = [(6, 2, 4, 3), (6, 2, 4, 2), (4, 3, 5, 2)]
 
@@ -170,6 +171,27 @@ def test_div_mpo_scalar(nr_sites, local_dim, bond_dim):
 
     mpo /= scalar
     assert_array_almost_equal(op / scalar, mpo_to_global(mpo))
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_outer(nr_sites, local_dim, bond_dim):
+    # NOTE: Everything here is in local form!!!
+    assert nr_sites > 1
+
+    mpo = factory.random_mpa(nr_sites // 2, (local_dim, local_dim), bond_dim)
+    op = mpo.to_array()
+
+    # Test with 2-factors with full form
+    mpo_double = mp.outer((mpo, mpo))
+    op_double = np.tensordot(op, op, axes=(tuple(), ) * 2)
+    assert len(mpo_double) == 2 * len(mpo)
+    assert_array_almost_equal(op_double, mpo_double.to_array())
+    assert_array_equal(mpo_double.bdims, mpo.bdims + (1,) + mpo.bdims)
+
+    # Test 3-factors iteratively (since full form would be too large!!
+    diff = mp.outer((mpo, mpo, mpo)) - mp.outer((mpo, mp.outer((mpo, mpo))))
+    assert len(diff) == 3 * len(mpo)
+    assert mp.norm(diff) < 1e-3
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
@@ -411,7 +433,7 @@ def test_compression_svd_errors(nr_sites, local_dim, bond_dim):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_compression_svd_hard_cutoff(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    zero = factory.zero_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    zero = factory.zero(nr_sites, (local_dim, local_dim), bond_dim)
     mpo_new = mpo + zero
 
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
@@ -440,7 +462,7 @@ def test_compression_svd_hard_cutoff(nr_sites, local_dim, bond_dim):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_compression_svd_relerr(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    zero = factory.zero_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    zero = factory.zero(nr_sites, (local_dim, local_dim), bond_dim)
     mpo_new = mpo + zero
 
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
@@ -467,13 +489,14 @@ def test_compression_svd_overlap(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     mpo_new = mpo.copy()
 
-    overlap = mpo_new.compress(max_bdim=bond_dim // 2, method='svd',
-                               direction='right')
+    # Catch superficious compression paramter
+    max_bdim = max(bond_dim // 2, 1)
+
+    overlap = mpo_new.compress(max_bdim=max_bdim, method='svd', direction='right')
     assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
-    assert all(bdim_n < bdim_o for bdim_n, bdim_o in zip(mpo_new.bdims, mpo.bdims))
+    assert all(bdim <= max_bdim for bdim in mpo_new.bdims)
 
     mpo_new = mpo.copy()
-    overlap = mpo_new.compress(max_bdim=bond_dim // 2, method='svd',
-                               direction='left')
+    overlap = mpo_new.compress(max_bdim=max_bdim, method='svd', direction='left')
     assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
-    assert all(bdim_n < bdim_o for bdim_n, bdim_o in zip(mpo_new.bdims, mpo.bdims))
+    assert all(bdim <= max_bdim for bdim in mpo_new.bdims)

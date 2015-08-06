@@ -3,10 +3,13 @@
 """Module to create random test instances of matrix product arrays"""
 
 from __future__ import division, print_function
+
+import itertools as it
+
 import numpy as np
-from six.moves import range
 
 import mpnum.mparray as mp
+from six.moves import range
 
 
 def _zrandn(shape):
@@ -109,7 +112,7 @@ def random_mpa(sites, ldim, bdim):
     return _generate(sites, ldim, bdim, _zrandn)
 
 
-def zero_mpa(sites, ldim, bdim):
+def zero(sites, ldim, bdim):
     """Returns a MPA with localtensors beeing zero (but of given shape)
 
     :param sites: Number of sites
@@ -119,3 +122,14 @@ def zero_mpa(sites, ldim, bdim):
 
     """
     return _generate(sites, ldim, bdim, np.zeros)
+
+
+def eye(sites, ldim):
+    """Returns a MPA representing the identity matrix
+
+    :param sites: Number of sites
+    :param ldim: Tuple of int-like of local dimensions
+    :returns: Representation of the identity matrix as MPA
+
+    """
+    return mp.MPArray.from_kron(it.repeat(np.eye(ldim), sites))

@@ -13,6 +13,7 @@ References:
 #   - replace internal structure as list of arrays with lazy generator of
 #   arrays (might not be possible, since we often iterate both ways!)
 #   - more in place operations for addition, subtraction, multiplication
+# FIXME single site MPAs
 
 from __future__ import absolute_import, division, print_function
 
@@ -141,7 +142,7 @@ class MPArray(object):
         return self._lnormalized or 0, self._rnormalized or len(self)
 
     @classmethod
-    def from_array(cls, array, plegs):
+    def from_array(cls, array, plegs=None):
         """Computes the (exact) representation of `array` as MPA with open
         boundary conditions, i.e. bond dimension 1 at the boundary. This
         is done by factoring the off the left and the "physical" legs from
@@ -156,9 +157,10 @@ class MPArray(object):
             array[(i1), ..., (iN)], i.e. the legs which are factorized into
             the same factor are already adjacent. (For me details see
             :func:`_tools.global_to_local`)
-        :param int plegs: Number of physical legs per site
+        :param int plegs: Number of physical legs per site (default array.ndim)
 
         """
+        plegs = plegs if plegs is not None else array.ndim
         assert array.ndim % plegs == 0, \
             "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
         ltens = _extract_factors(array.reshape((1,) + array.shape + (1,)), plegs=plegs)
@@ -173,6 +175,7 @@ class MPArray(object):
         :param factors: A list of arrays with arbitrary number of physical legs
         :returns: The kronecker product of the factors as MPA
         """
+        # FIXME Do we still need this or shall we prefer mp.outer?
         return cls(a[None, ..., None] for a in factors)
 
     def to_array(self):
@@ -425,7 +428,10 @@ class MPArray(object):
         See :func:`MPArray.compress` for parameters
         """
         assert self.normal_form == (0, 1)
-        assert (0. <= relerr) and (relerr <= 1.)
+        assert max_bdim > 0, "Cannot compress to bdim={}".format(max_bdim)
+        assert (0. <= relerr) and (relerr <= 1.), \
+            "Relerr={} not allowed".format(relerr)
+
         for site in range(len(self) - 1):
             ltens = self._ltens[site]
             u, sv, v = svd(ltens.reshape((-1, ltens.shape[-1])))
@@ -451,7 +457,10 @@ class MPArray(object):
 
         """
         assert self.normal_form == (len(self) - 1, len(self))
-        assert (0. <= relerr) and (relerr <= 1.)
+        assert max_bdim > 0, "Cannot compress to bdim={}".format(max_bdim)
+        assert (0. <= relerr) and (relerr <= 1.), \
+            "Relerr={} not allowed".format(relerr)
+
         for site in range(len(self) - 1, 0, -1):
             ltens = self._ltens[site]
             matshape = (ltens.shape[0], -1)
@@ -521,6 +530,18 @@ def inner(mpa1, mpa2):
     return _ltens_to_array(ltens_new)
 
 
+def outer(mpas):
+    """Performs the tensor product of MPAs given in *args
+
+    :param mpas: Iterable of MPAs same order as they should appear in the chain
+    :returns: MPA of length len(args[0]) + ... + len(args[-1])
+
+    """
+    # TODO Make this normalization aware
+    # FIXME Is copying here a good idea?
+    return MPArray(sum(([ltens.copy() for ltens in mpa] for mpa in mpas), []))
+
+
 def norm(mpa):
     """Computes the norm (Hilbert space norm for MPS, Frobenius norm for MPO)
     of the matrix product operator. In contrast to `mparray.inner`, this can
@@ -531,7 +552,7 @@ def norm(mpa):
 
     """
     # FIXME Take advantage of normalization
-    return np.sqrt(inner(mpa, mpa))
+    return np.sqrt(np.abs(inner(mpa, mpa)))
 
 
 def partialtrace_operator(mpa, startsites, width):
