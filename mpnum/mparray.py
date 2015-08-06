@@ -712,6 +712,28 @@ def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten):
     :param op_lten: Local tensor of the MPO
     :param mps_lten: Local tensor of the current MPS eigenstate
 
+    leftvecs[i] is L_{i-1}, See [Sch11, arXiv version, Fig. 39 ond
+    p. 63 and Fig. 38 and Eq. (191) on p. 62].  Regarding Fig. 39,
+    things are as follows:
+
+    Figure:
+
+    Upper row: MPS matrices
+    Lower row: Complex Conjugate MPS matrices
+    Middle row: MPO matrices with row (column) indices to bottom (top)
+
+    Figure, left part:
+
+    a_{i-1} (left): 'mps_bond' of leftvec
+    a_{i-1} (right): 'left_mps_bond' of mps_lten
+    b_{i-1} (left): 'mpo_bond' of leftvec
+    b_{i-1} (right): 'left_mpo_bond' of mpo_lten
+    a'_{i-1} (left): 'cc_mps_bond' of leftvec
+    a'_{i+1} (left): 'left_mps_bond' of mps_lten.conj()
+    a_i: 'right_mps_bond' of mps_lten
+    b_i: 'right_mpo_bond' of mpo_lten
+    a'_i: 'right_mps_bond' of mps_lten.conj()
+
     """
     leftvec_names = ('mps_bond', 'mpo_bond', 'cc_mps_bond')
     mpo_names = ('left_mpo_bond', 'phys_row', 'phys_col', 'right_mpo_bond')
@@ -749,6 +771,10 @@ def _mineig_rightvec_add(rightvec, mpo_lten, mps_lten):
         It has three indices: mps bond, mpo bond, complex conjugate mps bond
     :param op_lten: Local tensor of the MPO
     :param mps_lten: Local tensor of the current MPS eigenstate
+
+    This does the same thing as _mineig_leftvec_add(), except that
+    'left' and 'right' are exchanged in the contractions (but not in
+    the axis names of the input tensors).
 
     """
     rightvec_names = ('mps_bond', 'mpo_bond', 'cc_mps_bond')
@@ -789,6 +815,22 @@ def _mineig_local_op(leftvec, mpo_lten, rightvec):
     :param rightvec: Right vector
         Three indices: mps bond, mpo bond, complex conjugate mps bond
 
+    See [Sch11, arXiv version, Fig. 38 on p. 62].  This method
+    implements the contractions across the dashed lines in the figure.
+
+    Indices and axis names map as follows:
+
+    Upper row: MPS matrices
+    Lower row: Complex Conjugate MPS matrices
+    Middle row: MPO matrices with row (column) indices to bottom (top)
+
+    a_{i-1}: 'mps_bond' of leftvec
+    a'_{i-1}: 'cc_mps_bond' of leftvec
+    a_i: 'mps_bond' of rightvec
+    a'_i: 'mps_bond' of rightvec
+    sigma_i: 'phys_col' of mpo_lten
+    sigma'_i: 'phys_row' of mpo_lten
+
     """
     leftvec_names = ('left_mps_bond', 'left_mpo_bond', 'left_cc_mps_bond')
     mpo_names = ('left_mpo_bond', 'phys_row', 'phys_col', 'right_mpo_bond')
@@ -825,6 +867,18 @@ def _mineig_minimize_locally(leftvec, mpo_lten, rightvec, eigvec_lten):
     :param eigvec_lten: Local tensor of the MPS eigenvector
     :returns: mineigval, mineigval_eigvec_lten
 
+    See [Sch11, arXiv version, Fig. 42 on p. 67].  This method
+    computes the operator ('op'), defined by everything except the
+    circle of the first term in the figure. It then obtains the
+    minimal eigenvalue (lambda in the figure) and eigenvector (circled
+    part / single matrix in the figure).
+
+    We use the figure as follows:
+
+    Upper row: MPS matrices
+    Lower row: Complex Conjugate MPS matrices
+    Middle row: MPO matrices with row (column) indices to bottom (top)
+
     """
     eigs_opts = {'k': 1, 'which': 'SR', 'tol': 1e-6}
     op = _mineig_local_op(leftvec, mpo_lten, rightvec)
@@ -849,6 +903,20 @@ def mineig(mpo, startvec=None, startvec_bonddim=None):
         None.
 
     :returns: mineigval, mineigval_eigvec_mpa
+
+    Comments on the implementation: 
+
+    References are to the arXiv version of [Sch11] assuming we replace
+    zero-based with one-based indices there.
+
+    leftvecs[i] is L_{i-1}  \
+    rightvecs[i] is R_{i}   |  See Fig. 38 and Eq. (191) on p. 62.
+    mpo[i] is W_{i}         /
+    eigvec[i] is M_{i}         This is just the MPS matrix.
+
+    Psi^A_{i-1} and Psi^B_{i} are identity matrices because of
+    normalization. (See Fig. 42 on p. 67 and the text; see also
+    Figs. 14 and 15 and pages 28 and 29.)
 
     """
     nr_sites = len(mpo)
