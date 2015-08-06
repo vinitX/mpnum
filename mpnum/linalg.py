@@ -50,12 +50,12 @@ def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten):
     leftvec = mpnum.named_ndarray(leftvec, leftvec_names)
     mpo_lten = mpnum.named_ndarray(mpo_lten, mpo_names)
     mps_lten = mpnum.named_ndarray(mps_lten, mps_names)
-    
+
     contract_mps = (('mps_bond', 'left_mps_bond'),)
     leftvec = leftvec.tensordot(mps_lten, contract_mps)
     rename_mps = (('right_mps_bond', 'mps_bond'),)
     leftvec = leftvec.rename(rename_mps)
-    
+
     contract_mpo = (
         ('mpo_bond', 'left_mpo_bond'),
         ('phys', 'phys_col'))
@@ -68,7 +68,7 @@ def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten):
         ('right_mpo_bond', 'mpo_bond'),
         ('right_mps_bond', 'cc_mps_bond'))
     leftvec = leftvec.rename(rename_mps_mpo)
-    
+
     leftvec = leftvec.to_array(leftvec_names)
     return leftvec
 
@@ -92,12 +92,12 @@ def _mineig_rightvec_add(rightvec, mpo_lten, mps_lten):
     rightvec = mpnum.named_ndarray(rightvec, rightvec_names)
     mpo_lten = mpnum.named_ndarray(mpo_lten, mpo_names)
     mps_lten = mpnum.named_ndarray(mps_lten, mps_names)
-    
+
     contract_mps = (('mps_bond', 'right_mps_bond'),)
     rightvec = rightvec.tensordot(mps_lten, contract_mps)
     rename_mps = (('left_mps_bond', 'mps_bond'),)
     rightvec = rightvec.rename(rename_mps)
-    
+
     contract_mpo = (
         ('mpo_bond', 'right_mpo_bond'),
         ('phys', 'phys_col'))
@@ -110,7 +110,7 @@ def _mineig_rightvec_add(rightvec, mpo_lten, mps_lten):
         ('left_mpo_bond', 'mpo_bond'),
         ('left_mps_bond', 'cc_mps_bond'))
     rightvec = rightvec.rename(rename_mps_mpo)
-    
+
     rightvec = rightvec.to_array(rightvec_names)
     return rightvec
 
@@ -213,7 +213,7 @@ def mineig(mpo, startvec=None, startvec_bonddim=None):
 
     :returns: mineigval, mineigval_eigvec_mpa
 
-    Comments on the implementation: 
+    Comments on the implementation:
 
     References are to the arXiv version of [Sch11] assuming we replace
     zero-based with one-based indices there.
@@ -245,7 +245,7 @@ def mineig(mpo, startvec=None, startvec_bonddim=None):
 
     num_sweeps = 5
     for num_sweep in range(num_sweeps):
-        
+
         # Sweep from left to right
         for pos in range(nr_sites):
             if pos == 0 and num_sweep > 0:
@@ -273,4 +273,3 @@ def mineig(mpo, startvec=None, startvec_bonddim=None):
             eigvec[pos] = eigvec_lten
 
     return eigval, eigvec
-

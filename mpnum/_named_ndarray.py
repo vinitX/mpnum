@@ -3,6 +3,8 @@
 
 """
 A numpy.ndarray with axis names
+
+Access as mpnum.named_ndarray.
 """
 
 
@@ -71,7 +73,7 @@ class named_ndarray(object):
         name_pos = [self.axispos(name) for name in name_order]
         array = self._array.transpose(name_pos)
         return array
-        
+
     def tensordot(self, other, axes):
         """Compute tensor dot product along named axes.
 
@@ -95,5 +97,4 @@ class named_ndarray(object):
     @property
     def axisnames(self):
         """The names of the array"""
-        return _axisnames
-
+        return self._axisnames

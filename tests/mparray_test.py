@@ -225,8 +225,8 @@ def test_mps_as_mpo(nr_sites, local_dim, bond_dim):
     mps = factory.random_mpa(nr_sites, local_dim, bond_dim)
     # Instead of calling the two functions, we call mps_as_mpo(),
     # which does exactly that:
-    #mps_as_puri = mp.mps_as_local_purification_mps(mps)
-    #mpo = mp.local_purification_mps_to_mpo(mps_as_puri)
+    #   mps_as_puri = mp.mps_as_local_purification_mps(mps)
+    #   mpo = mp.local_purification_mps_to_mpo(mps_as_puri)
     mpo = mp.mps_as_mpo(mps)
     # This is also a test of mp.mps_as_local_purification_mps() in the
     # following sense: Local purifications are representations of
