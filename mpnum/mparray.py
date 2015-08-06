@@ -136,7 +136,7 @@ class MPArray(object):
         return self._lnormalized or 0, self._rnormalized or len(self)
 
     @classmethod
-    def from_array(cls, array, plegs):
+    def from_array(cls, array, plegs=None):
         """Computes the (exact) representation of `array` as MPA with open
         boundary conditions, i.e. bond dimension 1 at the boundary. This
         is done by factoring the off the left and the "physical" legs from
@@ -151,9 +151,10 @@ class MPArray(object):
             array[(i1), ..., (iN)], i.e. the legs which are factorized into
             the same factor are already adjacent. (For me details see
             :func:`_tools.global_to_local`)
-        :param int plegs: Number of physical legs per site
+        :param int plegs: Number of physical legs per site (default array.ndim)
 
         """
+        plegs = plegs if plegs is not None else array.ndim
         assert array.ndim % plegs == 0, \
            "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
         ltens = _extract_factors(array[None], plegs=plegs)
