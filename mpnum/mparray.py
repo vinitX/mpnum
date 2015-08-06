@@ -554,7 +554,8 @@ def partialtrace_local_purification_mps(mps, startsites, width):
         left_bd, system, ancilla, right_bd = lten.shape
         newshape = (1, system, left_bd * ancilla, right_bd)
         ltens = [lten.swapaxes(0, 1).copy().reshape(newshape)]
-        ltens += (lten.copy() for lten in mps[startsite + 1 : startsite + width - 1])
+        ltens += (lten.copy()
+                  for lten in mps[startsite + 1: startsite + width - 1])
         lten = mps[startsite + width - 1]
         left_bd, system, ancilla, right_bd = lten.shape
         newshape = (left_bd, system, ancilla * right_bd, 1)
@@ -586,13 +587,13 @@ def mps_as_local_purification_mps(mps):
     """Convert a pure MPS into a local purification MPS mixed state.
 
     The ancilla legs will have dimension one, not increasing the
-    memory required for the MPS. 
+    memory required for the MPS.
 
     :param MPArray mps: An MPA with one physical leg
     :returns: An MPA with two physical legs (system and ancilla)
 
     """
-    ltens = ( m.reshape(m.shape[0:2] + (1, m.shape[2])) for m in mps )
+    ltens = (m.reshape(m.shape[0:2] + (1, m.shape[2])) for m in mps)
     return MPArray(ltens)
 
 

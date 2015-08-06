@@ -213,13 +213,14 @@ def test_local_purification_mps_to_mpo(nr_sites, local_dim, bond_dim):
     purification = mps.to_array()
     # Convert to a density matrix
     purification = np.outer(purification, purification.conj())
-    purification.shape = (local_dim,) * (2*2*nr_sites)
+    purification.shape = (local_dim,) * (2 * 2 * nr_sites)
     # Trace out the ancilla sites
-    traceout = tuple(range(1, 2*nr_sites, 2))
+    traceout = tuple(range(1, 2 * nr_sites, 2))
     state = _tools.partial_trace(purification, traceout)
     # Here, we need global form
     state2 = mpo_to_global(mpo)
     assert_array_almost_equal(state, state2)
+
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mps_as_mpo(nr_sites, local_dim, bond_dim):
@@ -235,7 +236,7 @@ def test_mps_as_mpo(nr_sites, local_dim, bond_dim):
     # converting them to mixed states.
     state = mps.to_array()
     state = np.outer(state, state.conj())
-    state.shape = (local_dim,) * (2*nr_sites)
+    state.shape = (local_dim,) * (2 * nr_sites)
     state2 = mpo_to_global(mpo)
     assert_array_almost_equal(state, state2)
 
