@@ -348,7 +348,7 @@ def test_compression_svd_errors(nr_sites, local_dim, bond_dim):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_compression_svd_hard_cutoff(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    zero = factory.zero_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    zero = factory.zero(nr_sites, (local_dim, local_dim), bond_dim)
     mpo_new = mpo + zero
 
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
@@ -377,7 +377,7 @@ def test_compression_svd_hard_cutoff(nr_sites, local_dim, bond_dim):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_compression_svd_relerr(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    zero = factory.zero_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    zero = factory.zero(nr_sites, (local_dim, local_dim), bond_dim)
     mpo_new = mpo + zero
 
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))

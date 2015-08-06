@@ -169,6 +169,7 @@ class MPArray(object):
         :param factors: A list of arrays with arbitrary number of physical legs
         :returns: The kronecker product of the factors as MPA
         """
+        # FIXME Do we still need this or shall we prefer mp.outer?
         return cls(a[None, ..., None] for a in factors)
 
     def to_array(self):

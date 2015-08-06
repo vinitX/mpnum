@@ -6,17 +6,27 @@
 
 from __future__ import division, print_function
 
+import itertools as it
 from inspect import isfunction
 
 import numpy as np
 import pytest as pt
 from numpy.testing import assert_array_almost_equal
 
-from mpnum import povm
+import mpnum.mparray as mp
+import mpnum.povm as povm
+import mpnum.factory as factory
 
-POVM_TEST_PARAMETERS_MPA = [(6, 2, 7), (3, 3, 3), (3, 6, 3), (3, 7, 4)]
 ALL_POVMS = {name: constructor for name, constructor in povm.__dict__.items()
              if name.endswith('_povm') and isfunction(constructor)}
+
+
+def mp_from_array_repeat(array, nr_sites):
+    """Generate a MPA representation of the `nr_sites`-fold tensor product of
+    array.
+    """
+    mpa = mp.MPArray.from_array(array)
+    return mp.outer(it.repeat(mpa, nr_sites))
 
 
 @pt.mark.parametrize('dim', [(2), (3), (6), (7)])
@@ -39,44 +49,24 @@ def test_povm_normalization_ic(dim):
                 'POVM {} is informationally complete'.format(name)
 
 
-#  @pt.mark.parametrize('nr_sites, d, bond_dim', POVM_TEST_PARAMETERS_MPA)
-#  def test_povm_ic_mpa(nr_sites, d, bond_dim):
-#      # Check that the tensor product of the PauliGen POVM is IC.
-#      p = povm.PauliGen(opts={'d': d})
-#      probab_map = p.get_probability_map_mpa(nr_sites)
-#      inv_map = p.get_linear_inversion_map_mpo(nr_sites)
-#      reconstruction_map = mp.dot(inv_map, probab_map)
-#      eye = mp.MPArray.from_kron(itertools.repeat(np.eye(d**2), nr_sites))
-#      diff = reconstruction_map - eye
-#      diff_norm = mp.norm(diff)
-#      assert diff_norm < 1e-6
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim',
+                     [(6, 2, 7), (3, 3, 3), (3, 6, 3), (3, 7, 4)])
+def test_povm_ic_mpa(nr_sites, local_dim, bond_dim):
+    # Check that the tensor product of the PauliGen POVM is IC.
+    paulis = povm.pauli_povm(local_dim)
+    inv_map = mp_from_array_repeat(paulis.linear_inversion_map, nr_sites)
+    probab_map = mp_from_array_repeat(paulis.probability_map, nr_sites)
+    reconstruction_map = mp.dot(inv_map, probab_map)
 
-#      # Check linear inversion for a particular example MPA.
-#      # Linear inversion works for arbitrary matrices, not only for states,
-#      # so we test it for an arbitrary MPA.
-#      mpa = factory.random_mpa(nr_sites, d**2, bond_dim)
-#      # Normalize somehow, otherwise the absolute error check below will not work.
-#      mpa /= mp.norm(mpa)
-#      probab = mp.dot(probab_map, mpa)
-#      rec = mp.dot(inv_map, probab)
-#      diff = mpa - rec
-#      diff_norm = mp.norm(diff)
-#      assert diff_norm < 1e-6
+    eye = factory.eye(nr_sites, local_dim**2)
+    assert mp.norm(reconstruction_map - eye) < 1e-5
 
-
-#  @pt.mark.parametrize('nr_sites, d, bond_dim', POVM_TEST_PARAMETERS_MPA)
-#  def test_maxlik_R(nr_sites, d, bond_dim):
-#      # Check that the tensor product of the PauliGen POVM is IC.
-#      p = povm.PauliGen(opts={'d': d})
-#      mpa = factory.random_mpa(nr_sites, d**2, bond_dim)
-#      # Normalize somehow
-#      mpa /= mp.norm(mpa)
-#      probab = mp.dot(p.get_probability_map_mpa(nr_sites), mpa)
-#      probab = probab.to_array()
-#      mpa = factory.random_mpa(nr_sites, d**2, bond_dim)
-#      # Normalize somehow
-#      mpa /= mp.norm(mpa)
-#      R = p.maxlik_R(mpa, probab)
-#      # UNTESTED -- so far, we the only test is that the code returns something without error
-#      assert True
-
+    # Check linear inversion for a particular example MPA.
+    # Linear inversion works for arbitrary matrices, not only for states,
+    # so we test it for an arbitrary MPA.
+    mpa = factory.random_mpa(nr_sites, local_dim**2, bond_dim)
+    # Normalize, otherwise the absolute error check below will not work.
+    mpa /= mp.norm(mpa)
+    probabs = mp.dot(probab_map, mpa)
+    recons = mp.dot(inv_map, probabs)
+    assert mp.norm(recons - mpa) < 1e-6
