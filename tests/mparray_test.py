@@ -171,7 +171,7 @@ def test_div_mpo_scalar(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
-def test_partial_trace(nr_sites, local_dim, bond_dim, keep_width):
+def test_partial_trace_operator(nr_sites, local_dim, bond_dim, keep_width):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo_to_global(mpo)
 
@@ -181,6 +181,25 @@ def test_partial_trace(nr_sites, local_dim, bond_dim, keep_width):
             + tuple(range(startsite + keep_width, nr_sites))
         red_from_op = _tools.partial_trace(op, traceout)
         assert_array_almost_equal(mpo_to_global(reduced_mpo), red_from_op,
+                                  err_msg="not equal at startsite {}".format(startsite))
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
+def test_partial_local_purification_mps(nr_sites, local_dim, bond_dim, keep_width):
+    mps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = mpo_to_global(mp.local_purification_mps_to_mpo(mps))
+
+    startsites = range(nr_sites - keep_width + 1)
+    for startsite, reduced_mps in mp.partialtrace_local_purification_mps(
+            mps, startsites, keep_width):
+        reduced_mpo = mp.local_purification_mps_to_mpo(reduced_mps)
+        red = mpo_to_global(reduced_mpo).copy()
+        traceout = tuple(range(startsite)) \
+            + tuple(range(startsite + keep_width, nr_sites))
+        red_from_op = _tools.partial_trace(op, traceout).copy()
+        red.shape = (local_dim**keep_width,) * 2
+        red_from_op.shape = (local_dim**keep_width,) * 2
+        assert_array_almost_equal(red, red_from_op,
                                   err_msg="not equal at startsite {}".format(startsite))
 
 

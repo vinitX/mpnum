@@ -533,6 +533,36 @@ def partialtrace_operator(mpa, startsites, width):
         yield startsite, MPArray(ltens)
 
 
+def partialtrace_local_purification_mps(mps, startsites, width):
+    """Take a local purification MPS and perform partial trace over the
+    complement the sites startsites[i], ..., startsites[i] + width.
+
+    Local purification mps of the reduced states are obtained by
+    normalizing suitably and combining the bond and ancilla indices at
+    the edge into a larger ancilla dimension.
+
+    :param MPArray mpa: An MPA with two physical legs (system and ancilla)
+    :param startsites: Iterator yielding the index of the leftmost sites of the
+        supports of the results
+    :param width: number of sites in support of the results
+    :returns: Iterator over (startsite, reduced_locpuri_mps)
+
+    """
+    for startsite in startsites:
+        mps.normalize(left=startsite, right=startsite + width)
+        lten = mps[startsite]
+        left_bd, system, ancilla, right_bd = lten.shape
+        newshape = (1, system, left_bd * ancilla, right_bd)
+        ltens = [lten.swapaxes(0, 1).copy().reshape(newshape)]
+        ltens += (lten.copy() for lten in mps[startsite + 1 : startsite + width - 1])
+        lten = mps[startsite + width - 1]
+        left_bd, system, ancilla, right_bd = lten.shape
+        newshape = (left_bd, system, ancilla * right_bd, 1)
+        ltens += [lten.copy().reshape(newshape)]
+        reduced_mps = MPArray(ltens)
+        yield startsite, reduced_mps
+
+
 def local_purification_mps_to_mpo(mps):
     """Convert a local purification MPS to a mixed state MPO.
 
