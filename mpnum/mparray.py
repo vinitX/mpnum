@@ -375,7 +375,10 @@ class MPArray(object):
         See :func:`MPArray.compress` for parameters
         """
         assert self.normal_form == (0, 1)
-        assert (0. <= relerr) and (relerr <= 1.)
+        assert max_bdim > 0, "Cannot compress to bdim={}".format(max_bdim)
+        assert (0. <= relerr) and (relerr <= 1.), \
+            "Relerr={} not allowed".format(relerr)
+
         for site in range(len(self) - 1):
             ltens = self._ltens[site]
             matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
@@ -402,7 +405,10 @@ class MPArray(object):
 
         """
         assert self.normal_form == (len(self) - 1, len(self))
-        assert (0. <= relerr) and (relerr <= 1.)
+        assert max_bdim > 0, "Cannot compress to bdim={}".format(max_bdim)
+        assert (0. <= relerr) and (relerr <= 1.), \
+            "Relerr={} not allowed".format(relerr)
+
         for site in range(len(self) - 1, 0, -1):
             ltens = self._ltens[site]
             matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))

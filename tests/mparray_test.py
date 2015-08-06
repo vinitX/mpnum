@@ -18,7 +18,7 @@ from mpnum._tools import global_to_local, local_to_global
 from mpnum import _tools
 
 
-MP_TEST_PARAMETERS = [(6, 2, 4), (4, 3, 5)]
+MP_TEST_PARAMETERS = [(6, 2, 4), (4, 3, 5), (5, 2, 1)]
 
 
 # We choose to use a global reperentation of multipartite arrays throughout our
@@ -383,13 +383,14 @@ def test_compression_svd_overlap(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     mpo_new = mpo.copy()
 
-    overlap = mpo_new.compress(max_bdim=bond_dim // 2, method='svd',
-                               direction='right')
+    # Catch superficious compression paramter
+    max_bdim = max(bond_dim // 2, 1)
+
+    overlap = mpo_new.compress(max_bdim=max_bdim, method='svd', direction='right')
     assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
-    assert all(bdim_n < bdim_o for bdim_n, bdim_o in zip(mpo_new.bdims, mpo.bdims))
+    assert all(bdim <= max_bdim for bdim in mpo_new.bdims)
 
     mpo_new = mpo.copy()
-    overlap = mpo_new.compress(max_bdim=bond_dim // 2, method='svd',
-                               direction='left')
+    overlap = mpo_new.compress(max_bdim=max_bdim, method='svd', direction='left')
     assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
-    assert all(bdim_n < bdim_o for bdim_n, bdim_o in zip(mpo_new.bdims, mpo.bdims))
+    assert all(bdim <= max_bdim for bdim in mpo_new.bdims)
