@@ -17,6 +17,7 @@ References:
 
 from __future__ import absolute_import, division, print_function
 
+import itertools as it
 import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
@@ -266,6 +267,24 @@ class MPArray(object):
     ################################
     #  Shape changes, conversions  #
     ################################
+
+    def pleg_reshape(self, newshapes):
+        """Apply reshape to physical legs.
+
+        Use self.pdims to obtain the shapes of the physical legs.
+
+        :param newshapes: A single new shape or a list of new shapes
+        :returns: MPArray instance with different shape of physical legs
+        """
+        newshapes = tuple(newshapes)
+        if not hasattr(newshapes[0], '__iter__'):
+            newshapes = it.repeat(newshapes, times=len(self))
+        ltens = (
+            lten.reshape((lten.shape[0],) + tuple(newshape) + (lten.shape[-1],))
+            for lten, newshape in zip(self._ltens, newshapes))
+        mpa = MPArray(ltens, _lnormalized=self._lnormalized,
+                      _rnormalized=self._rnormalized)
+        return mpa
 
     def group_sites(self, sites_per_group):
         """Group several MPA sites into one site.

@@ -10,11 +10,11 @@ import numpy as np
 import pytest as pt
 from numpy.testing import assert_almost_equal
 
+import mpnum.mparray as mp
 import mpnum.linalg
-
 import mpnum.factory as factory
 
-from mparray_test import mpo_to_global, MP_TEST_PARAMETERS
+from mparray_test import mpo_to_global, svd_compression, MP_TEST_PARAMETERS
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
@@ -67,3 +67,69 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim):
     overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec_mp)
     assert_almost_equal(mineig, mineig_mp)
     assert_almost_equal(1, abs(overlap))
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_variational_compression(nr_sites, local_dim, bond_dim):
+    randstate = np.random.RandomState(seed=42)
+    mpa = factory.random_mpa(nr_sites, (local_dim,) * 2, bond_dim, randstate)
+    mpa /= mp.norm(mpa)
+    array = mpa.to_array()
+    target_bonddim = max(2 * bond_dim // 3, 1)
+
+    right_svd_res = svd_compression(mpa, 'right', target_bonddim)
+    left_svd_res = svd_compression(mpa, 'left', target_bonddim)
+    right_svd_overlap = np.abs(np.dot(array.conj().flatten(), right_svd_res.flatten()))
+    left_svd_overlap = np.abs(np.dot(array.conj().flatten(), left_svd_res.flatten()))
+
+    # max_num_sweeps = 3 and 4 is sometimes not good enough.
+    mpa_compr = mpnum.linalg.variational_compression(
+        mpa, max_num_sweeps=5,
+        startvec_bonddim=target_bonddim, startvec_randstate=randstate)
+    mpa_compr_overlap = np.abs(np.dot(array.conj().flatten(),
+                                      mpa_compr.to_array().flatten()))
+
+    # The basic intuition is that variational compression, given
+    # enough sweeps, should be at least as good as left and right SVD
+    # compression because the SVD compression scheme has a strong
+    # interdependence between truncations at the individual sites,
+    # while variational compression does not have that. Therefore, we
+    # check exactly that.
+
+    overlap_rel_tol = 1e-6
+    assert mpa_compr_overlap >= right_svd_overlap * (1 - overlap_rel_tol)
+    assert mpa_compr_overlap >= left_svd_overlap * (1 - overlap_rel_tol)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_variational_compression_twosite(nr_sites, local_dim, bond_dim):
+    randstate = np.random.RandomState(seed=42)
+    mpa = factory.random_mpa(nr_sites, (local_dim,) * 2, bond_dim, randstate)
+    mpa /= mp.norm(mpa)
+    array = mpa.to_array()
+    target_bonddim = max(2 * bond_dim // 3, 1)
+
+    right_svd_res = svd_compression(mpa, 'right', target_bonddim)
+    left_svd_res = svd_compression(mpa, 'left', target_bonddim)
+    right_svd_overlap = np.abs(np.dot(array.conj().flatten(), right_svd_res.flatten()))
+    left_svd_overlap = np.abs(np.dot(array.conj().flatten(), left_svd_res.flatten()))
+
+    # With minimize_sites = 1, max_num_sweeps = 3 and 4 is sometimes
+    # not good enough. With minimiza_sites = 2, max_num_sweeps = 2 is
+    # fine.
+    mpa_compr = mpnum.linalg.variational_compression(
+        mpa, startvec_bonddim=target_bonddim, startvec_randstate=randstate,
+        max_num_sweeps=3, minimize_sites=2)
+    mpa_compr_overlap = np.abs(np.dot(array.conj().flatten(),
+                                      mpa_compr.to_array().flatten()))
+
+    # The basic intuition is that variational compression, given
+    # enough sweeps, should be at least as good as left and right SVD
+    # compression because the SVD compression scheme has a strong
+    # interdependence between truncations at the individual sites,
+    # while variational compression does not have that. Therefore, we
+    # check exactly that.
+
+    overlap_rel_tol = 1e-6
+    assert mpa_compr_overlap >= right_svd_overlap * (1 - overlap_rel_tol)
+    assert mpa_compr_overlap >= left_svd_overlap * (1 - overlap_rel_tol)

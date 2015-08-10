@@ -15,6 +15,255 @@ import mpnum._tools as _tools
 from mpnum._named_ndarray import named_ndarray
 
 
+def _variational_compression_leftvec_add(leftvec, compr_lten, tgt_lten):
+    """Add one column to the left vector.
+
+    :param leftvec: existing left vector
+        It has two indices: compr_mps_bond and tgt_mps_bond
+    :param compr_lten: Local tensor of the compressed MPS
+    :param tgt_lten: Local tensor of the target MPS
+
+    Construct L from [Sch11, Fig. 27, p. 48]. We have compr_lten in
+    the top row of the figure without complex conjugation and tgt_lten
+    in the bottom row with complex conjugation.
+
+    """
+    leftvec_names = ('compr_bond', 'tgt_bond')
+    compr_names = ('compr_left_bond', 'compr_phys', 'compr_right_bond')
+    tgt_names = ('tgt_left_bond', 'tgt_phys', 'tgt_right_bond')
+    leftvec = named_ndarray(leftvec, leftvec_names)
+    compr_lten = named_ndarray(compr_lten, compr_names)
+    tgt_lten = named_ndarray(tgt_lten, tgt_names)
+
+    contract_compr_mps = (('compr_bond', 'compr_left_bond'),)
+    leftvec = leftvec.tensordot(compr_lten, contract_compr_mps)
+
+    contract_tgt_mps = (
+        ('compr_phys', 'tgt_phys'),
+        ('tgt_bond', 'tgt_left_bond'))
+    leftvec = leftvec.tensordot(tgt_lten.conj(), contract_tgt_mps)
+    rename_mps_mpo = (
+        ('compr_right_bond', 'compr_bond'),
+        ('tgt_right_bond', 'tgt_bond'))
+    leftvec = leftvec.rename(rename_mps_mpo)
+
+    leftvec = leftvec.to_array(leftvec_names)
+    return leftvec
+
+
+def _variational_compression_rightvec_add(rightvec, compr_lten, tgt_lten):
+    """Add one column to the right vector.
+
+    :param rightvec: existing right vector
+        It has two indices: compr_mps_bond and tgt_mps_bond
+    :param compr_lten: Local tensor of the compressed MPS
+    :param tgt_lten: Local tensor of the target MPS
+
+    Construct R from [Sch11, Fig. 27, p. 48]. See comments in
+    _variational_compression_leftvec_add() for further details.
+
+    """
+    rightvec_names = ('compr_bond', 'tgt_bond')
+    compr_names = ('compr_left_bond', 'compr_phys', 'compr_right_bond')
+    tgt_names = ('tgt_left_bond', 'tgt_phys', 'tgt_right_bond')
+    rightvec = named_ndarray(rightvec, rightvec_names)
+    compr_lten = named_ndarray(compr_lten, compr_names)
+    tgt_lten = named_ndarray(tgt_lten, tgt_names)
+
+    contract_compr_mps = (('compr_bond', 'compr_right_bond'),)
+    rightvec = rightvec.tensordot(compr_lten, contract_compr_mps)
+
+    contract_tgt_mps = (
+        ('compr_phys', 'tgt_phys'),
+        ('tgt_bond', 'tgt_right_bond'))
+    rightvec = rightvec.tensordot(tgt_lten.conj(), contract_tgt_mps)
+    rename = (
+        ('compr_left_bond', 'compr_bond'),
+        ('tgt_left_bond', 'tgt_bond'))
+    rightvec = rightvec.rename(rename)
+
+    rightvec = rightvec.to_array(rightvec_names)
+    return rightvec
+
+
+def _variational_compression_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
+    """Create new local tensors for the compressed MPS.
+
+    :param leftvec: Left vector
+        It has two indices: compr_mps_bond and tgt_mps_bond
+    :param tgt_ltens: List of local tensor of the target MPS
+    :param rightvec: Right vector
+        It has two indices: compr_mps_bond and tgt_mps_bond
+    :param int max_bonddim: Maximal bond dimension of the result
+
+    Compute the right-hand side of [Sch11, Fig. 27, p. 48]. We have
+    compr_lten in the top row of the figure without complex
+    conjugation and tgt_lten in the bottom row with complex
+    conjugation.
+
+    For len(tgt_ltens) > 1, compute the right-hand side of [Sch11,
+    Fig. 29, p. 49].
+
+    """
+    # Produce one MPS local tensor supported on len(tgt_ltens) sites.
+    tgt_lten = tgt_ltens[0]
+    for lten in tgt_ltens[1:]:
+        tgt_lten = _tools.matdot(tgt_lten, lten)
+    tgt_lten_shape = tgt_lten.shape
+    tgt_lten = tgt_lten.reshape((tgt_lten_shape[0], -1, tgt_lten_shape[-1]))
+
+    # Contract the middle part with the left and right parts.
+    leftvec_names = ('compr_left_bond', 'tgt_left_bond')
+    tgt_names = ('tgt_left_bond', 'tgt_phys', 'tgt_right_bond')
+    rightvec_names = ('compr_right_bond', 'tgt_right_bond')
+    leftvec = named_ndarray(leftvec, leftvec_names)
+    tgt_lten = named_ndarray(tgt_lten, tgt_names)
+    rightvec = named_ndarray(rightvec, rightvec_names)
+
+    contract = (('tgt_left_bond', 'tgt_left_bond'),)
+    compr_lten = leftvec.tensordot(tgt_lten.conj(), contract)
+    contract = (('tgt_right_bond', 'tgt_right_bond'),)
+    compr_lten = compr_lten.tensordot(rightvec, contract)
+
+    compr_lten_names = (
+        'compr_left_bond', 'tgt_phys', 'compr_right_bond'
+    )
+    compr_lten = compr_lten.to_array(compr_lten_names).conj()
+    s = compr_lten.shape
+    compr_lten = compr_lten.reshape((s[0],) + tgt_lten_shape[1:-1] + (s[-1],))
+
+    if len(tgt_ltens) == 1:
+        compr_ltens = (compr_lten,)
+    else:
+        # [Sch11, p. 49] says that we can go with QR instead of SVD
+        # here. However, will generally increase the bond dimension of
+        # our compressed MPS, which we do not want.
+        compr_ltens = mp.MPArray.from_array(compr_lten, plegs=1, has_bond=True)
+        compr_ltens.compress(method='svd', max_bd=max_bonddim)
+    return compr_ltens
+
+
+def variational_compression(
+        mpa,
+        startvec=None, startvec_bonddim=None, startvec_randstate=None,
+        max_num_sweeps=5, minimize_sites=1):
+    """Iterative compression of an MPA.
+
+    Algorithm: [Sch11, Sec. 4.5.2]. All references refer to the arXiv
+    version of [Sch11].
+
+    Possible TODOs:
+
+    - implement calculating the overlap between 'compr' and 'mpa' from
+      the norm of 'compr', given that 'mpa' is normalized
+
+    - track overlap between 'compr' and 'mpa' and stop sweeping if it
+      is small
+
+    - maybe increase bond dimension of given error cannot be reached
+
+    - Shall we track the error in the SVD truncation for multi-site
+      updates? [Sch11] says it turns out to be useful in actual DMRG.
+
+    - return these details for tracking errors in larger computations
+
+    :param MPArray mpa: The matrix product array to be compressed
+
+    :param startvec_bonddim: Bond dimension of random start vector if
+        no start vector is given. Use the bond dimension of the MPA if
+        None.
+
+    :param startvec: Start vector; generate a random start vector if
+        None.
+
+    :param startvec_randstate: numpy.random.RandomState instance or None
+
+    :param max_num_sweeps: Maximum number of sweeps to do. Currently,
+        always do that many sweeps.
+
+    :param int minimize_sites: Minimize distance by changing that many
+        sites simultaneously.
+
+    :returns: compressed_mpa
+
+    """
+    nr_sites = len(mpa)
+    mpa_old_shape = None
+    if max(mpa.plegs) > 1:
+        mpa_old_shape = mpa.pdims
+        mpa = mpa.pleg_reshape((-1,))
+    compr = startvec
+    if compr is None:
+        if startvec_randstate is None:
+            startvec_randstate = np.random
+        pdims = max(dim[0] for dim in mpa.pdims)
+        if startvec_bonddim is None:
+            startvec_bonddim = max(mpa.bdims)
+        compr = mpnum.factory.random_mpa(nr_sites, pdims, startvec_bonddim,
+                                         randstate=startvec_randstate)
+        compr /= mp.norm(compr)
+    # For
+    #
+    #   pos in range(nr_sites - minimize_sites),
+    #
+    # we find the ground state of an operator supported on
+    #
+    #   range(pos, pos_end),  pos_end = pos + minimize_sites
+    #
+    # leftvecs[pos] and rightvecs[pos] contain the vectors needed to
+    # construct that operator for that. Therefore, leftvecs[pos] is
+    # constructed from matrices on
+    #
+    #   range(0, pos - 1)
+    #
+    # and rightvecs[pos] is constructed from matrices on
+    #
+    #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
+    leftvecs = [np.array(1, ndmin=2)] + [None] * (nr_sites - minimize_sites)
+    rightvecs = [None] * (nr_sites - minimize_sites) + [np.array(1, ndmin=2)]
+    compr.normalize(right=1)
+    for pos in range(nr_sites - minimize_sites - 1, -1, -1):
+        pos_end = pos + minimize_sites
+        rightvecs[pos] = _variational_compression_rightvec_add(
+            rightvecs[pos + 1], compr[pos_end], mpa[pos_end])
+    max_bonddim = max(compr.bdims)
+
+    for num_sweep in range(max_num_sweeps):
+
+        # Sweep from left to right
+        for pos in range(nr_sites - minimize_sites + 1):
+            if pos == 0 and num_sweep > 0:
+                # Don't do first site again if we are not in the first
+                # sweep.
+                continue
+            if pos > 0:
+                compr.normalize(left=pos)
+                rightvecs[pos - 1] = None
+                leftvecs[pos] = _variational_compression_leftvec_add(
+                    leftvecs[pos - 1], compr[pos - 1], mpa[pos - 1])
+            pos_end = pos + minimize_sites
+            compr_lten = _variational_compression_new_lten(
+                leftvecs[pos], mpa[pos:pos_end], rightvecs[pos], max_bonddim)
+            compr[pos:pos_end] = compr_lten
+
+        # Sweep from right to left (don't do last site again)
+        for pos in range(nr_sites - minimize_sites - 1, -1, -1):
+            pos_end = pos + minimize_sites
+            if pos < nr_sites - minimize_sites:
+                # We always do this, because we don't do the last site again.
+                compr.normalize(right=pos_end)
+                leftvecs[pos + 1] = None
+                rightvecs[pos] = _variational_compression_rightvec_add(
+                    rightvecs[pos + 1], compr[pos_end], mpa[pos_end])
+            compr_lten = _variational_compression_new_lten(
+                leftvecs[pos], mpa[pos:pos_end], rightvecs[pos], max_bonddim)
+            compr[pos:pos_end] = compr_lten
+
+    if mpa_old_shape is not None:
+        compr = compr.pleg_reshape(mpa_old_shape)
+    return compr
+
+
 def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten):
     """Add one column to the left vector.
 
@@ -275,6 +524,19 @@ def mineig(mpo,
     """
     # FIXME Function too complicated, can we split the iterative part into
     #       subfunctions?
+
+    # Possible TODOs:
+    #  - compute the overlap between 'eigvec' from successive iterations
+    #    to check whether we have converged
+    #  - compute var(H) = <psi| H^2 |psi> - (<psi| H |psi>)^2 every n-th
+    #    iteration to check whether we have converged (this criterion is
+    #    better but more expensive to compute)
+    #  - increase the bond dimension of 'eigvec' if var(H) remains above
+    #    a given threshold
+    #  - for multi-site updates, track the error in the SVD truncation
+    #    (see comment there why)
+    #  - return these details for tracking errors in larger computations
+
     nr_sites = len(mpo)
 
     if startvec is None:
@@ -315,7 +577,7 @@ def mineig(mpo,
         # Sweep from left to right
         for pos in range(nr_sites - minimize_sites + 1):
             if pos == 0 and num_sweep > 0:
-                # Don't do first site again if we are not in the first # sweep.
+                # Don't do first site again if we are not in the first sweep.
                 continue
 
             if pos > 0:
@@ -334,7 +596,7 @@ def mineig(mpo,
             pos_end = pos + minimize_sites
             if pos < nr_sites - minimize_sites:
                 # We always do this, because we don't do the last site again.
-                eigvec.normalize(right=pos + minimize_sites)
+                eigvec.normalize(right=pos_end)
                 leftvecs[pos + 1] = None
                 rightvecs[pos] = _mineig_rightvec_add(
                     rightvecs[pos + 1], mpo[pos_end], eigvec[pos_end])
