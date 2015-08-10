@@ -249,7 +249,7 @@ def variational_compression(
             pos_end = pos + minimize_sites
             if pos < nr_sites - minimize_sites:
                 # We always do this, because we don't do the last site again.
-                compr.normalize(right=pos + minimize_sites)
+                compr.normalize(right=pos_end)
                 leftvecs[pos + 1] = None
                 rightvecs[pos] = _variational_compression_rightvec_add(
                     rightvecs[pos + 1], compr[pos_end], mpa[pos_end])
@@ -605,7 +605,7 @@ def mineig(mpo,
             pos_end = pos + minimize_sites
             if pos < nr_sites - minimize_sites:
                 # We always do this, because we don't do the last site again.
-                eigvec.normalize(right=pos + minimize_sites)
+                eigvec.normalize(right=pos_end)
                 leftvecs[pos + 1] = None
                 rightvecs[pos] = _mineig_rightvec_add(
                     rightvecs[pos + 1], mpo[pos_end], eigvec[pos_end])
