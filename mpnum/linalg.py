@@ -11,6 +11,7 @@ from scipy.sparse.linalg import eigs
 import mpnum
 import mpnum.factory
 import mpnum.mparray as mp
+import mpnum._tools as _tools
 
 
 def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten):
@@ -115,17 +116,19 @@ def _mineig_rightvec_add(rightvec, mpo_lten, mps_lten):
     return rightvec
 
 
-def _mineig_local_op(leftvec, mpo_lten, rightvec):
+def _mineig_local_op(leftvec, mpo_ltens, rightvec):
     """Create the operator for local eigenvalue minimization on one site.
 
     :param leftvec: Left vector
         Three indices: mps bond, mpo bond, complex conjugate mps bond
-    :param mpo_lten: Local tensor of the MPO
+    :param mpo_ltens: List of local tensors of the MPO
     :param rightvec: Right vector
         Three indices: mps bond, mpo bond, complex conjugate mps bond
 
-    See [Sch11, arXiv version, Fig. 38 on p. 62].  This method
-    implements the contractions across the dashed lines in the figure.
+    See [Sch11, arXiv version, Fig. 38 on p. 62].  If len(mpo_ltens)
+    == 1, this method implements the contractions across the dashed
+    lines in the figure. For let(mpo_ltens) > 1, we return the
+    operator for what is probably called "multi-site DMRG".
 
     Indices and axis names map as follows:
 
@@ -141,6 +144,18 @@ def _mineig_local_op(leftvec, mpo_lten, rightvec):
     sigma'_i: 'phys_row' of mpo_lten
 
     """
+    # Produce one MPO local tensor supported on len(mpo_ltens) sites.
+    nr_sites = len(mpo_ltens)
+    mpo_lten = mpo_ltens[0]
+    for lten in mpo_ltens[1:]:
+        mpo_lten = _tools.matdot(mpo_lten, lten)
+    mpo_lten = _tools.local_to_global(mpo_lten, nr_sites,
+                                      left_skip=1, right_skip=1)
+    s = mpo_lten.shape
+    mpo_lten = mpo_lten.reshape(
+        (s[0], np.prod(s[1:1 + nr_sites]), np.prod(s[1 + nr_sites:-1]), s[-1]))
+
+    # Do the contraction mentioned above. 
     leftvec_names = ('left_mps_bond', 'left_mpo_bond', 'left_cc_mps_bond')
     mpo_names = ('left_mpo_bond', 'phys_row', 'phys_col', 'right_mpo_bond')
     rightvec_names = ('right_mps_bond', 'right_mpo_bond', 'right_cc_mps_bond')
@@ -162,7 +177,7 @@ def _mineig_local_op(leftvec, mpo_lten, rightvec):
     return op
 
 
-def _mineig_minimize_locally(leftvec, mpo_lten, rightvec, eigvec_lten,
+def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
                              eigs_opts=None):
     """Perform the local eigenvalue minimization on one site on one site.
 
@@ -171,10 +186,10 @@ def _mineig_minimize_locally(leftvec, mpo_lten, rightvec, eigvec_lten,
 
     :param leftvec: Left vector
         Three indices: mps bond, mpo bond, complex conjugate mps bond
-    :param mpo_lten: Local tensor of the MPO
+    :param mpo_ltens: List of local tensors of the MPO
     :param rightvec: Right vector
         Three indices: mps bond, mpo bond, complex conjugate mps bond
-    :param eigvec_lten: Local tensor of the MPS eigenvector
+    :param eigvec_ltens: List of local tensors of the MPS eigenvector
     :returns: mineigval, mineigval_eigvec_lten
 
     See [Sch11, arXiv version, Fig. 42 on p. 67].  This method
@@ -192,16 +207,33 @@ def _mineig_minimize_locally(leftvec, mpo_lten, rightvec, eigvec_lten,
     """
     if eigs_opts is None:
         eigs_opts = {'k': 1, 'which': 'SR', 'tol': 1e-6}
-    op = _mineig_local_op(leftvec, mpo_lten, rightvec)
+    op = _mineig_local_op(leftvec, mpo_ltens, rightvec)
+    eigvec_bonddim = max(lten.shape[0] for lten in eigvec_ltens)
+    eigvec_lten = eigvec_ltens[0]
+    for lten in eigvec_ltens[1:]:
+        eigvec_lten = _tools.matdot(eigvec_lten, lten)
     eigvals, eigvecs = eigs(op, v0=eigvec_lten.flatten(), **eigs_opts)
     eigval_pos = eigvals.real.argmin()
     eigval = eigvals[eigval_pos]
     eigvec_lten = eigvecs[:, eigval_pos].reshape(eigvec_lten.shape)
+    if len(eigvec_ltens) == 1:
+        eigvec_lten = (eigvec_lten,)
+    else:
+        # If we minimize on multiple sites, we must compress to the
+        # desired bond dimension.
+        # 
+        # TODO: Return the truncation error.
+        #
+        # "the truncation error of conventional DMRG [...] has emerged
+        # as a highly reliable tool for gauging the quality of
+        # results" [Sch11, Sec. 6.4, p. 74]
+        eigvec_lten = mp.MPArray.from_array(eigvec_lten, 1, has_bond=True)
+        eigvec_lten.compress(method='svd', max_bdim=eigvec_bonddim)
     return eigval, eigvec_lten
 
 
 def mineig(mpo, startvec=None, startvec_bonddim=None, max_num_sweeps=5,
-           eigs_opts=None):
+           eigs_opts=None, minimize_sites=1):
     """Iterative search for smallest eigenvalue and eigenvector of an MPO.
 
     Algorithm: [Sch11, Sec. 6.3]
@@ -221,9 +253,17 @@ def mineig(mpo, startvec=None, startvec_bonddim=None, max_num_sweeps=5,
     :param eigs_opts: kwargs for scipy.sparse.linalg.eigs(). You
         should always set k=1.
 
+    :param int minimize_sites: Minimize eigenvalue on that many sites.
+
     :returns: mineigval, mineigval_eigvec_mpa
 
-    Comments on the implementation:
+    We minimize the eigenvalue by obtaining the minimal eigenvalue of
+    an operator supported on 'minimize_sites' many sites. For
+    minimize_sites=1, this is called "variational MPS ground state
+    search" or "single-site DMRG" [Sch11, Sec. 6.3, p. 69]. For
+    minimize_sites>1, this is called "multi-site DMRG". 
+
+    Comments on the implementation, for minimize_sites=1:
 
     References are to the arXiv version of [Sch11] assuming we replace
     zero-based with one-based indices there.
@@ -246,17 +286,34 @@ def mineig(mpo, startvec=None, startvec_bonddim=None, max_num_sweeps=5,
             startvec_bonddim = max(mpo.bdims)
         eigvec = mpnum.factory.random_mpa(nr_sites, pdims, startvec_bonddim)
         eigvec /= mp.norm(eigvec)
+    # For
+    #
+    #   pos in range(nr_sites - minimize_sites),
+    # 
+    # we find the ground state of an operator supported on
+    # 
+    #   range(pos, pos_end),  pos_end = pos + minimize_sites
+    # 
+    # leftvecs[pos] and rightvecs[pos] contain the vectors needed to
+    # construct that operator for that. Therefore, leftvecs[pos] is
+    # constructed from matrices on
+    #
+    #   range(0, pos - 1)
+    #
+    # and rightvecs[pos] is constructed from matrices on
+    #
+    #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
+    leftvecs = [np.array(1, ndmin=3)] + [None] * (nr_sites - minimize_sites)
+    rightvecs = [None] * (nr_sites - minimize_sites) + [np.array(1, ndmin=3)]
     eigvec.normalize(right=1)
-    leftvecs = [np.array(1, ndmin=3)] + [None] * (nr_sites - 1)
-    rightvecs = [None] * (nr_sites - 1) + [np.array(1, ndmin=3)]
-    for pos in range(nr_sites - 2, -1, -1):
+    for pos in range(nr_sites - minimize_sites - 1, -1, -1):
         rightvecs[pos] = _mineig_rightvec_add(
-            rightvecs[pos + 1], mpo[pos + 1], eigvec[pos + 1])
+            rightvecs[pos + 1], mpo[pos + minimize_sites], eigvec[pos + minimize_sites])
 
     for num_sweep in range(max_num_sweeps):
 
         # Sweep from left to right
-        for pos in range(nr_sites):
+        for pos in range(nr_sites - minimize_sites + 1):
             if pos == 0 and num_sweep > 0:
                 # Don't do first site again if we are not in the first
                 # sweep.
@@ -266,19 +323,24 @@ def mineig(mpo, startvec=None, startvec_bonddim=None, max_num_sweeps=5,
                 rightvecs[pos - 1] = None
                 leftvecs[pos] = _mineig_leftvec_add(
                     leftvecs[pos - 1], mpo[pos - 1], eigvec[pos - 1])
+            pos_end = pos + minimize_sites
             eigval, eigvec_lten = _mineig_minimize_locally(
-                leftvecs[pos], mpo[pos], rightvecs[pos], eigvec[pos], eigs_opts)
-            eigvec[pos] = eigvec_lten
+                leftvecs[pos], mpo[pos:pos_end], rightvecs[pos],
+                eigvec[pos:pos_end], eigs_opts)
+            eigvec[pos:pos_end] = eigvec_lten
 
         # Sweep from right to left (don't do last site again)
-        for pos in range(nr_sites - 2, -1, -1):
-            if pos < nr_sites - 1:
-                eigvec.normalize(right=pos + 1)
+        for pos in range(nr_sites - minimize_sites - 1, -1, -1):
+            pos_end = pos + minimize_sites
+            if pos < nr_sites - minimize_sites:
+                # We always do this, because we don't do the last site again.
+                eigvec.normalize(right=pos + minimize_sites)
                 leftvecs[pos + 1] = None
                 rightvecs[pos] = _mineig_rightvec_add(
-                    rightvecs[pos + 1], mpo[pos + 1], eigvec[pos + 1])
+                    rightvecs[pos + 1], mpo[pos_end], eigvec[pos_end])
             eigval, eigvec_lten = _mineig_minimize_locally(
-                leftvecs[pos], mpo[pos], rightvecs[pos], eigvec[pos], eigs_opts)
-            eigvec[pos] = eigvec_lten
+                leftvecs[pos], mpo[pos:pos_end], rightvecs[pos],
+                eigvec[pos:pos_end], eigs_opts)
+            eigvec[pos:pos_end] = eigvec_lten
 
     return eigval, eigvec
