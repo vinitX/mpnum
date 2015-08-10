@@ -148,7 +148,7 @@ class MPArray(object):
         return self._lnormalized or 0, self._rnormalized or len(self)
 
     @classmethod
-    def from_array(cls, array, plegs=None):
+    def from_array(cls, array, plegs=None, has_bond=False):
         """Computes the (exact) representation of `array` as MPA with open
         boundary conditions, i.e. bond dimension 1 at the boundary. This
         is done by factoring the off the left and the "physical" legs from
@@ -159,17 +159,28 @@ class MPArray(object):
         The result is a chain of local tensors with `plegs` physical legs at
         each location and has array.ndim // plegs number of sites.
 
+        has_bond = True allows to treat a part of the linear chain of
+        an MPA as MPA as well. The bond dimension on the left and
+        right can be different from one and different from each other
+        in that case.  This is useful to apply SVD compression only to
+        part of an MPA. It is used in
+        linalg._mineig_minimize_locally().
+
         :param np.ndarray array: Array representation with global structure
             array[(i1), ..., (iN)], i.e. the legs which are factorized into
             the same factor are already adjacent. (For me details see
             :func:`_tools.global_to_local`)
         :param int plegs: Number of physical legs per site (default array.ndim)
+        :param bool has_bond: True if array already has indices for
+            the left and right bond
 
         """
         plegs = plegs if plegs is not None else array.ndim
         assert array.ndim % plegs == 0, \
             "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
-        ltens = _extract_factors(array[None, ..., None], plegs=plegs)
+        if not has_bond:
+            array = array[None, ..., None]
+        ltens = _extract_factors(array, plegs=plegs)
         mpa = cls(ltens, _lnormalized=len(ltens) - 1)
         return mpa
 
