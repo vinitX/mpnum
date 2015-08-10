@@ -151,6 +151,21 @@ def variational_compression(
     Algorithm: [Sch11, Sec. 4.5.2]. All references refer to the arXiv
     version of [Sch11].
 
+    Possible TODOs:
+
+    - implement calculating the overlap between 'compr' and 'mpa' from
+      the norm of 'compr', given that 'mpa' is normalized
+
+    - track overlap between 'compr' and 'mpa' and stop sweeping if it
+      is small
+
+    - maybe increase bond dimension of given error cannot be reached
+
+    - Shall we track the error in the SVD truncation for multi-site
+      updates? [Sch11] says it turns out to be useful in actual DMRG.
+
+    - return these details for tracking errors in larger computations
+
     :param MPArray mpa: The matrix product array to be compressed
 
     :param startvec_bonddim: Bond dimension of random start vector if
@@ -471,6 +486,23 @@ def mineig(mpo,
     """Iterative search for smallest eigenvalue and eigenvector of an MPO.
 
     Algorithm: [Sch11, Sec. 6.3]
+
+    Possible TODOs:
+
+    - compute the overlap between 'eigvec' from successive iterations
+      to check whether we have converged
+
+    - compute var(H) = <psi| H^2 |psi> - (<psi| H |psi>)^2 every n-th
+      iteration to check whether we have converged (this criterion is
+      better but more expensive to compute)
+
+    - increase the bond dimension of 'eigvec' if var(H) remains above
+      a given threshold
+
+    - for multi-site updates, track the error in the SVD truncation
+      (see comment there why)
+
+    - return these details for tracking errors in larger computations
 
     :param MPArray mpo: A matrix product operator (MPA with two physical legs)
 
