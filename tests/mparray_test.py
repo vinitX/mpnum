@@ -506,7 +506,7 @@ def test_compression_svd_overlap(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_compression_svd_overlap(nr_sites, local_dim, bond_dim):
+def test_compression_svd_compare(nr_sites, local_dim, bond_dim):
     randstate = np.random.RandomState(seed=46)
     mpa = factory.random_mpa(nr_sites, (local_dim,) * 2, bond_dim, randstate)
     target_bonddim = max(2 * bond_dim // 3, 1)
