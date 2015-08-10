@@ -12,19 +12,28 @@ import mpnum.mparray as mp
 from six.moves import range
 
 
-def _zrandn(shape):
-    """Shortcut for np.random.randn(*shape) + 1.j * np.random.randn(*shape)
+def _zrandn(randstate=None):
+    """Shortcut for randstate.randn(*shape) + 1.j * randstate.randn(*shape)
+
+    :param randstate: numpy.random.RandomState instance or None
+
+    randstate=None defaults to numpy.random.
     """
-    return np.random.randn(*shape) + 1.j * np.random.randn(*shape)
+    if randstate is None:
+        randstate = np.random
+    def _zrandn_func(shape):
+        return randstate.randn(*shape) + 1.j * randstate.randn(*shape)
+    return _zrandn_func
 
 
-def random_vec(sites, ldim):
+def random_vec(sites, ldim, randstate=None):
     """Returns a random complex vector (normalized to ||x||_2 = 1) of shape
     (ldim,) * sites, i.e. a pure state with local dimension `ldim` living on
     `sites` sites.
 
     :param sites: Number of local sites
     :param ldim: Local ldimension
+    :param randstate: numpy.random.RandomState instance or None
     :returns: numpy.ndarray of shape (ldim,) * sites
 
     >>> psi = random_vec(5, 2); psi.shape
@@ -33,27 +42,28 @@ def random_vec(sites, ldim):
     True
     """
     shape = (ldim, ) * sites
-    psi = _zrandn(shape)
+    psi = _zrandn(randstate)(shape)
     psi /= np.sqrt(np.vdot(psi, psi))
     return psi
 
 
-def random_op(sites, ldim):
+def random_op(sites, ldim, randstate=None):
     """Returns a random operator  of shape (ldim,ldim) * sites with local
     dimension `ldim` living on `sites` sites.
 
     :param sites: Number of local sites
     :param ldim: Local ldimension
+    :param randstate: numpy.random.RandomState instance or None
     :returns: numpy.ndarray of shape (ldim,ldim) * sites
 
     >>> A = random_op(3, 2); A.shape
     (2, 2, 2, 2, 2, 2)
     """
     shape = (ldim, ldim) * sites
-    return _zrandn(shape)
+    return _zrandn(randstate)(shape)
 
 
-def random_state(sites, ldim):
+def random_state(sites, ldim, randstate=None):
     """Returns a random positive semidefinite operator of shape (ldim, ldim) *
     sites normalized to Tr rho = 1, i.e. a mixed state with local dimension
     `ldim` living on `sites` sites. Note that the returned state is positive
@@ -62,6 +72,7 @@ def random_state(sites, ldim):
 
     :param sites: Number of local sites
     :param ldim: Local ldimension
+    :param randstate: numpy.random.RandomState instance or None
     :returns: numpy.ndarray of shape (ldim, ldim) * sites
 
     >>> from numpy.linalg import eigvalsh
@@ -72,7 +83,7 @@ def random_state(sites, ldim):
     True
     """
     shape = (ldim**sites, ldim**sites)
-    mat = _zrandn(shape)
+    mat = _zrandn(randstate)(shape)
     rho = np.conj(mat.T).dot(mat)
     rho /= np.trace(rho)
     return rho.reshape((ldim,) * 2 * sites)
@@ -100,16 +111,17 @@ def _generate(sites, ldim, bdim, func):
     return mp.MPArray([ltens_l] + ltenss + [ltens_r])
 
 
-def random_mpa(sites, ldim, bdim):
+def random_mpa(sites, ldim, bdim, randstate=None):
     """Returns a MPA with randomly choosen local tensors
 
     :param sites: Number of sites
     :param ldim: Tuple of int-like of local dimensions
     :param bdim: Bond dimension
+    :param randstate: numpy.random.RandomState instance or None
     :returns: randomly choosen matrix product array
 
     """
-    return _generate(sites, ldim, bdim, _zrandn)
+    return _generate(sites, ldim, bdim, _zrandn(randstate))
 
 
 def zero(sites, ldim, bdim):
