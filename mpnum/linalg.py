@@ -232,8 +232,9 @@ def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
     return eigval, eigvec_lten
 
 
-def mineig(mpo, startvec=None, startvec_bonddim=None, max_num_sweeps=5,
-           eigs_opts=None, minimize_sites=1):
+def mineig(mpo,
+           startvec=None, startvec_bonddim=None, startvec_randstate=None,
+           max_num_sweeps=5, eigs_opts=None, minimize_sites=1):
     """Iterative search for smallest eigenvalue and eigenvector of an MPO.
 
     Algorithm: [Sch11, Sec. 6.3]
@@ -246,6 +247,8 @@ def mineig(mpo, startvec=None, startvec_bonddim=None, max_num_sweeps=5,
 
     :param startvec: Start vector; generate a random start vector if
         None.
+
+    :param startvec_randstate: numpy.random.RandomState instance or None
 
     :param max_num_sweeps: Maximum number of sweeps to do. Currently,
         always do that many sweeps.
@@ -281,10 +284,13 @@ def mineig(mpo, startvec=None, startvec_bonddim=None, max_num_sweeps=5,
     nr_sites = len(mpo)
     eigvec = startvec
     if eigvec is None:
+        if startvec_randstate is None:
+            startvec_randstate = np.random
         pdims = max(dim[0] for dim in mpo.pdims)
         if startvec_bonddim is None:
             startvec_bonddim = max(mpo.bdims)
-        eigvec = mpnum.factory.random_mpa(nr_sites, pdims, startvec_bonddim)
+        eigvec = mpnum.factory.random_mpa(nr_sites, pdims, startvec_bonddim,
+                                          randstate=startvec_randstate)
         eigvec /= mp.norm(eigvec)
     # For
     #
