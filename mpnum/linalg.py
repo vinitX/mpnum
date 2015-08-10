@@ -22,6 +22,10 @@ def _variational_compression_leftvec_add(leftvec, compr_lten, tgt_lten):
     :param compr_lten: Local tensor of the compressed MPS
     :param tgt_lten: Local tensor of the target MPS
 
+    Construct L from [Sch11, Fig. 27, p. 48]. We have compr_lten in
+    the top row of the figure without complex conjugation and tgt_lten
+    in the bottom row with complex conjugation.
+
     """
     leftvec_names = ('compr_bond', 'tgt_bond')
     compr_names = ('compr_left_bond', 'compr_phys', 'compr_right_bond')
@@ -53,6 +57,9 @@ def _variational_compression_rightvec_add(rightvec, compr_lten, tgt_lten):
         It has two indices: compr_mps_bond and tgt_mps_bond
     :param compr_lten: Local tensor of the compressed MPS
     :param tgt_lten: Local tensor of the target MPS
+
+    Construct R from [Sch11, Fig. 27, p. 48]. See comments in
+    _variational_compression_leftvec_add() for further details. 
 
     """
     rightvec_names = ('compr_bond', 'tgt_bond')
@@ -88,6 +95,14 @@ def _variational_compression_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim)
         It has two indices: compr_mps_bond and tgt_mps_bond
     :param int max_bonddim: Maximal bond dimension of the result
 
+    Compute the right-hand side of [Sch11, Fig. 27, p. 48]. We have
+    compr_lten in the top row of the figure without complex
+    conjugation and tgt_lten in the bottom row with complex
+    conjugation. 
+
+    For len(tgt_ltens) > 1, compute the right-hand side of [Sch11,
+    Fig. 29, p. 49]. 
+
     """
     # Produce one MPS local tensor supported on len(tgt_ltens) sites.
     tgt_lten = tgt_ltens[0]
@@ -96,7 +111,7 @@ def _variational_compression_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim)
     tgt_lten_shape = tgt_lten.shape
     tgt_lten = tgt_lten.reshape((tgt_lten_shape[0], -1, tgt_lten_shape[-1]))
 
-    # Do work. 
+    # Contract the middle part with the left and right parts. 
     leftvec_names = ('compr_left_bond', 'tgt_left_bond')
     tgt_names = ('tgt_left_bond', 'tgt_phys', 'tgt_right_bond')
     rightvec_names = ('compr_right_bond', 'tgt_right_bond')
@@ -119,6 +134,9 @@ def _variational_compression_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim)
     if len(tgt_ltens) == 1:
         compr_ltens = (compr_lten,)
     else:
+        # [Sch11, p. 49] says that we can go with QR instead of SVD
+        # here. However, will generally increase the bond dimension of
+        # our compressed MPS, which we do not want.
         compr_ltens = mp.MPArray.from_array(compr_lten, plegs=1, has_bond=True)
         compr_ltens.compress(method='svd', max_bd=max_bonddim)
     return compr_ltens
@@ -129,9 +147,8 @@ def variational_compression(mpa,
            max_num_sweeps=5, minimize_sites=1):
     """Iterative compression of an MPA. 
 
-    TODO: Implement minimize_sites > 1.
-
-    Algorithm: [Sch11, Sec. 4.5.2]
+    Algorithm: [Sch11, Sec. 4.5.2]. All references refer to the arXiv
+    version of [Sch11]. 
 
     :param MPArray mpa: The matrix product array to be compressed
 
