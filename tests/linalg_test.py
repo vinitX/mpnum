@@ -14,7 +14,6 @@ import mpnum.linalg
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
-from mpnum import _tools
 
 from mparray_test import mpo_to_global, svd_compression, MP_TEST_PARAMETERS
 
