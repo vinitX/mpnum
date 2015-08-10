@@ -222,8 +222,9 @@ def variational_compression(
     rightvecs = [None] * (nr_sites - minimize_sites) + [np.array(1, ndmin=2)]
     compr.normalize(right=1)
     for pos in range(nr_sites - minimize_sites - 1, -1, -1):
+        pos_end = pos + minimize_sites
         rightvecs[pos] = _variational_compression_rightvec_add(
-            rightvecs[pos + 1], compr[pos + minimize_sites], mpa[pos + minimize_sites])
+            rightvecs[pos + 1], compr[pos_end], mpa[pos_end])
     max_bonddim = max(compr.bdims)
 
     for num_sweep in range(max_num_sweeps):
@@ -578,8 +579,9 @@ def mineig(mpo,
     rightvecs = [None] * (nr_sites - minimize_sites) + [np.array(1, ndmin=3)]
     eigvec.normalize(right=1)
     for pos in range(nr_sites - minimize_sites - 1, -1, -1):
+        pos_end = pos + minimize_sites
         rightvecs[pos] = _mineig_rightvec_add(
-            rightvecs[pos + 1], mpo[pos + minimize_sites], eigvec[pos + minimize_sites])
+            rightvecs[pos + 1], mpo[pos_end], eigvec[pos_end])
 
     for num_sweep in range(max_num_sweeps):
 
