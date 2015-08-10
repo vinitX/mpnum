@@ -75,7 +75,7 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_variational_compression(nr_sites, local_dim, bond_dim):
     overlap_rel_tol = 1e-6
-    plegs = 1
+    plegs = 2
     randstate = np.random.RandomState(seed=42)
     mpa = factory.random_mpa(nr_sites, (local_dim,) * plegs, bond_dim, randstate)
     mpa /= mp.norm(mpa)
@@ -87,9 +87,9 @@ def test_variational_compression(nr_sites, local_dim, bond_dim):
     right_svd_overlap = np.abs(np.dot(array.conj().flatten(), right_svd_res.flatten()))
     left_svd_overlap = np.abs(np.dot(array.conj().flatten(), left_svd_res.flatten()))
 
-    # max_num_sweeps = 5 is sometimes not good enough. 
+    # max_num_sweeps = 3 is sometimes not good enough. 
     mpa_compr = mpnum.linalg.variational_compression(
-        mpa, startvec_bonddim=target_bonddim, startvec_randstate=randstate, max_num_sweeps=10)
+        mpa, startvec_bonddim=target_bonddim, startvec_randstate=randstate, max_num_sweeps=5)
     mpa_compr_overlap = np.abs(np.dot(array.conj().flatten(), mpa_compr.to_array().flatten()))
 
     # The basic intuition is that variational compression, given

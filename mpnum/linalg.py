@@ -115,8 +115,7 @@ def variational_compression(mpa,
            max_num_sweeps=5, minimize_sites=1):
     """Iterative compression of an MPA. 
 
-    TODO: Implement more than one physical leg. Implement
-    minimize_sites > 1.
+    TODO: Implement minimize_sites > 1.
 
     Algorithm: [Sch11, Sec. 4.5.2]
 
@@ -140,6 +139,10 @@ def variational_compression(mpa,
 
     """
     nr_sites = len(mpa)
+    mpa_old_shape = None
+    if max(mpa.plegs) > 1:
+        mpa_old_shape = mpa.pdims
+        mpa = mpa.pleg_reshape((-1,))
     compr = startvec
     if compr is None:
         if startvec_randstate is None:
@@ -205,6 +208,8 @@ def variational_compression(mpa,
                 leftvecs[pos], mpa[pos:pos_end], rightvecs[pos])
             compr[pos:pos_end] = compr_lten
 
+    if mpa_old_shape is not None:
+        compr = compr.pleg_reshape(mpa_old_shape)
     return compr
 
 
