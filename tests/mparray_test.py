@@ -8,6 +8,7 @@ from __future__ import division, print_function
 
 import numpy as np
 import pytest as pt
+from numpy.linalg import svd
 from numpy.testing import assert_array_almost_equal, assert_array_equal, \
     assert_almost_equal, assert_equal
 from six.moves import range # @UnresolvedImport
@@ -502,3 +503,67 @@ def test_compression_svd_overlap(nr_sites, local_dim, bond_dim):
     overlap = mpo_new.compress(max_bdim=max_bdim, method='svd', direction='left')
     assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
     assert all(bdim <= max_bdim for bdim in mpo_new.bdims)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_compression_svd_overlap(nr_sites, local_dim, bond_dim):
+    randstate = np.random.RandomState(seed=46)
+    mpa = factory.random_mpa(nr_sites, (local_dim,) * 2, bond_dim, randstate)
+    target_bonddim = max(2 * bond_dim // 3, 1)
+    directions = ('left', 'right')
+    for direction in directions:
+        target_array = svd_compression(mpa, direction, target_bonddim)
+        mpa_compr = mpa.copy()
+        mpa_compr.compress(method='svd', max_bdim=target_bonddim, direction=direction)
+        array_compr = mpa_compr.to_array()
+        assert_array_almost_equal(
+            target_array, array_compr,
+            err_msg='direction {0!r} failed'.format(direction))
+
+
+def svd_compression(mpa, direction, target_bonddim):
+    """Re-implement what SVD compression on MPAs does.
+
+    Two implementations that produce the same data are not a guarantee
+    for correctness, but a check for consistency is nice anyway.
+
+    :param mpa: The MPA to compress
+    :param direction: 'right' means sweep from left to right, 
+        'left' vice versa
+    :param target_bonddim: Compress to this bond dimension
+    :returns: Result as numpy.ndarray
+
+    """
+    array = mpa.to_array()
+    plegs = mpa.plegs[0]
+    nr_sites = len(mpa)
+    if direction == 'right':
+        nr_left_values = range(1, nr_sites)
+    else:
+        nr_left_values = range(nr_sites-1, 0, -1)
+    for nr_left in nr_left_values:
+        array = svd_compression_singlecut(array, nr_left, plegs, target_bonddim)
+    return array
+
+
+def svd_compression_singlecut(array, nr_left, plegs, target_bonddim):
+    """
+    SVD compression on a single left vs. right bipartition.
+
+    :param array: The array to compress
+    :param nr_left: Number of sites in the left part of the bipartition
+    :param plegs: Number of physical legs per site
+    :param target_bonddim: Compress to this bond dimension
+    :returns: Result as numpy.ndarray (same shape as input)
+
+    """
+    array_shape = array.shape
+    array = array.reshape((np.prod(array_shape[:nr_left * plegs]), -1))
+    u, s, v = svd(array)
+    u = u[:, :target_bonddim]
+    s = s[:target_bonddim]
+    v = v[:target_bonddim, :]
+    opt_compr = np.dot(u * s, v)
+    opt_compr = opt_compr.reshape(array_shape)
+    return opt_compr
+
