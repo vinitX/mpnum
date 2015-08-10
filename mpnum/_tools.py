@@ -4,6 +4,7 @@
 """
 
 from __future__ import division, print_function
+import itertools as it
 import numpy as np
 
 
@@ -45,11 +46,13 @@ def global_to_local(array, sites):
     return np.transpose(array, order)
 
 
-def local_to_global(array, sites):
+def local_to_global(array, sites, left_skip=0, right_skip=0):
     """Inverse to local_to_global
 
     :param np.ndarray array: Array with ndim, such that ndim % sites = 0
     :param int sites: Number of distinct sites
+    :param int left_skip: Ignore that many axes on the left
+    :param int right_skip: Ignore that many axes on the right
     :returns: Array with same ndim as array, but reshaped
 
     >>> ltg, gtl = local_to_global, global_to_local
@@ -58,12 +61,23 @@ def local_to_global(array, sites):
     >>> ltg(gtl(np.zeros((1, 2, 3, 4, 5, 6)), 2), 2).shape
     (1, 2, 3, 4, 5, 6)
 
+    Transform all or only the inner axes:
+
+    >>> ltg = local_to_global
+    >>> ltg(np.zeros((1, 2, 3, 4, 5, 6)), 3).shape
+    (1, 3, 5, 2, 4, 6)
+    >>> ltg(np.zeros((1, 2, 3, 4, 5, 6)), 2, left_skip=1, right_skip=1).shape
+    (1, 2, 4, 3, 5, 6)
+
     """
-    assert array.ndim % sites == 0, \
+    skip = left_skip + right_skip
+    ndim = array.ndim - skip
+    assert ndim % sites == 0, \
         "ndim={} is not a multiple of {}".format(array.ndim, sites)
-    plegs = array.ndim // sites
-    order = sum(([plegs*i + j for i in range(sites)] for j in range(plegs)),
-                [])
+    plegs = ndim // sites
+    order = (left_skip + plegs*i + j for j in range(plegs) for i in range(sites))
+    order = tuple(it.chain(
+        range(left_skip), order, range(array.ndim-right_skip, array.ndim)))
     return np.transpose(array, order)
 
 
