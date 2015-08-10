@@ -22,10 +22,10 @@ from mparray_test import mpo_to_global, MP_TEST_PARAMETERS
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mineig(nr_sites, local_dim, bond_dim):
     # With startvec_bonddim = 2 * bonddim and this seed, mineig() gets
-    # stuck in a local minimum. If that happens again, increasing the
-    # bond dimension of the start vector should solve the problem.
-    #   np.random.seed(46)
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    # stuck in a local minimum. With startvec_bonddim = 3 * bonddim,
+    # it does not.
+    randstate = np.random.RandomState(seed=46)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate)
     # make mpa Herimitan in place, without increasing bond dimension:
     for lten in mpo:
         lten += lten.swapaxes(1, 2).conj()
@@ -37,7 +37,8 @@ def test_mineig(nr_sites, local_dim, bond_dim):
     mineig_pos = eigvals.argmin()
     mineig = eigvals[mineig_pos]
     mineig_eigvec = eigvec[:, mineig_pos]
-    mineig2, mineig_eigvec2 = mpnum.linalg.mineig(mpo, startvec_bonddim=3 * bond_dim)
+    mineig2, mineig_eigvec2 = mpnum.linalg.mineig(
+        mpo, startvec_bonddim=3 * bond_dim, startvec_randstate=randstate)
     mineig_eigvec2 = mineig_eigvec2.to_array().flatten()
     overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec2)
     assert_almost_equal(mineig, mineig2)
@@ -46,11 +47,11 @@ def test_mineig(nr_sites, local_dim, bond_dim):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim):
-    # With startvec_bonddim = 2 * bonddim and this seed, mineig() gets
-    # stuck in a local minimum. If that happens again, increasing the
-    # bond dimension of the start vector should solve the problem.
-    np.random.seed(46)
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    # With startvec_bonddim = 2 * bonddim and minimize_sites=1,
+    # mineig() gets stuck in a local minimum. With minimize_sites=2,
+    # it does not.
+    randstate = np.random.RandomState(seed=46)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate)
     # make mpa Herimitan in place, without increasing bond dimension:
     for lten in mpo:
         lten += lten.swapaxes(1, 2).conj()
@@ -62,7 +63,9 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim):
     mineig_pos = eigvals.argmin()
     mineig = eigvals[mineig_pos]
     mineig_eigvec = eigvec[:, mineig_pos]
-    mineig2, mineig_eigvec2 = mpnum.linalg.mineig(mpo, startvec_bonddim=2 * bond_dim, minimize_sites=2)
+    mineig2, mineig_eigvec2 = mpnum.linalg.mineig(
+        mpo, startvec_bonddim=2 * bond_dim, startvec_randstate=randstate,
+        minimize_sites=2)
     mineig_eigvec2 = mineig_eigvec2.to_array().flatten()
     overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec2)
     assert_almost_equal(mineig, mineig2)
