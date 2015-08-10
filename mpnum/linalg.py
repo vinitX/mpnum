@@ -78,7 +78,7 @@ def _variational_compression_rightvec_add(rightvec, compr_lten, tgt_lten):
     return rightvec
 
 
-def _variational_compression_new_lten(leftvec, tgt_ltens, rightvec):
+def _variational_compression_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
     """Create new local tensors for the compressed MPS.
 
     :param leftvec: Left vector
@@ -86,11 +86,17 @@ def _variational_compression_new_lten(leftvec, tgt_ltens, rightvec):
     :param tgt_ltens: List of local tensor of the target MPS
     :param rightvec: Right vector
         It has two indices: compr_mps_bond and tgt_mps_bond
+    :param int max_bonddim: Maximal bond dimension of the result
 
     """
-    assert len(tgt_ltens) == 1, 'not implemented yet'
+    # Produce one MPS local tensor supported on len(tgt_ltens) sites.
     tgt_lten = tgt_ltens[0]
-    # Do the contraction mentioned above. 
+    for lten in tgt_ltens[1:]:
+        tgt_lten = _tools.matdot(tgt_lten, lten)
+    tgt_lten_shape = tgt_lten.shape
+    tgt_lten = tgt_lten.reshape((tgt_lten_shape[0], -1, tgt_lten_shape[-1]))
+
+    # Do work. 
     leftvec_names = ('compr_left_bond', 'tgt_left_bond')
     tgt_names = ('tgt_left_bond', 'tgt_phys', 'tgt_right_bond')
     rightvec_names = ('compr_right_bond', 'tgt_right_bond')
@@ -107,7 +113,15 @@ def _variational_compression_new_lten(leftvec, tgt_ltens, rightvec):
         'compr_left_bond', 'tgt_phys', 'compr_right_bond'
     )
     compr_lten = compr_lten.to_array(compr_lten_names).conj()
-    return (compr_lten,)
+    s = compr_lten.shape
+    compr_lten = compr_lten.reshape((s[0],) + tgt_lten_shape[1:-1] + (s[-1],))
+
+    if len(tgt_ltens) == 1:
+        compr_ltens = (compr_lten,)
+    else:
+        compr_ltens = mp.MPArray.from_array(compr_lten, plegs=1, has_bond=True)
+        compr_ltens.compress(method='svd', max_bd=max_bonddim)
+    return compr_ltens
 
 
 def variational_compression(mpa,
@@ -133,7 +147,8 @@ def variational_compression(mpa,
     :param max_num_sweeps: Maximum number of sweeps to do. Currently,
         always do that many sweeps.
 
-    :param int minimize_sites: Minimize eigenvalue on that many sites.
+    :param int minimize_sites: Minimize distance by changing that many
+        sites simultaneously.
 
     :returns: compressed_mpa
 
@@ -176,6 +191,7 @@ def variational_compression(mpa,
     for pos in range(nr_sites - minimize_sites - 1, -1, -1):
         rightvecs[pos] = _variational_compression_rightvec_add(
             rightvecs[pos + 1], compr[pos + minimize_sites], mpa[pos + minimize_sites])
+    max_bonddim = max(compr.bdims)
 
     for num_sweep in range(max_num_sweeps):
 
@@ -192,7 +208,7 @@ def variational_compression(mpa,
                     leftvecs[pos - 1], compr[pos - 1], mpa[pos - 1])
             pos_end = pos + minimize_sites
             compr_lten = _variational_compression_new_lten(
-                leftvecs[pos], mpa[pos:pos_end], rightvecs[pos])
+                leftvecs[pos], mpa[pos:pos_end], rightvecs[pos], max_bonddim)
             compr[pos:pos_end] = compr_lten
 
         # Sweep from right to left (don't do last site again)
@@ -205,7 +221,7 @@ def variational_compression(mpa,
                 rightvecs[pos] = _variational_compression_rightvec_add(
                     rightvecs[pos + 1], compr[pos_end], mpa[pos_end])
             compr_lten = _variational_compression_new_lten(
-                leftvecs[pos], mpa[pos:pos_end], rightvecs[pos])
+                leftvecs[pos], mpa[pos:pos_end], rightvecs[pos], max_bonddim)
             compr[pos:pos_end] = compr_lten
 
     if mpa_old_shape is not None:
