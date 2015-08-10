@@ -86,10 +86,12 @@ def test_variational_compression(nr_sites, local_dim, bond_dim):
     right_svd_overlap = np.abs(np.dot(array.conj().flatten(), right_svd_res.flatten()))
     left_svd_overlap = np.abs(np.dot(array.conj().flatten(), left_svd_res.flatten()))
 
-    # max_num_sweeps = 3 and 4 is sometimes not good enough. 
+    # max_num_sweeps = 3 and 4 is sometimes not good enough.
     mpa_compr = mpnum.linalg.variational_compression(
-        mpa, startvec_bonddim=target_bonddim, startvec_randstate=randstate, max_num_sweeps=5)
-    mpa_compr_overlap = np.abs(np.dot(array.conj().flatten(), mpa_compr.to_array().flatten()))
+        mpa, max_num_sweeps=5,
+        startvec_bonddim=target_bonddim, startvec_randstate=randstate)
+    mpa_compr_overlap = np.abs(np.dot(array.conj().flatten(),
+                                      mpa_compr.to_array().flatten()))
 
     # The basic intuition is that variational compression, given
     # enough sweeps, should be at least as good as left and right SVD
@@ -100,7 +102,7 @@ def test_variational_compression(nr_sites, local_dim, bond_dim):
 
     assert mpa_compr_overlap >= right_svd_overlap * (1 - overlap_rel_tol)
     assert mpa_compr_overlap >= left_svd_overlap * (1 - overlap_rel_tol)
-    
+
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_variational_compression_twosite(nr_sites, local_dim, bond_dim):
@@ -123,7 +125,8 @@ def test_variational_compression_twosite(nr_sites, local_dim, bond_dim):
     mpa_compr = mpnum.linalg.variational_compression(
         mpa, startvec_bonddim=target_bonddim, startvec_randstate=randstate,
         max_num_sweeps=3, minimize_sites=2)
-    mpa_compr_overlap = np.abs(np.dot(array.conj().flatten(), mpa_compr.to_array().flatten()))
+    mpa_compr_overlap = np.abs(np.dot(array.conj().flatten(),
+                                      mpa_compr.to_array().flatten()))
 
     # The basic intuition is that variational compression, given
     # enough sweeps, should be at least as good as left and right SVD
@@ -134,5 +137,3 @@ def test_variational_compression_twosite(nr_sites, local_dim, bond_dim):
 
     assert mpa_compr_overlap >= right_svd_overlap * (1 - overlap_rel_tol)
     assert mpa_compr_overlap >= left_svd_overlap * (1 - overlap_rel_tol)
-    
-

@@ -285,7 +285,7 @@ class MPArray(object):
         mpa = MPArray(ltens, _lnormalized=self._lnormalized,
                       _rnormalized=self._rnormalized)
         return mpa
-    
+
     def group_sites(self, sites_per_group):
         """Group several MPA sites into one site.
 

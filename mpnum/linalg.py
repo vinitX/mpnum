@@ -59,7 +59,7 @@ def _variational_compression_rightvec_add(rightvec, compr_lten, tgt_lten):
     :param tgt_lten: Local tensor of the target MPS
 
     Construct R from [Sch11, Fig. 27, p. 48]. See comments in
-    _variational_compression_leftvec_add() for further details. 
+    _variational_compression_leftvec_add() for further details.
 
     """
     rightvec_names = ('compr_bond', 'tgt_bond')
@@ -98,10 +98,10 @@ def _variational_compression_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim)
     Compute the right-hand side of [Sch11, Fig. 27, p. 48]. We have
     compr_lten in the top row of the figure without complex
     conjugation and tgt_lten in the bottom row with complex
-    conjugation. 
+    conjugation.
 
     For len(tgt_ltens) > 1, compute the right-hand side of [Sch11,
-    Fig. 29, p. 49]. 
+    Fig. 29, p. 49].
 
     """
     # Produce one MPS local tensor supported on len(tgt_ltens) sites.
@@ -111,7 +111,7 @@ def _variational_compression_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim)
     tgt_lten_shape = tgt_lten.shape
     tgt_lten = tgt_lten.reshape((tgt_lten_shape[0], -1, tgt_lten_shape[-1]))
 
-    # Contract the middle part with the left and right parts. 
+    # Contract the middle part with the left and right parts.
     leftvec_names = ('compr_left_bond', 'tgt_left_bond')
     tgt_names = ('tgt_left_bond', 'tgt_phys', 'tgt_right_bond')
     rightvec_names = ('compr_right_bond', 'tgt_right_bond')
@@ -142,13 +142,14 @@ def _variational_compression_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim)
     return compr_ltens
 
 
-def variational_compression(mpa,
-           startvec=None, startvec_bonddim=None, startvec_randstate=None,
-           max_num_sweeps=5, minimize_sites=1):
-    """Iterative compression of an MPA. 
+def variational_compression(
+        mpa,
+        startvec=None, startvec_bonddim=None, startvec_randstate=None,
+        max_num_sweeps=5, minimize_sites=1):
+    """Iterative compression of an MPA.
 
     Algorithm: [Sch11, Sec. 4.5.2]. All references refer to the arXiv
-    version of [Sch11]. 
+    version of [Sch11].
 
     :param MPArray mpa: The matrix product array to be compressed
 
@@ -183,16 +184,16 @@ def variational_compression(mpa,
         if startvec_bonddim is None:
             startvec_bonddim = max(mpa.bdims)
         compr = mpnum.factory.random_mpa(nr_sites, pdims, startvec_bonddim,
-                                          randstate=startvec_randstate)
+                                         randstate=startvec_randstate)
         compr /= mp.norm(compr)
     # For
     #
     #   pos in range(nr_sites - minimize_sites),
-    # 
+    #
     # we find the ground state of an operator supported on
-    # 
+    #
     #   range(pos, pos_end),  pos_end = pos + minimize_sites
-    # 
+    #
     # leftvecs[pos] and rightvecs[pos] contain the vectors needed to
     # construct that operator for that. Therefore, leftvecs[pos] is
     # constructed from matrices on
@@ -387,7 +388,7 @@ def _mineig_local_op(leftvec, mpo_ltens, rightvec):
     mpo_lten = mpo_lten.reshape(
         (s[0], np.prod(s[1:1 + nr_sites]), np.prod(s[1 + nr_sites:-1]), s[-1]))
 
-    # Do the contraction mentioned above. 
+    # Do the contraction mentioned above.
     leftvec_names = ('left_mps_bond', 'left_mpo_bond', 'left_cc_mps_bond')
     mpo_names = ('left_mpo_bond', 'phys_row', 'phys_col', 'right_mpo_bond')
     rightvec_names = ('right_mps_bond', 'right_mpo_bond', 'right_cc_mps_bond')
@@ -453,7 +454,7 @@ def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
     else:
         # If we minimize on multiple sites, we must compress to the
         # desired bond dimension.
-        # 
+        #
         # TODO: Return the truncation error.
         #
         # "the truncation error of conventional DMRG [...] has emerged
@@ -496,7 +497,7 @@ def mineig(mpo,
     an operator supported on 'minimize_sites' many sites. For
     minimize_sites=1, this is called "variational MPS ground state
     search" or "single-site DMRG" [Sch11, Sec. 6.3, p. 69]. For
-    minimize_sites>1, this is called "multi-site DMRG". 
+    minimize_sites>1, this is called "multi-site DMRG".
 
     Comments on the implementation, for minimize_sites=1:
 
@@ -527,11 +528,11 @@ def mineig(mpo,
     # For
     #
     #   pos in range(nr_sites - minimize_sites),
-    # 
+    #
     # we find the ground state of an operator supported on
-    # 
+    #
     #   range(pos, pos_end),  pos_end = pos + minimize_sites
-    # 
+    #
     # leftvecs[pos] and rightvecs[pos] contain the vectors needed to
     # construct that operator for that. Therefore, leftvecs[pos] is
     # constructed from matrices on
