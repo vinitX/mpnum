@@ -38,7 +38,7 @@ def test_mineig(nr_sites, local_dim, bond_dim):
     mineig = eigvals[mineig_pos]
     mineig_eigvec = eigvec[:, mineig_pos]
     mineig2, mineig_eigvec2 = mpnum.linalg.mineig(
-        mpo, startvec_bonddim=3 * bond_dim, startvec_randstate=randstate)
+        mpo, startvec_bonddim=3 * bond_dim, randstate=randstate)
     mineig_eigvec2 = mineig_eigvec2.to_array().flatten()
     overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec2)
     assert_almost_equal(mineig, mineig2)
@@ -64,7 +64,7 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim):
     mineig = eigvals[mineig_pos]
     mineig_eigvec = eigvec[:, mineig_pos]
     mineig2, mineig_eigvec2 = mpnum.linalg.mineig(
-        mpo, startvec_bonddim=2 * bond_dim, startvec_randstate=randstate,
+        mpo, startvec_bonddim=2 * bond_dim, randstate=randstate,
         minimize_sites=2)
     mineig_eigvec2 = mineig_eigvec2.to_array().flatten()
     overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec2)

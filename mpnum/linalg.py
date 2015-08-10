@@ -155,7 +155,7 @@ def _mineig_local_op(leftvec, mpo_ltens, rightvec):
     mpo_lten = mpo_lten.reshape(
         (s[0], np.prod(s[1:1 + nr_sites]), np.prod(s[1 + nr_sites:-1]), s[-1]))
 
-    # Do the contraction mentioned above. 
+    # Do the contraction mentioned above.
     leftvec_names = ('left_mps_bond', 'left_mpo_bond', 'left_cc_mps_bond')
     mpo_names = ('left_mpo_bond', 'phys_row', 'phys_col', 'right_mpo_bond')
     rightvec_names = ('right_mps_bond', 'right_mpo_bond', 'right_cc_mps_bond')
@@ -221,7 +221,7 @@ def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
     else:
         # If we minimize on multiple sites, we must compress to the
         # desired bond dimension.
-        # 
+        #
         # TODO: Return the truncation error.
         #
         # "the truncation error of conventional DMRG [...] has emerged
@@ -233,7 +233,7 @@ def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
 
 
 def mineig(mpo,
-           startvec=None, startvec_bonddim=None, startvec_randstate=None,
+           startvec=None, startvec_bonddim=None, randstate=None,
            max_num_sweeps=5, eigs_opts=None, minimize_sites=1):
     """Iterative search for smallest eigenvalue and eigenvector of an MPO.
 
@@ -248,7 +248,7 @@ def mineig(mpo,
     :param startvec: Start vector; generate a random start vector if
         None.
 
-    :param startvec_randstate: numpy.random.RandomState instance or None
+    :param randstate: numpy.random.RandomState instance or None
 
     :param max_num_sweeps: Maximum number of sweeps to do. Currently,
         always do that many sweeps.
@@ -264,7 +264,7 @@ def mineig(mpo,
     an operator supported on 'minimize_sites' many sites. For
     minimize_sites=1, this is called "variational MPS ground state
     search" or "single-site DMRG" [Sch11, Sec. 6.3, p. 69]. For
-    minimize_sites>1, this is called "multi-site DMRG". 
+    minimize_sites>1, this is called "multi-site DMRG".
 
     Comments on the implementation, for minimize_sites=1:
 
@@ -284,22 +284,20 @@ def mineig(mpo,
     nr_sites = len(mpo)
     eigvec = startvec
     if eigvec is None:
-        if startvec_randstate is None:
-            startvec_randstate = np.random
         pdims = max(dim[0] for dim in mpo.pdims)
         if startvec_bonddim is None:
             startvec_bonddim = max(mpo.bdims)
         eigvec = mpnum.factory.random_mpa(nr_sites, pdims, startvec_bonddim,
-                                          randstate=startvec_randstate)
+                                          randstate=randstate)
         eigvec /= mp.norm(eigvec)
     # For
     #
     #   pos in range(nr_sites - minimize_sites),
-    # 
+    #
     # we find the ground state of an operator supported on
-    # 
+    #
     #   range(pos, pos_end),  pos_end = pos + minimize_sites
-    # 
+    #
     # leftvecs[pos] and rightvecs[pos] contain the vectors needed to
     # construct that operator for that. Therefore, leftvecs[pos] is
     # constructed from matrices on

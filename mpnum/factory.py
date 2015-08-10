@@ -5,6 +5,7 @@
 from __future__ import division, print_function
 
 import itertools as it
+import functools as ft
 
 import numpy as np
 
@@ -12,18 +13,15 @@ import mpnum.mparray as mp
 from six.moves import range
 
 
-def _zrandn(randstate=None):
-    """Shortcut for randstate.randn(*shape) + 1.j * randstate.randn(*shape)
+def _zrandn(shape, randstate=None):
+    """Shortcut for np.random.randn(*shape) + 1.j * np.random.randn(*shape)
 
-    :param randstate: numpy.random.RandomState instance or None
+    :param randstate: Instance of np.radom.RandomState or None (which yields
+        the default np.random) (default None)
 
-    randstate=None defaults to numpy.random.
     """
-    if randstate is None:
-        randstate = np.random
-    def _zrandn_func(shape):
-        return randstate.randn(*shape) + 1.j * randstate.randn(*shape)
-    return _zrandn_func
+    randstate = randstate if randstate is not None else np.random
+    return randstate.randn(*shape) + 1.j * randstate.randn(*shape)
 
 
 def random_vec(sites, ldim, randstate=None):
@@ -42,7 +40,7 @@ def random_vec(sites, ldim, randstate=None):
     True
     """
     shape = (ldim, ) * sites
-    psi = _zrandn(randstate)(shape)
+    psi = _zrandn(shape, randstate=randstate)
     psi /= np.sqrt(np.vdot(psi, psi))
     return psi
 
@@ -60,7 +58,7 @@ def random_op(sites, ldim, randstate=None):
     (2, 2, 2, 2, 2, 2)
     """
     shape = (ldim, ldim) * sites
-    return _zrandn(randstate)(shape)
+    return _zrandn(shape, randstate=randstate)
 
 
 def random_state(sites, ldim, randstate=None):
@@ -83,7 +81,7 @@ def random_state(sites, ldim, randstate=None):
     True
     """
     shape = (ldim**sites, ldim**sites)
-    mat = _zrandn(randstate)(shape)
+    mat = _zrandn(shape, randstate=randstate)
     rho = np.conj(mat.T).dot(mat)
     rho /= np.trace(rho)
     return rho.reshape((ldim,) * 2 * sites)
@@ -121,7 +119,7 @@ def random_mpa(sites, ldim, bdim, randstate=None):
     :returns: randomly choosen matrix product array
 
     """
-    return _generate(sites, ldim, bdim, _zrandn(randstate))
+    return _generate(sites, ldim, bdim, ft.partial(_zrandn, randstate=randstate))
 
 
 def zero(sites, ldim, bdim):

@@ -48,7 +48,7 @@ def test_from_full(nr_sites, local_dim, _):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_from_kron(nr_sites, local_dim, bond_dim):
     plegs = 2
-    factors = tuple(factory._zrandn()([nr_sites] + ([local_dim] * plegs)))
+    factors = tuple(factory._zrandn([nr_sites] + ([local_dim] * plegs)))
     op = _tools.mkron(*factors)
     op.shape = [local_dim] * (plegs * nr_sites)
     mpo = mp.MPArray.from_kron(factors)
