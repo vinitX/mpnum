@@ -122,6 +122,31 @@ def random_mpa(sites, ldim, bdim, randstate=None):
     return _generate(sites, ldim, bdim, ft.partial(_zrandn, randstate=randstate))
 
 
+def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
+               normalized=True):
+    """Returns an hermitian MPO with randomly choosen local tensors
+
+    :param sites: Number of sites
+    :param ldim: Local dimension
+    :param bdim: Bond dimension
+    :param randstate: numpy.random.RandomState instance or None
+    :param hermitian: Is the operator supposed to be hermitian
+    :param normalized: Operator should have unit norm
+    :returns: randomly choosen matrix product operator
+
+    """
+    mpo = random_mpa(sites, (ldim,) * 2, bdim, randstate=randstate)
+
+    if hermitian:
+        # make mpa Herimitan in place, without increasing bond dimension:
+        for lten in mpo:
+            lten += lten.swapaxes(1, 2).conj()
+    if normalized:
+        mpo /= mp.norm(mpo)
+
+    return mpo
+
+
 def zero(sites, ldim, bdim):
     """Returns a MPA with localtensors beeing zero (but of given shape)
 

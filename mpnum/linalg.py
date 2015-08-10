@@ -1,6 +1,5 @@
 # encoding: utf-8
 
-
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 
@@ -242,24 +241,15 @@ def mineig(mpo,
     Algorithm: [Sch11, Sec. 6.3]
 
     :param MPArray mpo: A matrix product operator (MPA with two physical legs)
-
+    :param startvec: initial guess for eigenvector (default random MPS with
+        bond `startvec_bonddim`)
     :param startvec_bonddim: Bond dimension of random start vector if
-        no start vector is given. Use the bond dimension of the MPA if
-        None.
-
-    :param startvec: Start vector; generate a random start vector if
-        None.
-
+        no start vector is given. (default: Use the bond dimension of `mpo`)
     :param randstate: numpy.random.RandomState instance or None
-
-    :param max_num_sweeps: Maximum number of sweeps to do. Currently,
-        always do that many sweeps.
-
-    :param eigs_opts: kwargs for scipy.sparse.linalg.eigs(). You
-        should always set k=1.
-
-    :param int minimize_sites: Minimize eigenvalue on that many sites.
-
+    :param max_num_sweeps: Maximum number of sweeps to do (default 5)
+    :param eigs_opts: kwargs for scipy.sparse.linalg.eigs(), always set k=1!
+    :param int minimize_sites: Number of connected sites minimization should
+        be performed on (default 1)
     :returns: mineigval, mineigval_eigvec_mpa
 
     We minimize the eigenvalue by obtaining the minimal eigenvalue of
@@ -283,15 +273,18 @@ def mineig(mpo,
     Figs. 14 and 15 and pages 28 and 29.)
 
     """
+    # FIXME Function too complicated, can we split the iterative part into
+    #       subfunctions?
     nr_sites = len(mpo)
-    eigvec = startvec
-    if eigvec is None:
+
+    if startvec is None:
         pdims = max(dim[0] for dim in mpo.pdims)
         if startvec_bonddim is None:
             startvec_bonddim = max(mpo.bdims)
-        eigvec = mpnum.factory.random_mpa(nr_sites, pdims, startvec_bonddim,
-                                          randstate=randstate)
-        eigvec /= mp.norm(eigvec)
+
+        startvec = mpnum.factory.random_mpa(nr_sites, pdims, startvec_bonddim,
+                                            randstate=randstate)
+        startvec /= mp.norm(startvec)
     # For
     #
     #   pos in range(nr_sites - minimize_sites),
@@ -309,21 +302,22 @@ def mineig(mpo,
     # and rightvecs[pos] is constructed from matrices on
     #
     #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
+    eigvec = startvec
+    eigvec.normalize(right=1)
     leftvecs = [np.array(1, ndmin=3)] + [None] * (nr_sites - minimize_sites)
     rightvecs = [None] * (nr_sites - minimize_sites) + [np.array(1, ndmin=3)]
-    eigvec.normalize(right=1)
-    for pos in range(nr_sites - minimize_sites - 1, -1, -1):
-        rightvecs[pos] = _mineig_rightvec_add(
-            rightvecs[pos + 1], mpo[pos + minimize_sites], eigvec[pos + minimize_sites])
+    for pos in reversed(range(nr_sites - minimize_sites)):
+        rightvecs[pos] = _mineig_rightvec_add(rightvecs[pos + 1],
+                                              mpo[pos + minimize_sites],
+                                              eigvec[pos + minimize_sites])
 
     for num_sweep in range(max_num_sweeps):
-
         # Sweep from left to right
         for pos in range(nr_sites - minimize_sites + 1):
             if pos == 0 and num_sweep > 0:
-                # Don't do first site again if we are not in the first
-                # sweep.
+                # Don't do first site again if we are not in the first # sweep.
                 continue
+
             if pos > 0:
                 eigvec.normalize(left=pos)
                 rightvecs[pos - 1] = None
@@ -336,7 +330,7 @@ def mineig(mpo,
             eigvec[pos:pos_end] = eigvec_lten
 
         # Sweep from right to left (don't do last site again)
-        for pos in range(nr_sites - minimize_sites - 1, -1, -1):
+        for pos in reversed(range(nr_sites - minimize_sites + 1)):
             pos_end = pos + minimize_sites
             if pos < nr_sites - minimize_sites:
                 # We always do this, because we don't do the last site again.

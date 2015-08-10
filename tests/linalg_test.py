@@ -13,8 +13,6 @@ from numpy.testing import assert_almost_equal
 import mpnum.linalg
 
 import mpnum.factory as factory
-import mpnum.mparray as mp
-from mpnum import _tools
 
 from mparray_test import mpo_to_global, MP_TEST_PARAMETERS
 
@@ -25,23 +23,23 @@ def test_mineig(nr_sites, local_dim, bond_dim):
     # stuck in a local minimum. With startvec_bonddim = 3 * bonddim,
     # it does not.
     randstate = np.random.RandomState(seed=46)
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate)
-    # make mpa Herimitan in place, without increasing bond dimension:
-    for lten in mpo:
-        lten += lten.swapaxes(1, 2).conj()
+    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=randstate,
+                             hermitian=True, normalized=True)
     mpo.normalize()
-    mpo /= mp.norm(mpo)
     op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
     eigvals, eigvec = np.linalg.eig(op)
+
+    # Eigenvals should be real for a hermitian matrix
     assert (np.abs(eigvals.imag) < 1e-10).all(), str(eigvals.imag)
     mineig_pos = eigvals.argmin()
     mineig = eigvals[mineig_pos]
     mineig_eigvec = eigvec[:, mineig_pos]
-    mineig2, mineig_eigvec2 = mpnum.linalg.mineig(
+    mineig_mp, mineig_eigvec_mp = mpnum.linalg.mineig(
         mpo, startvec_bonddim=3 * bond_dim, randstate=randstate)
-    mineig_eigvec2 = mineig_eigvec2.to_array().flatten()
-    overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec2)
-    assert_almost_equal(mineig, mineig2)
+    mineig_eigvec_mp = mineig_eigvec_mp.to_array().flatten()
+
+    overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec_mp)
+    assert_almost_equal(mineig, mineig_mp)
     assert_almost_equal(1, abs(overlap))
 
 
@@ -51,22 +49,21 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim):
     # mineig() gets stuck in a local minimum. With minimize_sites=2,
     # it does not.
     randstate = np.random.RandomState(seed=46)
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate)
-    # make mpa Herimitan in place, without increasing bond dimension:
-    for lten in mpo:
-        lten += lten.swapaxes(1, 2).conj()
+    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=randstate,
+                             hermitian=True, normalized=True)
     mpo.normalize()
-    mpo /= mp.norm(mpo)
     op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
     eigvals, eigvec = np.linalg.eig(op)
+
+    # Eigenvals should be real for a hermitian matrix
     assert (np.abs(eigvals.imag) < 1e-10).all(), str(eigvals.imag)
     mineig_pos = eigvals.argmin()
-    mineig = eigvals[mineig_pos]
-    mineig_eigvec = eigvec[:, mineig_pos]
-    mineig2, mineig_eigvec2 = mpnum.linalg.mineig(
+    mineig, mineig_eigvec = eigvals[mineig_pos], eigvec[:, mineig_pos]
+    mineig_mp, mineig_eigvec_mp = mpnum.linalg.mineig(
         mpo, startvec_bonddim=2 * bond_dim, randstate=randstate,
         minimize_sites=2)
-    mineig_eigvec2 = mineig_eigvec2.to_array().flatten()
-    overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec2)
-    assert_almost_equal(mineig, mineig2)
+    mineig_eigvec_mp = mineig_eigvec_mp.to_array().flatten()
+
+    overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec_mp)
+    assert_almost_equal(mineig, mineig_mp)
     assert_almost_equal(1, abs(overlap))
