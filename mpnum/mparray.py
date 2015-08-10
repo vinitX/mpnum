@@ -163,7 +163,7 @@ class MPArray(object):
         plegs = plegs if plegs is not None else array.ndim
         assert array.ndim % plegs == 0, \
             "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
-        ltens = _extract_factors(array.reshape((1,) + array.shape + (1,)), plegs=plegs)
+        ltens = _extract_factors(array[None, ..., None], plegs=plegs)
         mpa = cls(ltens, _lnormalized=len(ltens) - 1)
         return mpa
 
