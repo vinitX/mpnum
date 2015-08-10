@@ -107,8 +107,14 @@ class MPArray(object):
 
     def __setitem__(self, index, value):
         """Update a local tensor and keep track of normalization."""
-        self._lnormalized = min(self._lnormalized, index)
-        self._rnormalized = max(self._rnormalized, index + 1)
+        if isinstance(index, slice):
+            start = index.start
+            stop = index.stop
+        else:
+            start = index
+            stop = index + 1
+        self._lnormalized = min(self._lnormalized, start)
+        self._rnormalized = max(self._rnormalized, stop)
         self._ltens[index] = value
 
     @property
