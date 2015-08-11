@@ -125,23 +125,58 @@ def block_diag(summands, axes=(0, 1)):
     along the specified axes. All other axes must have identical
     sizes.
 
-    :param axes: Along these axes, perform a block-diagonal sum.
+    :param axes: Along these axes, perform a block-diagonal sum. Can
+        be negative.
+
+    >>> import numpy as np
+    >>> from mpnum._tools import block_diag
+    >>> a = np.arange(8).reshape((2, 2, 2))
+    >>> b = np.arange(8, 16).reshape((2, 2, 2))
+    >>> a
+    array([[[0, 1],
+            [2, 3]],
+    <BLANKLINE>
+           [[4, 5],
+            [6, 7]]])
+    >>> b
+    array([[[ 8,  9],
+            [10, 11]],
+    <BLANKLINE>
+           [[12, 13],
+            [14, 15]]])
+    >>> block_diag((a, b), axes=(1, -1))
+    array([[[ 0,  1,  0,  0],
+            [ 2,  3,  0,  0],
+            [ 0,  0,  8,  9],
+            [ 0,  0, 10, 11]],
+    <BLANKLINE>
+           [[ 4,  5,  0,  0],
+            [ 6,  7,  0,  0],
+            [ 0,  0, 12, 13],
+            [ 0,  0, 14, 15]]])
+    >>>
 
     """
+    axes = np.array(axes)
+    axes += (axes < 0) * summands[0].ndim
+
     nr_axes = len(axes)
     axes_order = list(axes)
     axes_order += [i for i in range(summands[0].ndim)
                    if i not in axes]
     summands = [array.transpose(axes_order) for array in summands]
+
     shapes = np.array([array.shape[:nr_axes] for array in summands])
     res = np.zeros(tuple(shapes.sum(axis=0)) + summands[0].shape[nr_axes:],
                    dtype=summands[0].dtype)
     startpos = np.zeros(nr_axes)
+
     for array, shape in zip(summands, shapes):
         endpos = startpos + shape
         pos = [slice(start, end) for start, end in zip(startpos, endpos)]
         res[pos] += array
         startpos = endpos
+
     old_axes_order = np.argsort(axes_order)
     res = res.transpose(old_axes_order)
     return res
