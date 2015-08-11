@@ -642,7 +642,7 @@ def linear_chain_local_sum(mpas, embed_tensor=None):
         ltens.append(lten)
 
     mpa = MPArray(ltens)
-    return mpa    
+    return mpa
 
 
 def partialtrace_operator(mpa, startsites, width):
