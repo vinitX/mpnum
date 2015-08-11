@@ -6,6 +6,7 @@
 from __future__ import division, print_function
 import itertools as it
 import numpy as np
+from six.moves import range, zip
 
 
 SI = np.eye(2)
@@ -115,3 +116,32 @@ def mkron(*args):
 def norm_2(x):
     """l2 norm of the vector x"""
     return np.sqrt(np.vdot(x, x))
+
+
+def block_diag(summands, axes=(0, 1)):
+    """Block-diagonal sum for n-dimensional arrays.
+
+    Perform something like a block diagonal sum (if len(axes) == 2)
+    along the specified axes. All other axes must have identical
+    sizes.
+
+    :param axes: Along these axes, perform a block-diagonal sum.
+
+    """
+    nr_axes = len(axes)
+    axes_order = list(axes)
+    axes_order += [i for i in range(summands[0].ndim)
+                   if i not in axes]
+    summands = [array.transpose(axes_order) for array in summands]
+    shapes = np.array([array.shape[:nr_axes] for array in summands])
+    res = np.zeros(tuple(shapes.sum(axis=0)) + summands[0].shape[nr_axes:],
+                   dtype=summands[0].dtype)
+    startpos = np.zeros(nr_axes)
+    for array, shape in zip(summands, shapes):
+        endpos = startpos + shape
+        pos = [slice(start, end) for start, end in zip(startpos, endpos)]
+        res[pos] += array
+        startpos = endpos
+    old_axes_order = np.argsort(axes_order)
+    res = res.transpose(old_axes_order)
+    return res
