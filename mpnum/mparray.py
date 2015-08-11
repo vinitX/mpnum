@@ -413,11 +413,13 @@ class MPArray(object):
         self._lnormalized = min(to_site - 1, lnormal)
         self._rnormalized = to_site
 
-    def compress(self, method='svd', **kwargs):
-        """Compresses the MPA to a fixed maximal bond dimension in place
+    def compress(self, method='svd', inplace=True, **kwargs):
+        """Compresses the MPA to a fixed maximal bond dimension
 
         :param method: Which implemention should be used for compression
             'svd': Compression based on SVD [Sch11, Sec. 4.5.1]
+            'var': Variational compression [Sch11, Sec. 4.5.2]
+        :param inplace: Compress the array in place or return new copy
         :returns: Depends on method and the options passed.
 
         For method='svd':
@@ -438,7 +440,10 @@ class MPArray(object):
                      to the right yielding a completely left-cannonical MPA
             'left': Starting on rightmost site, the compression sweeps
                     to the left yielding a completely right-cannoncial MPA
-        :returns: Overlap <M|M'> of the original M and its compression M'
+        :returns:
+            inplace=true: Overlap <M|M'> of the original M and its compr. M'
+            inplace=false: Compressed MPA, Overlap <M|M'> of the original M and
+                           its compr. M',
 
         """
         if method == 'svd':
@@ -448,12 +453,16 @@ class MPArray(object):
             max_bdim = kwargs.get('max_bdim', max(self.bdims))
             relerr = kwargs.get('relerr', 0.0)
 
+            target = self if inplace else self.copy()
+
             if direction == 'right':
-                self.normalize(right=1)
-                return self._compress_svd_r(max_bdim, relerr)
+                target.normalize(right=1)
+                overlap = target._compress_svd_r(max_bdim, relerr)
             elif direction == 'left':
                 self.normalize(left=len(self) - 1)
-                return self._compress_svd_l(max_bdim, relerr)
+                overlap = target._compress_svd_l(max_bdim, relerr)
+
+            return overlap if inplace else target, overlap
         else:
             raise ValueError("{} is not a valid method.".format(method))
 
