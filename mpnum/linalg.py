@@ -592,7 +592,7 @@ def mineig(mpo,
             eigvec[pos:pos_end] = eigvec_lten
 
         # Sweep from right to left (don't do last site again)
-        for pos in reversed(range(nr_sites - minimize_sites + 1)):
+        for pos in reversed(range(nr_sites - minimize_sites)):
             pos_end = pos + minimize_sites
             if pos < nr_sites - minimize_sites:
                 # We always do this, because we don't do the last site again.
