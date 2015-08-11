@@ -196,6 +196,37 @@ def test_outer(nr_sites, local_dim, bond_dim):
     assert mp.norm(diff) < 1e-6
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, local_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
+def test_linear_chain_local_sum(nr_sites, local_dim, bond_dim, local_width):
+    eye_lten = np.eye(local_dim, dtype=complex)
+    eye_lten = eye_lten[None, ..., None]
+    eye_mpa = mp.MPArray((eye_lten,))
+
+    def embed_mpa(mpa, startpos):
+        mpas = [eye_mpa] * startpos + [mpa] + \
+               [eye_mpa] * (nr_sites - startpos - local_width)
+        res = mp.outer(mpas)
+        return res
+
+    nr_startpos = nr_sites - local_width + 1
+    mpas = [factory.random_mpa(local_width, (local_dim,) * 2, bond_dim)
+            for i in range(nr_startpos)]
+
+    # Embed with mp.outer() and calculate naive MPA sum:
+    mpas_embedded = [embed_mpa(mpa, i) for i, mpa in enumerate(mpas)]
+    mpa_sum = mpas_embedded[0]
+    for mpa in mpas_embedded[1:]:
+        mpa_sum += mpa
+
+    # Compare with linear_chain_local_sum: Same result, smaller bond
+    # dimension.
+    mpa_sum_linear_chain = mp.linear_chain_local_sum(mpas)
+
+    mpa_sum = mpa_sum.to_array()
+    mpa_sum_linear_chain = mpa_sum_linear_chain.to_array()
+    assert_array_almost_equal(mpa_sum_linear_chain, mpa_sum)
+
+
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_partial_trace_operator(nr_sites, local_dim, bond_dim, keep_width):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
