@@ -15,16 +15,19 @@ from six.moves import range, zip
 
 
 class POVM(object):
-    """TODO
+    """Represent a Positive Operator-Valued Measure (POVM).
     """
     def __init__(self, elements, info_complete=False, pinv=np.linalg.pinv):
-        """@todo: Docstring for __init__.
+        """Create a POVM.
+
+        The caller must supply whether the POVM elements are
+        informationally complete.
 
         :param elements: @todo
-        :param info_complete: Is the POVM ic (default False)
+        :param info_complete: Is the POVM informationally complete (IC)
+            (default False)
         :param pinv: Pseudo-inverse function to be used (default
             numpy.linalg.pinv)
-        :returns: @todo
 
         """
         self._elements = np.asarray(elements)
@@ -41,7 +44,8 @@ class POVM(object):
 
         :param vecs: Iterable of np.ndarray with ndim=1 representing the
             vectors for the POVM
-        :param info_complete: Is the POVM ic (default False)
+        :param info_complete: Is the POVM informationally complete
+            (default False)
         :returns:
         """
         povm_elems = np.array([np.outer(vec, vec.conj()) for vec in vecs])
