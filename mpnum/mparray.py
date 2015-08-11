@@ -424,13 +424,13 @@ class MPArray(object):
 
         For method='svd':
         -----------------
-        :param max_bdim: Maximal bond dimension for the compressed MPA (default
+        :param bdim: Maximal bond dimension for the compressed MPA (default
             max of current bond dimensions, i.e. no compression)
         :param relerr: Maximal allowed error for each truncation step, that is
             the fraction of truncated singular values over their sum (default
             0.0, i.e. no compression)
 
-        If both max_bdim and relerr is passed, the smaller resulting bond
+        If both bdim and relerr is passed, the smaller resulting bond
         dimension is used.
 
         :param direction: In which direction the compression should operate.
@@ -447,33 +447,36 @@ class MPArray(object):
 
         """
         if method == 'svd':
+            assert {'bdim', 'relerr', 'direction'}.issuperset(kwargs.iterkeys()), \
+                tuple(kwargs.iterkeys())
+
             ln, rn = self.normal_form
             default_direction = 'left' if len(self) - rn > ln else 'right'
             direction = kwargs.pop('direction', default_direction)
-            max_bdim = kwargs.get('max_bdim', max(self.bdims))
+            bdim = kwargs.get('bdim', max(self.bdims))
             relerr = kwargs.get('relerr', 0.0)
 
             target = self if inplace else self.copy()
 
             if direction == 'right':
                 target.normalize(right=1)
-                overlap = target._compress_svd_r(max_bdim, relerr)
+                overlap = target._compress_svd_r(bdim, relerr)
             elif direction == 'left':
                 self.normalize(left=len(self) - 1)
-                overlap = target._compress_svd_l(max_bdim, relerr)
+                overlap = target._compress_svd_l(bdim, relerr)
 
             return overlap if inplace else target, overlap
         else:
             raise ValueError("{} is not a valid method.".format(method))
 
-    def _compress_svd_r(self, max_bdim, relerr):
+    def _compress_svd_r(self, bdim, relerr):
         """Compresses the MPA in place from left to right using SVD;
         yields a left-cannonical state
 
         See :func:`MPArray.compress` for parameters
         """
         assert self.normal_form == (0, 1)
-        assert max_bdim > 0, "Cannot compress to bdim={}".format(max_bdim)
+        assert bdim > 0, "Cannot compress to bdim={}".format(bdim)
         assert (0. <= relerr) and (relerr <= 1.), \
             "Relerr={} not allowed".format(relerr)
 
@@ -483,7 +486,7 @@ class MPArray(object):
 
             svsum = np.cumsum(sv) / np.sum(sv)
             bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
-            bdim_t = min(ltens.shape[-1], u.shape[1], max_bdim, bdim_relerr)
+            bdim_t = min(ltens.shape[-1], u.shape[1], bdim, bdim_relerr)
 
             newshape = ltens.shape[:-1] + (bdim_t, )
             self._ltens[site] = u[:, :bdim_t].reshape(newshape)
@@ -494,7 +497,7 @@ class MPArray(object):
         self._rnormalized = len(self)
         return np.sum(np.abs(self._ltens[-1])**2)
 
-    def _compress_svd_l(self, max_bdim, relerr):
+    def _compress_svd_l(self, bdim, relerr):
         """Compresses the MPA in place from right to left using SVD;
         yields a right-cannonical state
 
@@ -502,7 +505,7 @@ class MPArray(object):
 
         """
         assert self.normal_form == (len(self) - 1, len(self))
-        assert max_bdim > 0, "Cannot compress to bdim={}".format(max_bdim)
+        assert bdim > 0, "Cannot compress to bdim={}".format(bdim)
         assert (0. <= relerr) and (relerr <= 1.), \
             "Relerr={} not allowed".format(relerr)
 
@@ -513,7 +516,7 @@ class MPArray(object):
 
             svsum = np.cumsum(sv) / np.sum(sv)
             bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
-            bdim_t = min(ltens.shape[0], v.shape[0], max_bdim, bdim_relerr)
+            bdim_t = min(ltens.shape[0], v.shape[0], bdim, bdim_relerr)
 
             newshape = (bdim_t, ) + ltens.shape[1:]
             self._ltens[site] = v[:bdim_t, :].reshape(newshape)
