@@ -114,8 +114,10 @@ class MPArray(object):
         else:
             start = index
             stop = index + 1
-        self._lnormalized = min(self._lnormalized, start)
-        self._rnormalized = max(self._rnormalized, stop)
+        if not self._lnormalized is None:
+            self._lnormalized = min(self._lnormalized, start)
+        if not self._rnormalized is None:
+            self._rnormalized = max(self._rnormalized, stop)
         self._ltens[index] = value
 
     @property
