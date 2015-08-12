@@ -92,7 +92,11 @@ def _generate(sites, ldim, bdim, func):
     of the physical legs. The local tensors are generated using `func`
 
     :param sites: Number of sites
-    :param ldim: Tuple of int-like of local dimensions
+    :param ldim: Depending on the type passed (checked in the following order)
+        iterable of iterable: Detailed list of physical dimensions, retured
+                              mpa will have exactly this for mpa.plegs
+        iterable of scalar: Same physical dimension for each site
+        scalar: Single physical leg for each site with given dimension
     :param bdim: Bond dimension
     :param func: Generator function for local tensors, should accept shape as
         tuple in first argument and should return numpy.ndarray of given shape
@@ -102,10 +106,19 @@ def _generate(sites, ldim, bdim, func):
     assert sites > 1, "Cannot generate MPA with sites {} < 2".format(sites)
     # if ldim is passed as scalar, make it 1-element tuple
     ldim = tuple(ldim) if hasattr(ldim, '__iter__') else (ldim, )
-    ltens_l = func((1, ) + ldim + (bdim, ))
-    ltenss = [func((bdim, ) + ldim + (bdim, ))
-              for _ in range(sites - 2)]
-    ltens_r = func((bdim, ) + ldim + (1, ))
+    # FIXME Make more concise
+    if not hasattr(ldim[0], '__iter__'):
+        ltens_l = func((1, ) + ldim + (bdim, ))
+        ltenss = [func((bdim, ) + ldim + (bdim, ))
+                for _ in range(sites - 2)]
+        ltens_r = func((bdim, ) + ldim + (1, ))
+    else:
+        ldim_iter = iter(ldim)
+        ltens_l = func((1, ) + tuple(next(ldim_iter)) + (bdim, ))
+        ltenss = [func((bdim, ) + tuple(ld) + (bdim, ))
+                for _, ld in zip(range(sites - 2), ldim_iter)]
+        ltens_r = func((bdim, ) + tuple(next(ldim_iter)) + (1, ))
+
     return mp.MPArray([ltens_l] + ltenss + [ltens_r])
 
 
@@ -113,7 +126,11 @@ def random_mpa(sites, ldim, bdim, randstate=None):
     """Returns a MPA with randomly choosen local tensors
 
     :param sites: Number of sites
-    :param ldim: Tuple of int-like of local dimensions
+    :param ldim: Depending on the type passed (checked in the following order)
+        iterable of iterable: Detailed list of physical dimensions, retured
+                              mpa will have exactly this for mpa.plegs
+        iterable of scalar: Same physical dimension for each site
+        scalar: Single physical leg for each site with given dimension
     :param bdim: Bond dimension
     :param randstate: numpy.random.RandomState instance or None
     :returns: randomly choosen matrix product array
@@ -151,7 +168,11 @@ def zero(sites, ldim, bdim):
     """Returns a MPA with localtensors beeing zero (but of given shape)
 
     :param sites: Number of sites
-    :param ldim: Tuple of int-like of local dimensions
+    :param ldim: Depending on the type passed (checked in the following order)
+        iterable of iterable: Detailed list of physical dimensions, retured
+                              mpa will have exactly this for mpa.plegs
+        iterable of scalar: Same physical dimension for each site
+        scalar: Single physical leg for each site with given dimension
     :param bdim: Bond dimension
     :returns: Representation of the zero-array as MPA
 
