@@ -440,9 +440,6 @@ class MPArray(object):
 
         """
         if method == 'svd':
-            assert {'bdim', 'relerr', 'direction'}.issuperset(kwargs.keys()), \
-                tuple(kwargs.keys())
-
             ln, rn = self.normal_form
             default_direction = 'left' if len(self) - rn > ln else 'right'
             direction = kwargs.pop('direction', default_direction)
@@ -463,7 +460,7 @@ class MPArray(object):
             return overlap if inplace else target, overlap
 
         elif method == 'var':
-            assert {'initmpa', 'bdim', 'randstate', 'num_sweep', 'sweep_sites'} \
+            assert {'initmpa', 'bdim', 'randstate', 'num_sweeps', 'sweep_sites'} \
                 .issuperset(kwargs.keys()), tuple(kwargs.keys())
 
             num_sweeps = kwargs.get('num_sweeps', 5)

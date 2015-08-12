@@ -199,8 +199,8 @@ def test_outer(nr_sites, local_dim, bond_dim):
 ###############################################################################
 #                         Shape changes, conversions                          #
 ###############################################################################
-
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim, sites_per_group', MP_TEST_PARAMETERS_GROUPS)
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, sites_per_group',
+                     MP_TEST_PARAMETERS_GROUPS)
 def test_group_sites(nr_sites, local_dim, bond_dim, sites_per_group):
     assert (nr_sites % sites_per_group) == 0, \
         'nr_sites not a multiple of sites_per_group'
@@ -211,7 +211,8 @@ def test_group_sites(nr_sites, local_dim, bond_dim, sites_per_group):
     assert_array_almost_equal(op, grouped_op)
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim, sites_per_group', MP_TEST_PARAMETERS_GROUPS)
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, sites_per_group',
+                     MP_TEST_PARAMETERS_GROUPS)
 def test_split_sites(nr_sites, local_dim, bond_dim, sites_per_group):
     assert (nr_sites % sites_per_group) == 0, \
         'nr_sites not a multiple of sites_per_group'
@@ -445,60 +446,13 @@ def test_compression_svd_compare(nr_sites, local_dim, bond_dim):
     target_bonddim = max(2 * bond_dim // 3, 1)
     directions = ('left', 'right')
     for direction in directions:
-        target_array = svd_compression(mpa, direction, target_bonddim)
+        target_array = _svd_compression_full(mpa, direction, target_bonddim)
         mpa_compr = mpa.copy()
         mpa_compr.compress(method='svd', bdim=target_bonddim, direction=direction)
         array_compr = mpa_compr.to_array()
         assert_array_almost_equal(
             target_array, array_compr,
             err_msg='direction {0!r} failed'.format(direction))
-
-
-def svd_compression(mpa, direction, target_bonddim):
-    """Re-implement what SVD compression on MPAs does.
-
-    Two implementations that produce the same data are not a guarantee
-    for correctness, but a check for consistency is nice anyway.
-
-    :param mpa: The MPA to compress
-    :param direction: 'right' means sweep from left to right,
-        'left' vice versa
-    :param target_bonddim: Compress to this bond dimension
-    :returns: Result as numpy.ndarray
-
-    """
-    array = mpa.to_array()
-    plegs = mpa.plegs[0]
-    nr_sites = len(mpa)
-    if direction == 'right':
-        nr_left_values = range(1, nr_sites)
-    else:
-        nr_left_values = range(nr_sites-1, 0, -1)
-    for nr_left in nr_left_values:
-        array = svd_compression_singlecut(array, nr_left, plegs, target_bonddim)
-    return array
-
-
-def svd_compression_singlecut(array, nr_left, plegs, target_bonddim):
-    """
-    SVD compression on a single left vs. right bipartition.
-
-    :param array: The array to compress
-    :param nr_left: Number of sites in the left part of the bipartition
-    :param plegs: Number of physical legs per site
-    :param target_bonddim: Compress to this bond dimension
-    :returns: Result as numpy.ndarray (same shape as input)
-
-    """
-    array_shape = array.shape
-    array = array.reshape((np.prod(array_shape[:nr_left * plegs]), -1))
-    u, s, v = svd(array)
-    u = u[:, :target_bonddim]
-    s = s[:target_bonddim]
-    v = v[:target_bonddim, :]
-    opt_compr = np.dot(u * s, v)
-    opt_compr = opt_compr.reshape(array_shape)
-    return opt_compr
 
 
 ############################
@@ -587,68 +541,95 @@ def test_compression_var_hard_cutoff(nr_sites, local_dim, bond_dim):
 #      assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
 #      assert all(bdim <= max_bdim for bdim in mpo_new.bdims)
 
-#  @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-#  def test_variational_compression(nr_sites, local_dim, bond_dim):
-#      randstate = np.random.RandomState(seed=42)
-#      mpa = factory.random_mpa(nr_sites, (local_dim,) * 2, bond_dim, randstate)
-#      mpa /= mp.norm(mpa)
-#      array = mpa.to_array()
-#      target_bonddim = max(2 * bond_dim // 3, 1)
 
-#      right_svd_res = svd_compression(mpa, 'right', target_bonddim)
-#      left_svd_res = svd_compression(mpa, 'left', target_bonddim)
-#      right_svd_overlap = np.abs(np.dot(array.conj().flatten(), right_svd_res.flatten()))
-#      left_svd_overlap = np.abs(np.dot(array.conj().flatten(), left_svd_res.flatten()))
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_compression_var_to_svd(nr_sites, local_dim, bond_dim):
+    randstate = np.random.RandomState(seed=42)
+    mpa = factory.random_mpo(nr_sites, local_dim, bond_dim,
+                             randstate=randstate, normalized=True)
+    array = mpa.to_array()
+    target_bonddim = max(2 * bond_dim // 3, 1)
 
-#      # max_num_sweeps = 3 and 4 is sometimes not good enough.
-#      mpa_compr = mpnum.linalg.variational_compression(
-#          mpa, max_num_sweeps=5,
-#          startvec_bonddim=target_bonddim, randstate=randstate)
-#      mpa_compr_overlap = np.abs(np.dot(array.conj().flatten(),
-#                                        mpa_compr.to_array().flatten()))
+    right_svd_res = _svd_compression_full(mpa, 'right', target_bonddim)
+    left_svd_res = _svd_compression_full(mpa, 'left', target_bonddim)
+    right_svd_overlap = np.abs(np.vdot(array, right_svd_res))
+    left_svd_overlap = np.abs(np.vdot(array, left_svd_res))
 
-#      # The basic intuition is that variational compression, given
-#      # enough sweeps, should be at least as good as left and right SVD
-#      # compression because the SVD compression scheme has a strong
-#      # interdependence between truncations at the individual sites,
-#      # while variational compression does not have that. Therefore, we
-#      # check exactly that.
+    # max_num_sweeps = 3 and 4 is sometimes not good enough.
+    mpa.compress(method='var', num_sweeps=5, bdim=target_bonddim, randstate=randstate)
+    mpa_compr_overlap = np.abs(np.vdot(array, mpa.to_array()))
 
-#      overlap_rel_tol = 1e-6
-#      assert mpa_compr_overlap >= right_svd_overlap * (1 - overlap_rel_tol)
-#      assert mpa_compr_overlap >= left_svd_overlap * (1 - overlap_rel_tol)
+    # The basic intuition is that variational compression, given
+    # enough sweeps, should be at least as good as left and right SVD
+    # compression because the SVD compression scheme has a strong
+    # interdependence between truncations at the individual sites,
+    # while variational compression does not have that. Therefore, we
+    # check exactly that.
+
+    overlap_rel_tol = 1e-6
+    assert mpa_compr_overlap >= right_svd_overlap * (1 - overlap_rel_tol)
+    assert mpa_compr_overlap >= left_svd_overlap * (1 - overlap_rel_tol)
 
 
-#  @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-#  def test_variational_compression_twosite(nr_sites, local_dim, bond_dim):
-#      randstate = np.random.RandomState(seed=42)
-#      mpa = factory.random_mpa(nr_sites, (local_dim,) * 2, bond_dim, randstate)
-#      mpa /= mp.norm(mpa)
-#      array = mpa.to_array()
-#      target_bonddim = max(2 * bond_dim // 3, 1)
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_compression_var_to_svd_twosite(nr_sites, local_dim, bond_dim):
+    randstate = np.random.RandomState(seed=42)
+    mpa = factory.random_mpo(nr_sites, local_dim, bond_dim,
+                             randstate=randstate, normalized=True)
+    array = mpa.to_array()
+    target_bonddim = max(2 * bond_dim // 3, 1)
 
-#      right_svd_res = svd_compression(mpa, 'right', target_bonddim)
-#      left_svd_res = svd_compression(mpa, 'left', target_bonddim)
-#      right_svd_overlap = np.abs(np.dot(array.conj().flatten(), right_svd_res.flatten()))
-#      left_svd_overlap = np.abs(np.dot(array.conj().flatten(), left_svd_res.flatten()))
+    right_svd_res = _svd_compression_full(mpa, 'right', target_bonddim)
+    left_svd_res = _svd_compression_full(mpa, 'left', target_bonddim)
+    right_svd_overlap = np.abs(np.vdot(array, right_svd_res))
+    left_svd_overlap = np.abs(np.vdot(array, left_svd_res))
 
-#      # With minimize_sites = 1, max_num_sweeps = 3 and 4 is sometimes
-#      # not good enough. With minimiza_sites = 2, max_num_sweeps = 2 is
-#      # fine.
-#      mpa_compr = mpnum.linalg.variational_compression(
-#          mpa, startvec_bonddim=target_bonddim, randstate=randstate,
-#          max_num_sweeps=3, minimize_sites=2)
-#      mpa_compr_overlap = np.abs(np.dot(array.conj().flatten(),
-#                                        mpa_compr.to_array().flatten()))
+    # same as test_compression_var_to_svd, but with sweep_sites=2
+    mpa.compress(method='var', num_sweeps=3, sweep_sites=2,
+                 bdim=target_bonddim, randstate=randstate)
+    mpa_compr_overlap = np.abs(np.vdot(array, mpa.to_array()))
 
-#      # The basic intuition is that variational compression, given
-#      # enough sweeps, should be at least as good as left and right SVD
-#      # compression because the SVD compression scheme has a strong
-#      # interdependence between truncations at the individual sites,
-#      # while variational compression does not have that. Therefore, we
-#      # check exactly that.
+    overlap_rel_tol = 1e-6
+    assert mpa_compr_overlap >= right_svd_overlap * (1 - overlap_rel_tol)
+    assert mpa_compr_overlap >= left_svd_overlap * (1 - overlap_rel_tol)
 
-#      overlap_rel_tol = 1e-6
-#      assert mpa_compr_overlap >= right_svd_overlap * (1 - overlap_rel_tol)
-#      assert mpa_compr_overlap >= left_svd_overlap * (1 - overlap_rel_tol)
 
+#######################################
+#  Compression test helper functions  #
+#######################################
+def _svd_compression_full(mpa, direction, target_bonddim):
+    """Re-implement what SVD compression on MPAs does but on the level of the
+    full matrix representation, i.e. it truncates the Schmidt-decompostion
+    on each bipartition sequentally
+
+    Two implementations that produce the same data are not a guarantee
+    for correctness, but a check for consistency is nice anyway.
+
+    :param mpa: The MPA to compress
+    :param direction: 'right' means sweep from left to right,
+        'left' vice versa
+    :param target_bonddim: Compress to this bond dimension
+    :returns: Result as numpy.ndarray
+
+    """
+    def singlecut(array, nr_left, plegs, target_bonddim):
+        array_shape = array.shape
+        array = array.reshape((np.prod(array_shape[:nr_left * plegs]), -1))
+        u, s, v = svd(array)
+        u = u[:, :target_bonddim]
+        s = s[:target_bonddim]
+        v = v[:target_bonddim, :]
+        opt_compr = np.dot(u * s, v)
+        opt_compr = opt_compr.reshape(array_shape)
+        return opt_compr
+
+    array = mpa.to_array()
+    plegs = mpa.plegs[0]
+    nr_sites = len(mpa)
+    if direction == 'right':
+        nr_left_values = range(1, nr_sites)
+    else:
+        nr_left_values = range(nr_sites-1, 0, -1)
+    for nr_left in nr_left_values:
+        array = singlecut(array, nr_left, plegs, target_bonddim)
+    return array

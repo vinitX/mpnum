@@ -10,11 +10,10 @@ import numpy as np
 import pytest as pt
 from numpy.testing import assert_almost_equal
 
-import mpnum.mparray as mp
 import mpnum.linalg
 import mpnum.factory as factory
 
-from mparray_test import mpo_to_global, svd_compression, MP_TEST_PARAMETERS
+from mparray_test import mpo_to_global, MP_TEST_PARAMETERS
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
