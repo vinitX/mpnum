@@ -135,6 +135,18 @@ def random_mpa(sites, ldim, bdim, randstate=None):
     :param randstate: numpy.random.RandomState instance or None
     :returns: randomly choosen matrix product array
 
+    >>> mpa = random_mpa(4, 2, 10)
+    >>> mpa.bdims, mpa.pdims
+    ((10, 10, 10), ((2,), (2,), (2,), (2,)))
+
+    >>> mpa = random_mpa(4, (1, 2), 10)
+    >>> mpa.bdims, mpa.pdims
+    ((10, 10, 10), ((1, 2), (1, 2), (1, 2), (1, 2)))
+
+    >>> mpa = random_mpa(4, [(1, ), (2, 3), (4, 5), (1, )], 10)
+    >>> mpa.bdims, mpa.pdims
+    ((10, 10, 10), ((1,), (2, 3), (4, 5), (1,)))
+
     """
     return _generate(sites, ldim, bdim, ft.partial(_zrandn, randstate=randstate))
 
@@ -150,6 +162,10 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
     :param hermitian: Is the operator supposed to be hermitian
     :param normalized: Operator should have unit norm
     :returns: randomly choosen matrix product operator
+
+    >>> mpo = random_mpo(4, 2, 10)
+    >>> mpo.bdims, mpo.pdims
+    ((10, 10, 10), ((2, 2), (2, 2), (2, 2), (2, 2)))
 
     """
     mpo = random_mpa(sites, (ldim,) * 2, bdim, randstate=randstate)
@@ -187,5 +203,8 @@ def eye(sites, ldim):
     :param ldim: Tuple of int-like of local dimensions
     :returns: Representation of the identity matrix as MPA
 
+    >>> I = eye(4, 2)
+    >>> I.bdims, I.pdims
+    ((1, 1, 1), ((2, 2), (2, 2), (2, 2), (2, 2)))
     """
     return mp.MPArray.from_kron(it.repeat(np.eye(ldim), sites))
