@@ -18,11 +18,13 @@ References:
 from __future__ import absolute_import, division, print_function
 
 import itertools as it
+
 import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
 
 from mpnum._tools import matdot
+from mpnum._named_ndarray import named_ndarray
 from six.moves import range, zip
 
 
@@ -445,10 +447,27 @@ class MPArray(object):
             inplace=false: Compressed MPA, Overlap <M|M'> of the original M and
                            its compr. M',
 
+        For method='var':
+        ----------------
+        :param initmpa: Initial MPA for the interative optimization, should
+            have same physical shape as `self` (default random start vector
+            with same norm as self)
+        :param bdim: Maximal bond dimension for the random start vector
+            (default max of current bond dimensions, i.e. no compression)
+        :param randstate: numpy.random.RandomState instance or something
+            suitable for :func:`factory.zrandn` (default numpy.random)
+        :param num_sweeps: Maximum number of sweeps to do
+        :param sweep_sites: Number of neighboaring sites minimized over
+            simultaniously; for too small value the algorithm may get stuck
+            in local minima (default 1)
+        :returns:
+            inplace=true: Nothing
+            inplace=false: Compressed MPA
+
         """
         if method == 'svd':
-            assert {'bdim', 'relerr', 'direction'}.issuperset(kwargs.iterkeys()), \
-                tuple(kwargs.iterkeys())
+            assert {'bdim', 'relerr', 'direction'}.issuperset(kwargs.keys()), \
+                tuple(kwargs.keys())
 
             ln, rn = self.normal_form
             default_direction = 'left' if len(self) - rn > ln else 'right'
@@ -464,8 +483,50 @@ class MPArray(object):
             elif direction == 'left':
                 self.normalize(left=len(self) - 1)
                 overlap = target._compress_svd_l(bdim, relerr)
+            else:
+                raise ValueError('{} is not a valid direction'.format(direction))
 
             return overlap if inplace else target, overlap
+
+        elif method == 'var':
+            assert {'initmpa', 'bdim', 'randstate', 'num_sweep', 'sweep_sites'} \
+                .issuperset(kwargs.keys()), tuple(kwargs.keys())
+
+            num_sweeps = kwargs.get('num_sweeps', 5)
+            sweep_sites = kwargs.get('sweep_sites', 1)
+
+            # FIXME Check all copying & inplace operations
+            try:
+                compr = kwargs['initmpa'].copy()
+                assert all(d1 == d2 for d1, d2 in zip(self.pdims, compr.pdims))
+            except KeyError:
+                from mpnum.factory import random_mpa
+                randstate = kwargs.get('randstate', np.random)
+                bdim = kwargs.get('bdim', max(self.bdims))
+                compr = random_mpa(len(self), self.pdims, bdim, randstate=randstate)
+                compr *= norm(self) / norm(compr)
+
+            # flatten the array since MPS is expected
+            shape = self.pdims
+            # FIXME Extract to inplace operations
+            self._ltens = [_local_ravel(lten) for lten in self._ltens]
+            compr._ltens = [_local_ravel(lten) for lten in compr._ltens]
+            _compress_var(self, compr, num_sweeps, sweep_sites)
+
+            # Clean up & return the right thing
+            # FIXME Extract to inplace operations
+            if inplace:
+                # no copying necessary since compr is purely local!
+                self._ltens = [_local_reshape(lten, ns)
+                               for ns, lten in zip(shape, compr)]
+                return
+            else:
+                self._ltens = [_local_reshape(lten, ns)
+                               for ns, lten in zip(shape, compr)]
+                compr._ltens = [_local_reshape(lten, ns)
+                                for ns, lten in zip(shape, compr)]
+                return compr
+
         else:
             raise ValueError("{} is not a valid method.".format(method))
 
@@ -789,8 +850,19 @@ def _local_ravel(ltens):
         where * is determined from the size of ltens
 
     """
-    shape = ltens.shape
-    return ltens.reshape((shape[0], -1, shape[-1]))
+    return _local_reshape(ltens, (-1, ))
+
+
+def _local_reshape(ltens, shape):
+    """Reshapes the physical legs of ltens, the bond-legs remain untouched
+
+    :param ltens: numpy.ndarray with ndim > 1
+    :param shape: New shape of physical legs
+    :returns: Reshaped ltens
+
+    """
+    full_shape = ltens.shape
+    return ltens.reshape((full_shape[0], ) + tuple(shape) + (full_shape[-1], ))
 
 
 def _local_transpose(ltens):
@@ -816,3 +888,219 @@ def _ltens_to_array(ltens):
     for tens in ltens:
         res = matdot(res, tens)
     return res[0, ..., 0]
+
+
+################################################
+#  Helper methods for variational compression  #
+################################################
+#  Possible TODOs:
+#
+#  - implement calculating the overlap between 'compr' and 'target' from
+#  the norm of 'compr', given that 'target' is normalized
+#  - track overlap between 'compr' and 'target' and stop sweeping if it
+#  is small
+#  - maybe increase bond dimension of given error cannot be reached
+#  - Shall we track the error in the SVD truncation for multi-site
+#  updates? [Sch11] says it turns out to be useful in actual DMRG.
+#  - return these details for tracking errors in larger computations
+# TODO Refactor. Way too involved!
+# FIXME Does this play nice with different bdims?
+
+def _compress_var(target, compr, num_sweeps, sweep_sites):
+    """Variatonally (Iteratively) compress the MPA with given start vector.
+
+    :param target: MPS to compress; i.e. MPA with only one physical leg per
+        site
+    :param compr: initial MPA and output
+    :param num_sweeps: Maximum number of sweeps to do
+    :param sweep_sites: Number of neighboaring sites minimized over
+        simultaniously; for too small value the algorithm may get stuck
+        in local minima (default 1)
+    """
+    # For
+    #
+    #   pos in range(nr_sites - sweep_sites),
+    #
+    # we find the ground state of an operator supported on
+    #
+    #   range(pos, pos_end),  pos_end = pos + minimize_sites
+    #
+    # lvecs[pos] and rvecs[pos] contain the vectors needed to construct that
+    # operator for that. Therefore, lvecs[pos] is constructed from matrices on
+    #
+    #   range(0, pos - 1)
+    #
+    # and rvecs[pos] is constructed from matrices on
+    #
+    #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
+    nr_sites = len(target)
+    lvecs = [np.array(1, ndmin=2)] + [None] * (nr_sites - sweep_sites)
+    rvecs = [None] * (nr_sites - sweep_sites) + [np.array(1, ndmin=2)]
+    compr.normalize(right=1)
+    for pos in reversed(range(nr_sites - sweep_sites)):
+        pos_end = pos + sweep_sites
+        rvecs[pos] = _compress_var_add_r(rvecs[pos + 1], compr[pos_end],
+                                         target[pos_end])
+
+    max_bonddim = max(compr.bdims)
+    for num_sweep in range(num_sweeps):
+        # Sweep from left to right
+        for pos in range(nr_sites - sweep_sites + 1):
+            if pos == 0 and num_sweep > 0:
+                # Don't do first site again if we are not in the first sweep.
+                continue
+            if pos > 0:
+                compr.normalize(left=pos)
+                rvecs[pos - 1] = None
+                lvecs[pos] = _compress_var_add_l(lvecs[pos - 1], compr[pos - 1],
+                                                 target[pos - 1])
+            pos_end = pos + sweep_sites
+            compr[pos:pos_end] = _compress_var_new_lten(lvecs[pos],
+                                                        target[pos:pos_end],
+                                                        rvecs[pos], max_bonddim)
+
+        # NOTE Why no num_sweep > 0 here???
+        # Sweep from right to left (don't do last site again)
+        for pos in reversed(range(nr_sites - sweep_sites)):
+            pos_end = pos + sweep_sites
+            if pos < nr_sites - sweep_sites:
+                # We always do this, because we don't do the last site again.
+                compr.normalize(right=pos_end)
+                lvecs[pos + 1] = None
+                rvecs[pos] = _compress_var_add_r(rvecs[pos + 1], compr[pos_end],
+                                                 target[pos_end])
+            compr[pos:pos_end] = _compress_var_new_lten(lvecs[pos],
+                                                        target[pos:pos_end],
+                                                        rvecs[pos], max_bonddim)
+
+    return compr
+
+
+def _compress_var_add_l(leftvec, compr_lten, tgt_lten):
+    """Add one column to the left vector.
+
+    :param leftvec: existing left vector
+        It has two indices: compr_mps_bond and tgt_mps_bond
+    :param compr_lten: Local tensor of the compressed MPS
+    :param tgt_lten: Local tensor of the target MPS
+
+    Construct L from [Sch11, Fig. 27, p. 48]. We have compr_lten in
+    the top row of the figure without complex conjugation and tgt_lten
+    in the bottom row with complex conjugation.
+
+    """
+    leftvec_names = ('compr_bond', 'tgt_bond')
+    compr_names = ('compr_left_bond', 'compr_phys', 'compr_right_bond')
+    tgt_names = ('tgt_left_bond', 'tgt_phys', 'tgt_right_bond')
+    leftvec = named_ndarray(leftvec, leftvec_names)
+    compr_lten = named_ndarray(compr_lten, compr_names)
+    tgt_lten = named_ndarray(tgt_lten, tgt_names)
+
+    contract_compr_mps = (('compr_bond', 'compr_left_bond'),)
+    leftvec = leftvec.tensordot(compr_lten, contract_compr_mps)
+
+    contract_tgt_mps = (
+        ('compr_phys', 'tgt_phys'),
+        ('tgt_bond', 'tgt_left_bond'))
+    leftvec = leftvec.tensordot(tgt_lten.conj(), contract_tgt_mps)
+    rename_mps_mpo = (
+        ('compr_right_bond', 'compr_bond'),
+        ('tgt_right_bond', 'tgt_bond'))
+    leftvec = leftvec.rename(rename_mps_mpo)
+
+    leftvec = leftvec.to_array(leftvec_names)
+    return leftvec
+
+
+def _compress_var_add_r(rightvec, compr_lten, tgt_lten):
+    """Add one column to the right vector.
+
+    :param rightvec: existing right vector
+        It has two indices: compr_mps_bond and tgt_mps_bond
+    :param compr_lten: Local tensor of the compressed MPS
+    :param tgt_lten: Local tensor of the target MPS
+
+    Construct R from [Sch11, Fig. 27, p. 48]. See comments in
+    _variational_compression_leftvec_add() for further details.
+
+    """
+    rightvec_names = ('compr_bond', 'tgt_bond')
+    compr_names = ('compr_left_bond', 'compr_phys', 'compr_right_bond')
+    tgt_names = ('tgt_left_bond', 'tgt_phys', 'tgt_right_bond')
+    rightvec = named_ndarray(rightvec, rightvec_names)
+    compr_lten = named_ndarray(compr_lten, compr_names)
+    tgt_lten = named_ndarray(tgt_lten, tgt_names)
+
+    contract_compr_mps = (('compr_bond', 'compr_right_bond'),)
+    rightvec = rightvec.tensordot(compr_lten, contract_compr_mps)
+
+    contract_tgt_mps = (
+        ('compr_phys', 'tgt_phys'),
+        ('tgt_bond', 'tgt_right_bond'))
+    rightvec = rightvec.tensordot(tgt_lten.conj(), contract_tgt_mps)
+    rename = (
+        ('compr_left_bond', 'compr_bond'),
+        ('tgt_left_bond', 'tgt_bond'))
+    rightvec = rightvec.rename(rename)
+
+    rightvec = rightvec.to_array(rightvec_names)
+    return rightvec
+
+
+def _compress_var_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
+    """Create new local tensors for the compressed MPS.
+
+    :param leftvec: Left vector
+        It has two indices: compr_mps_bond and tgt_mps_bond
+    :param tgt_ltens: List of local tensor of the target MPS
+    :param rightvec: Right vector
+        It has two indices: compr_mps_bond and tgt_mps_bond
+    :param int max_bonddim: Maximal bond dimension of the result
+
+    Compute the right-hand side of [Sch11, Fig. 27, p. 48]. We have
+    compr_lten in the top row of the figure without complex
+    conjugation and tgt_lten in the bottom row with complex
+    conjugation.
+
+    For len(tgt_ltens) > 1, compute the right-hand side of [Sch11,
+    Fig. 29, p. 49].
+
+    """
+    # Produce one MPS local tensor supported on len(tgt_ltens) sites.
+    tgt_lten = tgt_ltens[0]
+    for lten in tgt_ltens[1:]:
+        tgt_lten = _tools.matdot(tgt_lten, lten)
+    tgt_lten_shape = tgt_lten.shape
+    tgt_lten = tgt_lten.reshape((tgt_lten_shape[0], -1, tgt_lten_shape[-1]))
+
+    # Contract the middle part with the left and right parts.
+    leftvec_names = ('compr_left_bond', 'tgt_left_bond')
+    tgt_names = ('tgt_left_bond', 'tgt_phys', 'tgt_right_bond')
+    rightvec_names = ('compr_right_bond', 'tgt_right_bond')
+    leftvec = named_ndarray(leftvec, leftvec_names)
+    tgt_lten = named_ndarray(tgt_lten, tgt_names)
+    rightvec = named_ndarray(rightvec, rightvec_names)
+
+    contract = (('tgt_left_bond', 'tgt_left_bond'),)
+    compr_lten = leftvec.tensordot(tgt_lten.conj(), contract)
+    contract = (('tgt_right_bond', 'tgt_right_bond'),)
+    compr_lten = compr_lten.tensordot(rightvec, contract)
+
+    compr_lten_names = (
+        'compr_left_bond', 'tgt_phys', 'compr_right_bond'
+    )
+    compr_lten = compr_lten.to_array(compr_lten_names).conj()
+    s = compr_lten.shape
+    compr_lten = compr_lten.reshape((s[0],) + tgt_lten_shape[1:-1] + (s[-1],))
+
+    if len(tgt_ltens) == 1:
+        compr_ltens = (compr_lten,)
+    else:
+        # [Sch11, p. 49] says that we can go with QR instead of SVD
+        # here. However, will generally increase the bond dimension of
+        # our compressed MPS, which we do not want.
+        compr_ltens = mp.MPArray.from_array(compr_lten, plegs=1, has_bond=True)
+        compr_ltens.compress(method='svd', max_bd=max_bonddim)
+    return compr_ltens
+
+
