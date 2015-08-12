@@ -270,23 +270,26 @@ class MPArray(object):
     #  Shape changes, conversions  #
     ################################
 
-    def pleg_reshape(self, newshapes):
-        """Apply reshape to physical legs.
+    def reshape(self, newshapes):
+        """Reshape physical legs in place.
 
         Use self.pdims to obtain the shapes of the physical legs.
 
         :param newshapes: A single new shape or a list of new shapes
-        :returns: MPArray instance with different shape of physical legs
+
         """
         newshapes = tuple(newshapes)
         if not hasattr(newshapes[0], '__iter__'):
             newshapes = it.repeat(newshapes, times=len(self))
-        ltens = (
-            lten.reshape((lten.shape[0],) + tuple(newshape) + (lten.shape[-1],))
-            for lten, newshape in zip(self._ltens, newshapes))
-        mpa = MPArray(ltens, _lnormalized=self._lnormalized,
-                      _rnormalized=self._rnormalized)
-        return mpa
+
+        self._ltens = [_local_reshape(lten, newshape)
+                       for lten, newshape in zip(self._ltens, newshapes)]
+
+    def ravel(self):
+        """Flatten the MPA to an MPS, shortcut for self.reshape((-1,))
+
+        """
+        self.reshape((-1,))
 
     def group_sites(self, sites_per_group):
         """Group several MPA sites into one site.
@@ -506,25 +509,16 @@ class MPArray(object):
                 compr = random_mpa(len(self), self.pdims, bdim, randstate=randstate)
                 compr *= norm(self) / norm(compr)
 
-            # flatten the array since MPS is expected
+            # flatten the array since MPS is expected & bring back
             shape = self.pdims
-            # FIXME Extract to inplace operations
-            self._ltens = [_local_ravel(lten) for lten in self._ltens]
-            compr._ltens = [_local_ravel(lten) for lten in compr._ltens]
+            self.ravel(), compr.ravel()
             _compress_var(self, compr, num_sweeps, sweep_sites)
+            self.reshape(shape), compr.reshape(shape)
 
-            # Clean up & return the right thing
-            # FIXME Extract to inplace operations
             if inplace:
-                # no copying necessary since compr is purely local!
-                self._ltens = [_local_reshape(lten, ns)
-                               for ns, lten in zip(shape, compr)]
+                self._ltens = compr[:]  # no copy necessary, compr is local
                 return
             else:
-                self._ltens = [_local_reshape(lten, ns)
-                               for ns, lten in zip(shape, compr)]
-                compr._ltens = [_local_reshape(lten, ns)
-                                for ns, lten in zip(shape, compr)]
                 return compr
 
         else:
