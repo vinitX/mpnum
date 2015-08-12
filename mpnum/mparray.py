@@ -487,7 +487,7 @@ class MPArray(object):
             # flatten the array since MPS is expected & bring back
             shape = self.pdims
             self.ravel(), compr.ravel()
-            _compress_var(self, compr, num_sweeps, sweep_sites)
+            compr._adapt_to(self, num_sweeps, sweep_sites)
             self.reshape(shape), compr.reshape(shape)
 
             if inplace:
@@ -556,7 +556,92 @@ class MPArray(object):
         self._lnormalized = 0
         self._rnormalized = 1
         return np.sum(np.abs(self._ltens[0])**2)
-    # TODO Adaptive/error based compression method
+
+    #  Possible TODOs:
+    #
+    #  - implement calculating the overlap between 'compr' and 'target' from
+    #  the norm of 'compr', given that 'target' is normalized
+    #  - track overlap between 'compr' and 'target' and stop sweeping if it
+    #  is small
+    #  - maybe increase bond dimension of given error cannot be reached
+    #  - Shall we track the error in the SVD truncation for multi-site
+    #  updates? [Sch11] says it turns out to be useful in actual DMRG.
+    #  - return these details for tracking errors in larger computations
+    # TODO Refactor. Way too involved!
+    # FIXME Does this play nice with different bdims?
+    def _adapt_to(self, target, num_sweeps, sweep_sites):
+        """Iteratively minimize the l2 distance between `self` and `target.`
+        This is especially important for variational compression, where `self`
+        is the initial guess and target the MPA to be compressed.
+
+        :param target: MPS to compress; i.e. MPA with only one physical leg per
+            site
+        :param num_sweeps: Maximum number of sweeps to do
+        :param sweep_sites: Number of neighboaring sites minimized over
+            simultaniously; for too small value the algorithm may get stuck
+            in local minima (default 1)
+        """
+        # For
+        #
+        #   pos in range(nr_sites - sweep_sites),
+        #
+        # we find the ground state of an operator supported on
+        #
+        #   range(pos, pos_end),  pos_end = pos + minimize_sites
+        #
+        # lvecs[pos] and rvecs[pos] contain the vectors needed to construct that
+        # operator for that. Therefore, lvecs[pos] is constructed from matrices on
+        #
+        #   range(0, pos - 1)
+        #
+        # and rvecs[pos] is constructed from matrices on
+        #
+        #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
+        assert_array_equal(self.plegs, 1, "Self is not a MPS")
+        assert_array_equal(target.plegs, 1, "Target is not a MPS")
+
+        nr_sites = len(target)
+        lvecs = [np.array(1, ndmin=2)] + [None] * (nr_sites - sweep_sites)
+        rvecs = [None] * (nr_sites - sweep_sites) + [np.array(1, ndmin=2)]
+        self.normalize(right=1)
+        for pos in reversed(range(nr_sites - sweep_sites)):
+            pos_end = pos + sweep_sites
+            rvecs[pos] = _adapt_to_add_r(rvecs[pos + 1], self[pos_end],
+                                         target[pos_end])
+
+        max_bonddim = max(self.bdims)
+        for num_sweep in range(num_sweeps):
+            # Sweep from left to right
+            for pos in range(nr_sites - sweep_sites + 1):
+                if pos == 0 and num_sweep > 0:
+                    # Don't do first site again if we are not in the first sweep.
+                    continue
+                if pos > 0:
+                    self.normalize(left=pos)
+                    rvecs[pos - 1] = None
+                    lvecs[pos] = _adapt_to_add_l(lvecs[pos - 1], self[pos - 1],
+                                                 target[pos - 1])
+                pos_end = pos + sweep_sites
+                self[pos:pos_end] = _adapt_to_new_lten(lvecs[pos],
+                                                       target[pos:pos_end],
+                                                       rvecs[pos], max_bonddim)
+
+            # NOTE Why no num_sweep > 0 here???
+            # Sweep from right to left (don't do last site again)
+            for pos in reversed(range(nr_sites - sweep_sites)):
+                pos_end = pos + sweep_sites
+                if pos < nr_sites - sweep_sites:
+                    # We always do this, because we don't do the last site again.
+                    self.normalize(right=pos_end)
+                    lvecs[pos + 1] = None
+                    rvecs[pos] = _adapt_to_add_r(rvecs[pos + 1], self[pos_end],
+                                                 target[pos_end])
+
+                self[pos:pos_end] = _adapt_to_new_lten(lvecs[pos],
+                                                       target[pos:pos_end],
+                                                       rvecs[pos], max_bonddim)
+
+        return self
 
 
 #############################################
@@ -760,90 +845,9 @@ def _ltens_to_array(ltens):
 ################################################
 #  Helper methods for variational compression  #
 ################################################
-#  Possible TODOs:
-#
-#  - implement calculating the overlap between 'compr' and 'target' from
-#  the norm of 'compr', given that 'target' is normalized
-#  - track overlap between 'compr' and 'target' and stop sweeping if it
-#  is small
-#  - maybe increase bond dimension of given error cannot be reached
-#  - Shall we track the error in the SVD truncation for multi-site
-#  updates? [Sch11] says it turns out to be useful in actual DMRG.
-#  - return these details for tracking errors in larger computations
-# TODO Refactor. Way too involved!
-# FIXME Does this play nice with different bdims?
-
-def _compress_var(target, compr, num_sweeps, sweep_sites):
-    """Variatonally (Iteratively) compress the MPA with given start vector.
-
-    :param target: MPS to compress; i.e. MPA with only one physical leg per
-        site
-    :param compr: initial MPA and output
-    :param num_sweeps: Maximum number of sweeps to do
-    :param sweep_sites: Number of neighboaring sites minimized over
-        simultaniously; for too small value the algorithm may get stuck
-        in local minima (default 1)
-    """
-    # For
-    #
-    #   pos in range(nr_sites - sweep_sites),
-    #
-    # we find the ground state of an operator supported on
-    #
-    #   range(pos, pos_end),  pos_end = pos + minimize_sites
-    #
-    # lvecs[pos] and rvecs[pos] contain the vectors needed to construct that
-    # operator for that. Therefore, lvecs[pos] is constructed from matrices on
-    #
-    #   range(0, pos - 1)
-    #
-    # and rvecs[pos] is constructed from matrices on
-    #
-    #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
-    nr_sites = len(target)
-    lvecs = [np.array(1, ndmin=2)] + [None] * (nr_sites - sweep_sites)
-    rvecs = [None] * (nr_sites - sweep_sites) + [np.array(1, ndmin=2)]
-    compr.normalize(right=1)
-    for pos in reversed(range(nr_sites - sweep_sites)):
-        pos_end = pos + sweep_sites
-        rvecs[pos] = _compress_var_add_r(rvecs[pos + 1], compr[pos_end],
-                                         target[pos_end])
-
-    max_bonddim = max(compr.bdims)
-    for num_sweep in range(num_sweeps):
-        # Sweep from left to right
-        for pos in range(nr_sites - sweep_sites + 1):
-            if pos == 0 and num_sweep > 0:
-                # Don't do first site again if we are not in the first sweep.
-                continue
-            if pos > 0:
-                compr.normalize(left=pos)
-                rvecs[pos - 1] = None
-                lvecs[pos] = _compress_var_add_l(lvecs[pos - 1], compr[pos - 1],
-                                                 target[pos - 1])
-            pos_end = pos + sweep_sites
-            compr[pos:pos_end] = _compress_var_new_lten(lvecs[pos],
-                                                        target[pos:pos_end],
-                                                        rvecs[pos], max_bonddim)
-
-        # NOTE Why no num_sweep > 0 here???
-        # Sweep from right to left (don't do last site again)
-        for pos in reversed(range(nr_sites - sweep_sites)):
-            pos_end = pos + sweep_sites
-            if pos < nr_sites - sweep_sites:
-                # We always do this, because we don't do the last site again.
-                compr.normalize(right=pos_end)
-                lvecs[pos + 1] = None
-                rvecs[pos] = _compress_var_add_r(rvecs[pos + 1], compr[pos_end],
-                                                 target[pos_end])
-            compr[pos:pos_end] = _compress_var_new_lten(lvecs[pos],
-                                                        target[pos:pos_end],
-                                                        rvecs[pos], max_bonddim)
-
-    return compr
 
 
-def _compress_var_add_l(leftvec, compr_lten, tgt_lten):
+def _adapt_to_add_l(leftvec, compr_lten, tgt_lten):
     """Add one column to the left vector.
 
     :param leftvec: existing left vector
@@ -879,7 +883,7 @@ def _compress_var_add_l(leftvec, compr_lten, tgt_lten):
     return leftvec
 
 
-def _compress_var_add_r(rightvec, compr_lten, tgt_lten):
+def _adapt_to_add_r(rightvec, compr_lten, tgt_lten):
     """Add one column to the right vector.
 
     :param rightvec: existing right vector
@@ -914,7 +918,7 @@ def _compress_var_add_r(rightvec, compr_lten, tgt_lten):
     return rightvec
 
 
-def _compress_var_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
+def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
     """Create new local tensors for the compressed MPS.
 
     :param leftvec: Left vector
