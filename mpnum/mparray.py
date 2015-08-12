@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#..!/usr/bin/env python
 # encoding: utf-8
 """Module containing routines for dealing with general matrix product arrays.
 
@@ -161,8 +161,7 @@ class MPArray(object):
         if not has_bond:
             array = array[None, ..., None]
         ltens = _extract_factors(array, plegs=plegs)
-        mpa = cls(ltens, _lnormalized=len(ltens) - 1)
-        return mpa
+        return cls(ltens, _lnormalized=len(ltens) - 1)
 
     @classmethod
     def from_kron(cls, factors):
@@ -181,7 +180,7 @@ class MPArray(object):
 
         WARNING: This can be slow for large MPAs!
         """
-        return _ltens_to_array(iter(self))
+        return _ltens_to_array(iter(self))[0, ..., 0]
 
     ##########################
     #  Algebraic operations  #
@@ -246,7 +245,6 @@ class MPArray(object):
     ################################
     #  Shape changes, conversions  #
     ################################
-    # TODO None of these functions is tested
     def reshape(self, newshapes):
         """Reshape physical legs in place.
 
@@ -280,15 +278,12 @@ class MPArray(object):
 
         """
         assert (len(self) % sites_per_group) == 0, \
-            'length not a multiple of sites_per_group'
+            'Cannot group: {} not a multiple of {}'.format(len(self), sites_per_group)
+
         if sites_per_group == 1:
             return self
-        ltens = []
-        for i in range(len(self) // sites_per_group):
-            ten = self[i * sites_per_group]
-            for j in range(1, sites_per_group):
-                ten = matdot(ten, self[i * sites_per_group + j])
-            ltens.append(ten)
+        ltens = [_ltens_to_array(self._ltens[i:i + sites_per_group])
+                 for i in range(0, len(self), sites_per_group)]
         return MPArray(ltens)
 
     def split_sites(self, sites_per_group):
@@ -690,7 +685,7 @@ def inner(mpa1, mpa2):
         "Length is not equal: {} != {}".format(len(mpa1), len(mpa2))
     ltens_new = (_local_dot(_local_ravel(l).conj(), _local_ravel(r), axes=(1, 1))
                  for l, r in zip(mpa1, mpa2))
-    return _ltens_to_array(ltens_new)
+    return _ltens_to_array(ltens_new)[0, ..., 0]
 
 
 def outer(mpas):
@@ -830,23 +825,22 @@ def _local_transpose(ltens):
 
 def _ltens_to_array(ltens):
     """Computes the full array representation from an iterator yielding the
-    local tensors.
+    local tensors. Note that it does not get rid of bond legs.
 
     :param ltens: Iterator over local tensors
     :returns: numpy.ndarray representing the contracted MPA
 
     """
+    ltens = ltens if hasattr(ltens, '__next__') else iter(ltens)
     res = next(ltens)
     for tens in ltens:
         res = matdot(res, tens)
-    return res[0, ..., 0]
+    return res
 
 
 ################################################
 #  Helper methods for variational compression  #
 ################################################
-
-
 def _adapt_to_add_l(leftvec, compr_lten, tgt_lten):
     """Add one column to the left vector.
 
@@ -938,9 +932,7 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
 
     """
     # Produce one MPS local tensor supported on len(tgt_ltens) sites.
-    tgt_lten = tgt_ltens[0]
-    for lten in tgt_ltens[1:]:
-        tgt_lten = _tools.matdot(tgt_lten, lten)
+    tgt_lten = _ltens_to_array(tgt_ltens)
     tgt_lten_shape = tgt_lten.shape
     tgt_lten = tgt_lten.reshape((tgt_lten_shape[0], -1, tgt_lten_shape[-1]))
 
@@ -970,8 +962,6 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
         # [Sch11, p. 49] says that we can go with QR instead of SVD
         # here. However, will generally increase the bond dimension of
         # our compressed MPS, which we do not want.
-        compr_ltens = mp.MPArray.from_array(compr_lten, plegs=1, has_bond=True)
+        compr_ltens = MPArray.from_array(compr_lten, plegs=1, has_bond=True)
         compr_ltens.compress(method='svd', max_bd=max_bonddim)
     return compr_ltens
-
-
