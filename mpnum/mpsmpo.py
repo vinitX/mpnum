@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 # encoding: utf-8
-"""TODO"""
+"""TODO What considered an MPS/MPO/PMPS? What are the conventions?"""
 # FIXME I think all the names are too long
+# TODO Are derived classes MPO/MPS/PMPS of any help?
 
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
+from numpy.testing import assert_array_equal
 
 import mpnum.mparray as mp
 from mpnum._tools import matdot
 
 
-def partialtrace_operator(mpa, startsites, width):
+def reductions_mpo(mpa, startsites, width):
     """Take an MPA with two physical legs per site and perform partial trace
     over the complement the sites startsites[i], ..., startsites[i] + width.
 
@@ -21,6 +23,7 @@ def partialtrace_operator(mpa, startsites, width):
     :param width: number of sites in support of the results
     :returns: Iterator over (startsite, reduced_mpa)
     """
+    assert_array_equal(mpa.plegs, 2)
     rem_left = {0: np.array(1, ndmin=2)}
     rem_right = rem_left.copy()
 
@@ -61,11 +64,11 @@ def partialtrace_operator(mpa, startsites, width):
         yield startsite, mp.MPArray(ltens)
 
 
-def partialtrace_local_purification_mps(mps, startsites, width):
+def reductions_pmps(pmps, startsites, width):
     """Take a local purification MPS and perform partial trace over the
     complement the sites startsites[i], ..., startsites[i] + width.
 
-    Local purification mps of the reduced states are obtained by
+    Local purification pmps of the reduced states are obtained by
     normalizing suitably and combining the bond and ancilla indices at
     the edge into a larger ancilla dimension.
 
@@ -76,23 +79,29 @@ def partialtrace_local_purification_mps(mps, startsites, width):
     :returns: Iterator over (startsite, reduced_locpuri_mps)
 
     """
-    for startsite in startsites:
-        mps.normalize(left=startsite, right=startsite + width)
-        lten = mps[startsite]
+    for site in startsites:
+        pmps.normalize(left=site, right=site + width)
+
+        # leftmost site
+        lten = pmps[site]
         left_bd, system, ancilla, right_bd = lten.shape
         newshape = (1, system, left_bd * ancilla, right_bd)
         ltens = [lten.swapaxes(0, 1).copy().reshape(newshape)]
-        ltens += (lten.copy()
-                  for lten in mps[startsite + 1:startsite + width - 1])
-        lten = mps[startsite + width - 1]
+
+        # central ones
+        ltens += [lten.copy() for lten in pmps[site + 1:site + width - 1]]
+
+        # rightmost site
+        lten = pmps[site + width - 1]
         left_bd, system, ancilla, right_bd = lten.shape
         newshape = (left_bd, system, ancilla * right_bd, 1)
         ltens += [lten.copy().reshape(newshape)]
+
         reduced_mps = mp.MPArray(ltens)
-        yield startsite, reduced_mps
+        yield site, reduced_mps
 
 
-def local_purification_mps_to_mpo(mps):
+def pmps_to_mpo(pmps):
     """Convert a local purification MPS to a mixed state MPO.
 
     A mixed state on n sites is represented in local purification MPS
@@ -100,14 +109,14 @@ def local_purification_mps_to_mpo(mps):
     first physical leg is a 'system' site, while the second physical
     leg is an 'ancilla' site.
 
-    :param MPArray mps: An MPA with two physical legs (system and ancilla)
+    :param MPArray pmps: An MPA with two physical legs (system and ancilla)
     :returns: An MPO (density matrix as MPA with two physical legs)
 
     """
-    return mp.dot(mps, mps.adj())
+    return mp.dot(pmps, pmps.adj())
 
 
-def mps_as_local_purification_mps(mps):
+def mps_to_pmps(mps):
     """Convert a pure MPS into a local purification MPS mixed state.
 
     The ancilla legs will have dimension one, not increasing the
@@ -117,7 +126,8 @@ def mps_as_local_purification_mps(mps):
     :returns: An MPA with two physical legs (system and ancilla)
 
     """
-    ltens = (m.reshape(m.shape[0:2] + (1, m.shape[2])) for m in mps)
+    assert_array_equal(mps.plegs, 1)
+    ltens = (lten.reshape(lten.shape[0:2] + (1, lten.shape[2])) for lten in mps)
     return mp.MPArray(ltens)
 
 
@@ -127,6 +137,4 @@ def mps_as_mpo(mps):
     :param MPArray mps: An MPA with one physical leg
     :returns: An MPO (density matrix as MPA with two physical legs)
     """
-    mps_loc_puri = mps_as_local_purification_mps(mps)
-    mpo = local_purification_mps_to_mpo(mps_loc_puri)
-    return mpo
+    return pmps_to_mpo(mps_to_pmps(mps))
