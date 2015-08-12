@@ -251,20 +251,21 @@ class MPArray(object):
         Use self.pdims to obtain the shapes of the physical legs.
 
         :param newshapes: A single new shape or a list of new shapes
+        :returns: Reshaped MPA
 
         """
         newshapes = tuple(newshapes)
         if not hasattr(newshapes[0], '__iter__'):
             newshapes = it.repeat(newshapes, times=len(self))
 
-        self._ltens = [_local_reshape(lten, newshape)
-                       for lten, newshape in zip(self._ltens, newshapes)]
+        return MPArray([_local_reshape(lten, newshape)
+                       for lten, newshape in zip(self._ltens, newshapes)])
 
     def ravel(self):
         """Flatten the MPA to an MPS, shortcut for self.reshape((-1,))
 
         """
-        self.reshape((-1,))
+        return self.reshape((-1,))
 
     def group_sites(self, sites_per_group):
         """Group several MPA sites into one site.
@@ -478,9 +479,9 @@ class MPArray(object):
 
             # flatten the array since MPS is expected & bring back
             shape = self.pdims
-            self.ravel(), compr.ravel()
-            compr._adapt_to(self, num_sweeps, sweep_sites)
-            self.reshape(shape), compr.reshape(shape)
+            compr = compr.ravel()
+            compr._adapt_to(self.ravel(), num_sweeps, sweep_sites)
+            compr = compr.reshape(shape)
 
             if inplace:
                 self._ltens = compr[:]  # no copy necessary, compr is local
