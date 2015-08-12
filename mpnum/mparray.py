@@ -23,7 +23,7 @@ import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
 
-from mpnum._tools import matdot
+from mpnum._tools import block_diag, matdot
 from mpnum._named_ndarray import named_ndarray
 from six.moves import range, zip
 
@@ -93,8 +93,10 @@ class MPArray(object):
         else:
             start = index
             stop = index + 1
-        self._lnormalized = min(self._lnormalized, start)
-        self._rnormalized = max(self._rnormalized, stop)
+        if not self._lnormalized is None:
+            self._lnormalized = min(self._lnormalized, start)
+        if not self._rnormalized is None:
+            self._rnormalized = max(self._rnormalized, stop)
         self._ltens[index] = value
 
     @property
@@ -709,6 +711,60 @@ def norm(mpa):
     """
     # FIXME Take advantage of normalization
     return np.sqrt(np.abs(inner(mpa, mpa)))
+
+
+def linear_chain_local_sum(mpas, embed_tensor=None):
+    """Embed local MPAs on a linear chain and sum as MPA.
+
+    The resulting MPA has smaller bond dimension than naive
+    embed+MPA-sum.
+
+    mpas is a list of MPAs. The width 'width' of all the mpas[i] must
+    be the same. mpas[i] is embedded onto a linear chain on sites i,
+    ..., i + width - 1. Let D the bond dimension of the mpas[i]. Then
+    the MPA we return has bond dimension width * D + 1 instead of
+    width * D + len(mpas).
+
+    The basic idea behind the construction we use is similar to
+    [Sch11, Sec. 6.1].
+
+    :param mpas: A list of MPArrays with the same length.
+    :param embed_tensor: If the MPAs do not have two physical legs or
+        have non-square physical dimensions, you must provide an
+        embedding tensor instead of the identity matrix.
+
+    """
+    width = len(mpas[0])
+    nr_sites = len(mpas) + width - 1
+    ltens = []
+    if embed_tensor is None:
+        pdims = mpas[0].pdims[0]
+        assert len(pdims) == 2 and pdims[0] == pdims[1], \
+            'For plegs != 2 or non-square pdims, you must supply a tensor for embedding'
+        embed_tensor = np.eye(pdims[0])
+    embed_ltens = embed_tensor[None, ..., None]
+
+    for pos in range(nr_sites):
+        # At this position, we local summands mpas[i] starting at the
+        # following startsites are present:
+        startsites = range(max(0, pos - width + 1),
+                           min(len(mpas), pos + 1))
+        mpas_ltens = [mpas[i]._ltens[pos - i] for i in startsites]
+        # The embedding tensor embed_ltens has to be added if
+        # - we need an embedding tensor on the right of an mpas[i]
+        #   (pos is large enough)
+        # - we need an embedding tensor on the left of an mpas[i]
+        #   (pos is small enough)
+        if pos >= width:
+            mpas_ltens[0] = np.concatenate((embed_ltens, mpas_ltens[0]), axis=0)
+        if pos < len(mpas) - 1:
+            mpas_ltens[-1] = np.concatenate((mpas_ltens[-1], embed_ltens), axis=-1)
+
+        lten = block_diag(mpas_ltens, axes=(0, -1))
+        ltens.append(lten)
+
+    mpa = MPArray(ltens)
+    return mpa
 
 
 ############################################################

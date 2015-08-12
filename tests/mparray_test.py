@@ -196,6 +196,141 @@ def test_outer(nr_sites, local_dim, bond_dim):
     assert mp.norm(diff) < 1e-6
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, local_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
+def test_linear_chain_local_sum(nr_sites, local_dim, bond_dim, local_width):
+    eye_lten = np.eye(local_dim, dtype=complex)
+    eye_lten = eye_lten[None, ..., None]
+    eye_mpa = mp.MPArray((eye_lten,))
+
+    def embed_mpa(mpa, startpos):
+        mpas = [eye_mpa] * startpos + [mpa] + \
+               [eye_mpa] * (nr_sites - startpos - local_width)
+        res = mp.outer(mpas)
+        return res
+
+    nr_startpos = nr_sites - local_width + 1
+    mpas = [factory.random_mpa(local_width, (local_dim,) * 2, bond_dim)
+            for i in range(nr_startpos)]
+
+    # Embed with mp.outer() and calculate naive MPA sum:
+    mpas_embedded = [embed_mpa(mpa, i) for i, mpa in enumerate(mpas)]
+    mpa_sum = mpas_embedded[0]
+    for mpa in mpas_embedded[1:]:
+        mpa_sum += mpa
+
+    # Compare with linear_chain_local_sum: Same result, smaller bond
+    # dimension.
+    mpa_sum_linear_chain = mp.linear_chain_local_sum(mpas)
+
+    mpa_sum = mpa_sum.to_array()
+    mpa_sum_linear_chain = mpa_sum_linear_chain.to_array()
+    assert_array_almost_equal(mpa_sum_linear_chain, mpa_sum)
+
+
+###############################################################################
+#                         Shape changes, conversions                          #
+###############################################################################
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, sites_per_group',
+                     MP_TEST_PARAMETERS_GROUPS)
+def test_group_sites(nr_sites, local_dim, bond_dim, sites_per_group):
+    assert (nr_sites % sites_per_group) == 0, \
+        'nr_sites not a multiple of sites_per_group'
+    mpa = factory.random_mpa(nr_sites, (local_dim,) * 2, bond_dim)
+    grouped_mpa = mpa.group_sites(sites_per_group)
+    op = mpa.to_array()
+    grouped_op = grouped_mpa.to_array()
+    assert_array_almost_equal(op, grouped_op)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, sites_per_group',
+                     MP_TEST_PARAMETERS_GROUPS)
+def test_split_sites(nr_sites, local_dim, bond_dim, sites_per_group):
+    assert (nr_sites % sites_per_group) == 0, \
+        'nr_sites not a multiple of sites_per_group'
+    mpa = factory.random_mpa(nr_sites // sites_per_group,
+                             (local_dim,) * (2 * sites_per_group), bond_dim)
+    split_mpa = mpa.split_sites(sites_per_group)
+    op = mpa.to_array()
+    split_op = split_mpa.to_array()
+    assert_array_almost_equal(op, split_op)
+
+
+###############################################################################
+#                         Normalization & Compression                         #
+###############################################################################
+def assert_lcannonical(ltens, msg=''):
+    ltens = ltens.reshape((np.prod(ltens.shape[:-1]), ltens.shape[-1]))
+    prod = ltens.conj().T.dot(ltens)
+    assert_array_almost_equal(prod, np.identity(prod.shape[0]),
+                              err_msg=msg)
+
+
+def assert_rcannonical(ltens, msg=''):
+    ltens = ltens.reshape((ltens.shape[0], np.prod(ltens.shape[1:])))
+    prod = ltens.dot(ltens.conj().T)
+    assert_array_almost_equal(prod, np.identity(prod.shape[0]),
+                              err_msg=msg)
+
+
+def assert_correct_normalzation(mpo, lnormal_target, rnormal_target):
+    lnormal, rnormal = mpo.normal_form
+
+    assert_equal(lnormal, lnormal_target)
+    assert_equal(rnormal, rnormal_target)
+
+    for n in range(lnormal):
+        assert_lcannonical(mpo[n], msg="Failure left cannonical (n={}/{})"
+                           .format(n, lnormal_target))
+    for n in range(rnormal, len(mpo)):
+        assert_rcannonical(mpo[n], msg="Failure right cannonical (n={}/{})"
+                           .format(n, rnormal_target))
+
+
+@pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
+def test_from_full_normalization(nr_sites, local_dim, _):
+    op = factory.random_op(nr_sites, local_dim)
+    mpo = mp.MPArray.from_array(op, 2)
+    assert_correct_normalzation(mpo, nr_sites - 1, nr_sites)
+
+
+# FIXME Add counter to normalization functions
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_incremental_normalization(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = mpo_to_global(mpo)
+    assert_correct_normalzation(mpo, 0, nr_sites)
+    assert_array_almost_equal(op, mpo_to_global(mpo))
+
+    for site in range(1, nr_sites):
+        mpo.normalize(left=site)
+        assert_correct_normalzation(mpo, site, nr_sites)
+        assert_array_almost_equal(op, mpo_to_global(mpo))
+
+    for site in range(nr_sites - 1, 0, -1):
+        mpo.normalize(right=site)
+        assert_correct_normalzation(mpo, site - 1, site)
+        assert_array_almost_equal(op, mpo_to_global(mpo))
+
+
+# FIXME Add counter to normalization functions
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_jump_normalization(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = mpo_to_global(mpo)
+    assert_correct_normalzation(mpo, 0, nr_sites)
+    assert_array_almost_equal(op, mpo_to_global(mpo))
+
+    center = nr_sites // 2
+    mpo.normalize(left=center - 1, right=center)
+    assert_correct_normalzation(mpo, center - 1, center)
+    assert_array_almost_equal(op, mpo_to_global(mpo))
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_full_normalization(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = mpo_to_global(mpo)
+    assert_correct_normalzation(mpo, 0, nr_sites)
 ###############################################################################
 #                         Shape changes, conversions                          #
 ###############################################################################
