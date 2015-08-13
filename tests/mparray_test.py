@@ -149,6 +149,31 @@ def test_add_and_subtr(nr_sites, local_dim, bond_dim):
     assert_array_almost_equal(op1 + op2, mpo_to_global(mpo1 + mpo2))
     assert_array_almost_equal(op1 - op2, mpo_to_global(mpo1 - mpo2))
 
+    mpo1 += mpo2
+    assert_array_almost_equal(op1 + op2, mpo_to_global(mpo1))
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', [(3, 2, 2)])
+def test_operations_typesafety(nr_sites, local_dim, bond_dim):
+    # create a real MPA
+    mpo1 = factory._generate(nr_sites, (local_dim, local_dim), bond_dim,
+                             func=lambda shape: np.random.randn(*shape))
+    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+
+    assert mpo1[0].dtype == float
+    assert mpo2[0].dtype == complex
+
+    assert (mpo1 + mpo1)[0].dtype == float
+    assert (mpo1 + mpo2)[0].dtype == complex
+    assert (mpo2 + mpo1)[0].dtype == complex
+
+    assert (mpo1 - mpo1)[0].dtype == float
+    assert (mpo1 - mpo2)[0].dtype == complex
+    assert (mpo2 - mpo1)[0].dtype == complex
+
+    mpo1 += mpo2
+    assert mpo1[0].dtype == complex
+
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim):
@@ -198,9 +223,7 @@ def test_outer(nr_sites, local_dim, bond_dim):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, local_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_linear_chain_local_sum(nr_sites, local_dim, bond_dim, local_width):
-    eye_lten = np.eye(local_dim, dtype=complex)
-    eye_lten = eye_lten[None, ..., None]
-    eye_mpa = mp.MPArray((eye_lten,))
+    eye_mpa = factory.eye(1, local_dim)
 
     def embed_mpa(mpa, startpos):
         mpas = [eye_mpa] * startpos + [mpa] + \
@@ -208,8 +231,10 @@ def test_linear_chain_local_sum(nr_sites, local_dim, bond_dim, local_width):
         res = mp.outer(mpas)
         return res
 
+    rs = np.random.RandomState(seed=0)
     nr_startpos = nr_sites - local_width + 1
-    mpas = [factory.random_mpa(local_width, (local_dim,) * 2, bond_dim)
+    mpas = [factory.random_mpa(local_width, (local_dim,) * 2, bond_dim,
+                               randstate=rs)
             for i in range(nr_startpos)]
 
     # Embed with mp.outer() and calculate naive MPA sum:

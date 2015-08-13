@@ -836,7 +836,7 @@ def _local_add(ltens_l, ltens_r):
     shape = (ltens_l.shape[0] + ltens_r.shape[0], )
     shape += ltens_l.shape[1:-1]
     shape += (ltens_l.shape[-1] + ltens_r.shape[-1], )
-    res = np.zeros(shape, dtype=ltens_l.dtype)
+    res = np.zeros(shape, dtype=max(ltens_l.dtype, ltens_r.dtype))
 
     res[:ltens_l.shape[0], ..., :ltens_l.shape[-1]] = ltens_l
     res[ltens_l.shape[0]:, ..., ltens_l.shape[-1]:] = ltens_r
