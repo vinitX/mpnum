@@ -222,7 +222,7 @@ def test_outer(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, local_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
-def test_linear_chain_local_sum(nr_sites, local_dim, bond_dim, local_width):
+def test_local_sum(nr_sites, local_dim, bond_dim, local_width):
     eye_mpa = factory.eye(1, local_dim)
 
     def embed_mpa(mpa, startpos):
@@ -243,13 +243,12 @@ def test_linear_chain_local_sum(nr_sites, local_dim, bond_dim, local_width):
     for mpa in mpas_embedded[1:]:
         mpa_sum += mpa
 
-    # Compare with linear_chain_local_sum: Same result, smaller bond
+    # Compare with local_sum: Same result, smaller bond
     # dimension.
-    mpa_sum_linear_chain = mp.linear_chain_local_sum(mpas)
+    mpa_local_sum = mp.local_sum(mpas)
 
-    mpa_sum = mpa_sum.to_array()
-    mpa_sum_linear_chain = mpa_sum_linear_chain.to_array()
-    assert_array_almost_equal(mpa_sum_linear_chain, mpa_sum)
+    assert all(d1 <= d2 for d1, d2 in zip(mpa_local_sum.bdims, mpa_sum.bdims))
+    assert_array_almost_equal(mpa_local_sum.to_array(), mpa_sum.to_array())
 
 
 ###############################################################################

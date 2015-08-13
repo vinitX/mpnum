@@ -129,7 +129,6 @@ def block_diag(summands, axes=(0, 1)):
         be negative.
 
     >>> import numpy as np
-    >>> from mpnum._tools import block_diag
     >>> a = np.arange(8).reshape((2, 2, 2))
     >>> b = np.arange(8, 16).reshape((2, 2, 2))
     >>> a

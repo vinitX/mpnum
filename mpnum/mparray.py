@@ -713,7 +713,7 @@ def norm(mpa):
     return np.sqrt(np.abs(inner(mpa, mpa)))
 
 
-def linear_chain_local_sum(mpas, embed_tensor=None):
+def local_sum(mpas, embed_tensor=None):
     """Embed local MPAs on a linear chain and sum as MPA.
 
     The resulting MPA has smaller bond dimension than naive
@@ -740,7 +740,7 @@ def linear_chain_local_sum(mpas, embed_tensor=None):
     if embed_tensor is None:
         pdims = mpas[0].pdims[0]
         assert len(pdims) == 2 and pdims[0] == pdims[1], \
-            'For plegs != 2 or non-square pdims, you must supply a tensor for embedding'
+            "For plegs != 2 or non-square pdims, you must supply a tensor for embedding"
         embed_tensor = np.eye(pdims[0])
     embed_ltens = embed_tensor[None, ..., None]
 
