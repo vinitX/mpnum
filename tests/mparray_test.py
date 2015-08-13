@@ -759,7 +759,7 @@ def test_compression_var_to_svd_twosite(nr_sites, local_dim, bond_dim):
 def _svd_compression_full(mpa, direction, target_bonddim):
     """Re-implement what SVD compression on MPAs does but on the level of the
     full matrix representation, i.e. it truncates the Schmidt-decompostion
-    on each bipartition sequentally
+    on each bipartition sequentially.
 
     Two implementations that produce the same data are not a guarantee
     for correctness, but a check for consistency is nice anyway.
