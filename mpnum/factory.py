@@ -10,6 +10,7 @@ import functools as ft
 import numpy as np
 
 import mpnum.mparray as mp
+from mpnum._tools import global_to_local, norm_2
 from six.moves import range
 
 
@@ -45,20 +46,26 @@ def random_vec(sites, ldim, randstate=None):
     return psi
 
 
-def random_op(sites, ldim, randstate=None):
+def random_op(sites, ldim, hermitian=False, normalized=False, randstate=None):
     """Returns a random operator  of shape (ldim,ldim) * sites with local
-    dimension `ldim` living on `sites` sites.
+    dimension `ldim` living on `sites` sites in global form.
 
     :param sites: Number of local sites
     :param ldim: Local ldimension
+    :param hermitian: Return only the hermitian part (default False)
+    :param normalized: Normalize to Frobenius norm=1 (default False)
     :param randstate: numpy.random.RandomState instance or None
     :returns: numpy.ndarray of shape (ldim,ldim) * sites
 
     >>> A = random_op(3, 2); A.shape
     (2, 2, 2, 2, 2, 2)
     """
-    shape = (ldim, ldim) * sites
-    return _zrandn(shape, randstate=randstate)
+    op = _zrandn((ldim**sites,) * 2, randstate=randstate)
+    if hermitian:
+        op += np.transpose(op).conj()
+    if normalized:
+        op /= norm_2(op)
+    return op.reshape((ldim,) * 2 * sites)
 
 
 def random_state(sites, ldim, randstate=None):
@@ -208,3 +215,24 @@ def eye(sites, ldim):
     ((1, 1, 1), ((2, 2), (2, 2), (2, 2), (2, 2)))
     """
     return mp.MPArray.from_kron(it.repeat(np.eye(ldim), sites))
+
+
+def random_local_ham(sites, ldim=2, intlen=2, randstate=None):
+    """Generates a random Hamiltonian on `sites` sites with local dimension
+    `ldim`, which is a sum of local Hamiltonians with interaction length
+    `intlen`.
+
+    :param sites: Number of sites
+    :param ldim: Local dimension
+    :param intlen: Interaction length of the local Hamiltonians
+    :returns: MPA representation of the global Hamiltonian
+
+    """
+    def get_local_ham():
+        op = random_op(intlen, ldim, hermitian=True, normalized=True)
+        op = global_to_local(op, sites=intlen)
+        return mp.MPArray.from_array(op, plegs=2)
+
+    assert sites >= intlen
+    local_hams = [get_local_ham() for _ in range(sites + 1 - intlen)]
+    return mp.local_sum(local_hams)
