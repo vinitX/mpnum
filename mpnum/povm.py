@@ -37,6 +37,12 @@ class POVM(object):
     def __len__(self):
         return len(self._elements)
 
+    def __iter__(self):
+        return iter(self._elements)
+
+    def __getitem__(self, index):
+        return self._elements[index]
+
     @classmethod
     def from_vectors(cls, vecs, info_complete=False):
         """Generates a POVM consisting of rank 1 projectors based on the
@@ -67,13 +73,6 @@ class POVM(object):
 
         """
         return self._pinv(self.probability_map)
-
-    # FIXME This may change to an iterator in the future as soon as I have
-    #       figured out how to deal with :func:`povm.concatenated`.
-    @property
-    def elements(self):
-        """Positive operators representing the POVM, use as read-only!"""
-        return self._elements
 
     @property
     def informationally_complete(self):
@@ -155,6 +154,6 @@ def concat(povms, weights, info_complete=False):
 
     """
     assert_almost_equal(sum(weights), 1.0)
-    elements = np.concatenate([povm.elements * weight
-                               for povm, weight in zip(povms, weights)])
+    elements = sum(([weight * elem for elem in povm]
+                    for povm, weight in zip(povms, weights)), [])
     return POVM(elements, info_complete=info_complete)
