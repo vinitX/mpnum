@@ -14,6 +14,9 @@ References:
 #   arrays (might not be possible, since we often iterate both ways!)
 #   - more in place operations for addition, subtraction, multiplication
 # FIXME single site MPAs
+# TODO Replace all occurences of self._ltens with self[...] or similar &
+#      benchmark. This will allow easier transition to lazy evaluation of
+#      local tensors
 
 from __future__ import absolute_import, division, print_function
 
@@ -711,6 +714,24 @@ def norm(mpa):
     """
     # FIXME Take advantage of normalization
     return np.sqrt(np.abs(inner(mpa, mpa)))
+
+
+def trace(mpa):
+    """Computes the trace of a MPA with 2 physical legs per sites.
+
+    :param mpa: MPArray
+    :returns: Trace of mpa
+
+    """
+    # TODO A lot to be done here:
+    #   - partial trace over different sites -> returns MPArray with ltens
+    #     traced over, but same length -> prune method to get rid of sites
+    #     with plegs == 0
+    #   - specify axes for plegs > 2
+    #   => seperate in contract & trace method
+    assert_array_equal(mpa.plegs, 2)
+    ltens = (np.trace(lten, axis1=1, axis2=2) for lten in mpa)
+    return _ltens_to_array(ltens)
 
 
 def local_sum(mpas, embed_tensor=None):
