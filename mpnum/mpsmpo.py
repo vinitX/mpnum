@@ -89,7 +89,7 @@ def reductions_pmps(pmps, startsites, width):
         ltens = [lten.swapaxes(0, 1).copy().reshape(newshape)]
 
         # central ones
-        ltens += [lten.copy() for lten in pmps[site + 1:site + width - 1]]
+        ltens += (lten.copy() for lten in pmps[site + 1:site + width - 1])
 
         # rightmost site
         lten = pmps[site + width - 1]
