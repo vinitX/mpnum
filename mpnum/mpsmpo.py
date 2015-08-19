@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """TODO What considered an MPS/MPO/PMPS? What are the conventions?"""
-# FIXME I think all the names are too long
 # TODO Are derived classes MPO/MPS/PMPS of any help?
 
 from __future__ import absolute_import, division, print_function
@@ -11,18 +10,23 @@ from numpy.testing import assert_array_equal
 
 import mpnum.mparray as mp
 from mpnum._tools import matdot
+from six.moves import range
 
 
-def reductions_mpo(mpa, startsites, width):
+def reductions_mpo(mpa, width, startsites=None):
     """Take an MPA with two physical legs per site and perform partial trace
     over the complement the sites startsites[i], ..., startsites[i] + width.
 
     :param mpa: MPArray with two physical legs (a Matrix Product Operator)
-    :param startsites: Iterator yielding the index of the leftmost sites of the
-        supports of the results
     :param width: number of sites in support of the results
+    :param startsites: Iterator yielding the index of the leftmost sites of the
+        supports of the results (default all possible reductions in ascending
+        order)
     :returns: Iterator over (startsite, reduced_mpa)
     """
+    if startsites is None:
+        startsites = range(len(mpa) - width)
+
     assert_array_equal(mpa.plegs, 2)
     rem_left = {0: np.array(1, ndmin=2)}
     rem_right = rem_left.copy()
@@ -64,7 +68,7 @@ def reductions_mpo(mpa, startsites, width):
         yield startsite, mp.MPArray(ltens)
 
 
-def reductions_pmps(pmps, startsites, width):
+def reductions_pmps(pmps, width, startsites=None):
     """Take a local purification MPS and perform partial trace over the
     complement the sites startsites[i], ..., startsites[i] + width.
 
@@ -73,12 +77,16 @@ def reductions_pmps(pmps, startsites, width):
     the edge into a larger ancilla dimension.
 
     :param MPArray mpa: An MPA with two physical legs (system and ancilla)
-    :param startsites: Iterator yielding the index of the leftmost sites of the
-        supports of the results
     :param width: number of sites in support of the results
+    :param startsites: Iterator yielding the index of the leftmost sites of the
+        supports of the results (default all possible reductions in ascending
+        order)
     :returns: Iterator over (startsite, reduced_locpuri_mps)
 
     """
+    if startsites is None:
+        startsites = range(len(pmps) - width)
+
     for site in startsites:
         pmps.normalize(left=site, right=site + width)
 

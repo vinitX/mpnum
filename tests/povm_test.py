@@ -15,6 +15,7 @@ from numpy.testing import assert_array_almost_equal
 
 import mpnum.mparray as mp
 import mpnum.povm as povm
+import mpnum.mppovm as mppovm
 import mpnum.factory as factory
 
 ALL_POVMS = {name: constructor for name, constructor in povm.__dict__.items()
@@ -70,3 +71,13 @@ def test_povm_ic_mpa(nr_sites, local_dim, bond_dim):
     probabs = mp.dot(probab_map, mpa)
     recons = mp.dot(inv_map, probabs)
     assert mp.norm(recons - mpa) < 1e-6
+
+
+@pt.mark.parametrize('width, local_dim', [(3, 2), (2, 3)])
+def test_mppovm(width, local_dim):
+    paulis = povm.pauli_povm(local_dim)
+    p = mppovm.MPPovm.from_local_povm(paulis, width)
+
+    # FIXME This is a stub
+    assert len(p) == len(paulis)**width
+    assert p.ldim == local_dim

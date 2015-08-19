@@ -20,7 +20,7 @@ def test_reductions_mpo(nr_sites, local_dim, bond_dim, keep_width):
     op = mpo_to_global(mpo)
 
     startsites = range(nr_sites - keep_width + 1)
-    for site, reduced_mpo in mm.reductions_mpo(mpo, startsites, keep_width):
+    for site, reduced_mpo in mm.reductions_mpo(mpo, keep_width, startsites):
         traceout = tuple(range(site)) \
             + tuple(range(site + keep_width, nr_sites))
         red_from_op = _tools.partial_trace(op, traceout)
@@ -34,7 +34,7 @@ def test_reductions_pmps(nr_sites, local_dim, bond_dim, keep_width):
     op = mpo_to_global(mm.pmps_to_mpo(pmps))
 
     startsites = range(nr_sites - keep_width + 1)
-    for site, reduced_mps in mm.reductions_pmps(pmps, startsites, keep_width):
+    for site, reduced_mps in mm.reductions_pmps(pmps, keep_width, startsites):
         reduced_mpo = mm.pmps_to_mpo(reduced_mps)
         red = mpo_to_global(reduced_mpo)
         traceout = tuple(range(site)) + tuple(range(site + keep_width, nr_sites))
