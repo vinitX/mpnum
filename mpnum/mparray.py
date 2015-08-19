@@ -237,6 +237,12 @@ class MPArray(object):
     def __rmul__(self, fact):
         return self.__mul__(fact)
 
+    def __neg__(self):
+        return -1 * self
+
+    def __pos__(self):
+        return self
+
     def __truediv__(self, divisor):
         if np.isscalar(divisor):
             return self.__mul__(1 / divisor)
