@@ -14,7 +14,8 @@ import mpnum._tools as _tools
 from mparray_test import MP_TEST_PARAMETERS, mpo_to_global
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width',
+                     [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_reductions_mpo(nr_sites, local_dim, bond_dim, keep_width):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo_to_global(mpo)
@@ -28,7 +29,8 @@ def test_reductions_mpo(nr_sites, local_dim, bond_dim, keep_width):
                                   err_msg="not equal at site {}".format(site))
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width',
+                     [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_reductions_pmps(nr_sites, local_dim, bond_dim, keep_width):
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo_to_global(mm.pmps_to_mpo(pmps))
