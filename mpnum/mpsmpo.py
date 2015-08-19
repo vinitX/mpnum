@@ -21,7 +21,7 @@ def reductions_mpo(mpa, startsites, width):
     :param startsites: Iterator yielding the index of the leftmost sites of the
         supports of the results
     :param width: number of sites in support of the results
-    :returns: Iterator over (startsite, reduced_mpa)
+    :returns: Iterator over reduced_state_as_mpo, same order as 'startsites'
     """
     assert_array_equal(mpa.plegs, 2)
     rem_left = {0: np.array(1, ndmin=2)}
@@ -61,7 +61,7 @@ def reductions_mpo(mpa, startsites, width):
         ltens[0] = matdot(rem, ltens[0])
         rem = get_remainder(rem_right, num_sites - (startsite + width), -1)
         ltens[-1] = matdot(ltens[-1], rem)
-        yield startsite, mp.MPArray(ltens)
+        yield mp.MPArray(ltens)
 
 
 def reductions_pmps(pmps, startsites, width):
@@ -76,7 +76,7 @@ def reductions_pmps(pmps, startsites, width):
     :param startsites: Iterator yielding the index of the leftmost sites of the
         supports of the results
     :param width: number of sites in support of the results
-    :returns: Iterator over (startsite, reduced_locpuri_mps)
+    :returns: Iterator over reduced_state_as_pmps, same order as 'startsites'
 
     """
     for site in startsites:
@@ -98,7 +98,7 @@ def reductions_pmps(pmps, startsites, width):
         ltens += [lten.copy().reshape(newshape)]
 
         reduced_mps = mp.MPArray(ltens)
-        yield site, reduced_mps
+        yield reduced_mps
 
 
 def pmps_to_mpo(pmps):
