@@ -8,9 +8,11 @@ import itertools as it
 import functools as ft
 
 import numpy as np
+from scipy.linalg import qr
 
 import mpnum.mparray as mp
-from mpnum._tools import global_to_local, norm_2
+import mpnum.mpsmpo as mpsmpo
+from mpnum._tools import global_to_local, norm_2, matdot
 from six.moves import range
 
 
@@ -158,35 +160,6 @@ def random_mpa(sites, ldim, bdim, randstate=None):
     return _generate(sites, ldim, bdim, ft.partial(_zrandn, randstate=randstate))
 
 
-def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
-               normalized=True):
-    """Returns an hermitian MPO with randomly choosen local tensors
-
-    :param sites: Number of sites
-    :param ldim: Local dimension
-    :param bdim: Bond dimension
-    :param randstate: numpy.random.RandomState instance or None
-    :param hermitian: Is the operator supposed to be hermitian
-    :param normalized: Operator should have unit norm
-    :returns: randomly choosen matrix product operator
-
-    >>> mpo = random_mpo(4, 2, 10)
-    >>> mpo.bdims, mpo.pdims
-    ((10, 10, 10), ((2, 2), (2, 2), (2, 2), (2, 2)))
-
-    """
-    mpo = random_mpa(sites, (ldim,) * 2, bdim, randstate=randstate)
-
-    if hermitian:
-        # make mpa Herimitan in place, without increasing bond dimension:
-        for lten in mpo:
-            lten += lten.swapaxes(1, 2).conj()
-    if normalized:
-        mpo /= mp.norm(mpo)
-
-    return mpo
-
-
 def zero(sites, ldim, bdim):
     """Returns a MPA with localtensors beeing zero (but of given shape)
 
@@ -217,6 +190,84 @@ def eye(sites, ldim):
     return mp.MPArray.from_kron(it.repeat(np.eye(ldim), sites))
 
 
+#########################
+#  More physical stuff  #
+#########################
+def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
+               normalized=True):
+    """Returns an hermitian MPO with randomly choosen local tensors
+
+    :param sites: Number of sites
+    :param ldim: Local dimension
+    :param bdim: Bond dimension
+    :param randstate: numpy.random.RandomState instance or None
+    :param hermitian: Is the operator supposed to be hermitian
+    :param normalized: Operator should have unit norm
+    :returns: randomly choosen matrix product operator
+
+    >>> mpo = random_mpo(4, 2, 10)
+    >>> mpo.bdims, mpo.pdims
+    ((10, 10, 10), ((2, 2), (2, 2), (2, 2), (2, 2)))
+
+    """
+    mpo = random_mpa(sites, (ldim,) * 2, bdim, randstate=randstate)
+
+    if hermitian:
+        # make mpa Herimitan in place, without increasing bond dimension:
+        for lten in mpo:
+            lten += lten.swapaxes(1, 2).conj()
+    if normalized:
+        mpo /= mp.norm(mpo)
+
+    return mpo
+
+
+def random_mps(sites, ldim, bdim, randstate=None):
+    """Returns a randomly choosen matrix product state
+
+    :param sites: Number of sites
+    :param ldim: Local dimension
+    :param bdim: Bond dimension
+    :param randstate: numpy.random.RandomState instance or None
+    :returns: randomly choosen matrix product (pure) state
+
+    """
+    mps = random_mpa(sites, ldim, bdim, randstate=randstate)
+    mps /= mp.norm(mps)
+    return mps
+
+
+def random_mpdo(sites, ldim, bdim, randstate=None):
+    """Returns a randomly choosen matrix product density operator (i.e.
+    positive semidefinite matrix product operator with trace 1).
+
+    :param sites: Number of sites
+    :param ldim: Local dimension
+    :param bdim: Bond dimension
+    :param randstate: numpy.random.RandomState instance or None
+    :returns: randomly choosen matrix product (pure) state
+
+    >>> mpo = random_mpdo(4, 2, 4)
+    >>> mpo.bdims, mpo.pdims
+    ((4, 4, 4), ((2, 2), (2, 2), (2, 2), (2, 2)))
+
+    """
+    # generate density matrix as a mixture of `bdim` pure product states
+    psis = [random_mps(sites, ldim, 1, randstate=randstate) for _ in range(bdim)]
+    weights = (lambda x: x / np.sum(x))(np.random.rand(bdim))
+    rho = ft.reduce(mp.MPArray.__add__, (mpsmpo.mps_as_mpo(psi) * weight
+                                         for weight, psi in zip(weights, psis)))
+
+    # Scramble the local tensors
+    for n, bdim in enumerate(rho.bdims):
+        unitary = _gue(bdim, randstate)
+        rho[n] = matdot(rho[n], unitary)
+        rho[n + 1] = matdot(np.transpose(unitary).conj(), rho[n + 1])
+
+    rho /= mp.trace(rho)
+    return rho
+
+
 def random_local_ham(sites, ldim=2, intlen=2, randstate=None):
     """Generates a random Hamiltonian on `sites` sites with local dimension
     `ldim`, which is a sum of local Hamiltonians with interaction length
@@ -236,3 +287,19 @@ def random_local_ham(sites, ldim=2, intlen=2, randstate=None):
     assert sites >= intlen
     local_hams = [get_local_ham() for _ in range(sites + 1 - intlen)]
     return mp.local_sum(local_hams)
+
+
+def _gue(dim, randstate=None):
+    """Returns a sample from the Gaussian unitary ensemble of given dimension.
+    (i.e. the haar measure on U(dim)).
+
+    :param int dim: Dimension
+    :param randn: Function to create real N(0,1) distributed random variables.
+        It should take the shape of the output as numpy.random.randn does
+        (default: numpy.random.randn)
+    """
+    z = (_zrandn((dim, dim))) / np.sqrt(2.0)
+    q, r = qr(z)
+    d = np.diagonal(r)
+    ph = d / np.abs(d)
+    return q * ph
