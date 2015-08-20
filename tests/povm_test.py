@@ -84,8 +84,10 @@ def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim):
     mppaulis = mppovm.MPPovm.from_local_povm(paulis, width)
     rho = factory.random_mpdo(nr_sites, local_dim, bond_dim)
     pmap = paulis.probability_map
+    expectations = list(mppaulis.expectations(rho))
 
-    for ssite, evals_mp in mppaulis.expectations(rho):
+    assert len(expectations) == nr_sites - width + 1
+    for ssite, evals_mp in expectations:
         _, evals_np = next(mpsmpo.reductions_mpo(rho, width, startsites=[ssite]))
         evals_np = evals_np.ravel().to_array()
 

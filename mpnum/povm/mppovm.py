@@ -12,7 +12,7 @@ class MPPovm(mp.MPArray):
     """Docstring for MPPovm. """
 
     def __iter__(self):
-        return self.paxis_iter(axis=0)
+        return self.paxis_iter(axes=0)
 
     @classmethod
     def from_local_povm(cls, lelems, width):
