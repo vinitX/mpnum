@@ -86,7 +86,13 @@ class MPArray(object):
 
     def __getitem__(self, index):
         """Use only for read-only access! Do not change arrays in place!"""
-        return self._ltens[index]
+        if type(index) == tuple:
+            assert len(index) == len(self)
+            return MPArray(ltens[:, i, ..., :]
+                           for i, ltens in zip(index, self._ltens))
+        else:
+            # FIXME Maybe this should be moved to another Function
+            return self._ltens[index]
 
     def __setitem__(self, index, value):
         """Update a local tensor and keep track of normalization."""
@@ -186,6 +192,30 @@ class MPArray(object):
         WARNING: This can be slow for large MPAs!
         """
         return _ltens_to_array(iter(self))[0, ..., 0]
+
+    def paxis_iter(self, axes=0):
+        """Returns an iterator yielding Sub-MPArrays of `self` by iterating
+        over the specified physical axes.
+
+        Example
+        =======
+        If `self` represents a bipartite (i.e. length 2) array with 2
+        physical dimensions on each site A[(k,l), (m,n)], self.paxis_iter(0) is
+        equivalent to
+
+            (A[(k, :), (m, :)] for m in range(...) for k in range(...))
+
+        :param axes: Iterable or int specifiying the physical axes to iterate
+            over (default 0 for each site)
+        :returns: Iterator over MPArray
+
+        """
+        if not hasattr(axes, '__iter__'):
+            axes = it.repeat(axes, len(self))
+
+        ltens_iter = it.product(*(iter(np.rollaxis(lten, i + 1))
+                                  for i, lten in zip(axes, self._ltens)))
+        return (MPArray(ltens) for ltens in ltens_iter)
 
     ##########################
     #  Algebraic operations  #
