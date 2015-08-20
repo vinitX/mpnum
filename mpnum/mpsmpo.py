@@ -25,7 +25,7 @@ def reductions_mpo(mpa, width, startsites=None):
     :returns: Iterator over (startsite, reduced_mpa)
     """
     if startsites is None:
-        startsites = range(len(mpa) - width)
+        startsites = range(len(mpa) - width + 1)
 
     assert_array_equal(mpa.plegs, 2)
     rem_left = {0: np.array(1, ndmin=2)}
@@ -85,7 +85,7 @@ def reductions_pmps(pmps, width, startsites=None):
 
     """
     if startsites is None:
-        startsites = range(len(pmps) - width)
+        startsites = range(len(pmps) - width + 1)
 
     for site in startsites:
         pmps.normalize(left=site, right=site + width)
