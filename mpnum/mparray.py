@@ -746,6 +746,17 @@ def norm(mpa):
     return np.sqrt(np.abs(inner(mpa, mpa)))
 
 
+def normdist(mpa1, mpa2):
+    """More efficient version of norm(mpa1 - mpa2)
+
+    :param mpa1: MPArray
+    :param mpa2: MPArray
+    :returns: l2-norm of mpa1 - mpa2
+
+    """
+    return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
+
+
 def trace(mpa):
     """Computes the trace of a MPA with 2 physical legs per sites.
 

@@ -140,6 +140,14 @@ def test_norm(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_normdist(nr_sites, local_dim, bond_dim):
+    psi1 = factory.random_mpa(nr_sites, local_dim, bond_dim)
+    psi2 = factory.random_mpa(nr_sites, local_dim, bond_dim)
+
+    assert_almost_equal(mp.normdist(psi1, psi2), mp.norm(psi1 - psi2))
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_trace(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
