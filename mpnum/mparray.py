@@ -380,7 +380,7 @@ class MPArray(object):
             self._rnormalize(rnormalize)
 
     def _lnormalize(self, to_site):
-        """Left-normalizes all local tensors _ltens[to_site:] in place
+        """Left-normalizes all local tensors _ltens[:to_site] in place
 
         :param to_site: Index of the site up to which normalization is to be
             performed
@@ -403,7 +403,7 @@ class MPArray(object):
         self._rnormalized = max(to_site + 1, rnormal)
 
     def _rnormalize(self, to_site):
-        """Right-normalizes all local tensors _ltens[:to_site] in place
+        """Right-normalizes all local tensors _ltens[to_site:] in place
 
         :param to_site: Index of the site up to which normalization is to be
             performed
@@ -754,7 +754,8 @@ def normdist(mpa1, mpa2):
     :returns: l2-norm of mpa1 - mpa2
 
     """
-    return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
+    return norm(mpa1 - mpa2)
+    #  return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
 
 
 def trace(mpa):
