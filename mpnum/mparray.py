@@ -364,8 +364,12 @@ class MPArray(object):
                    self[n],...,self[-1] are right-normalized
 
         """
+        current_lnorm, current_rnorm = self.normal_form
         if ('left' not in kwargs) and ('right' not in kwargs):
-            self._lnormalize(len(self) - 1)
+            if current_lnorm < len(self) - current_rnorm:
+                self._rnormalize(1)
+            else:
+                self._lnormalize(len(self) - 1)
             return
 
         lnormalize = kwargs.get('left', 0)
@@ -373,10 +377,9 @@ class MPArray(object):
 
         assert lnormalize < rnormalize, \
             "Normalization {}:{} invalid".format(lnormalize, rnormalize)
-        current_normalization = self.normal_form
-        if current_normalization[0] < lnormalize:
+        if current_lnorm < lnormalize:
             self._lnormalize(lnormalize)
-        if current_normalization[1] > rnormalize:
+        if current_rnorm > rnormalize:
             self._rnormalize(rnormalize)
 
     def _lnormalize(self, to_site):

@@ -388,6 +388,24 @@ def test_normalization_full(nr_sites, local_dim, bond_dim):
     assert_array_almost_equal(op, mpo_to_global(mpo))
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_normalization_default_args(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    assert_correct_normalzation(mpo, 0, nr_sites)
+
+    mpo.normalize(left=1)
+    mpo.normalize()
+    assert_correct_normalzation(mpo, nr_sites - 1, nr_sites)
+
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    assert_correct_normalzation(mpo, 0, nr_sites)
+
+    mpo.normalize(left=1)
+    mpo.normalize(right=nr_sites - 2)
+    mpo.normalize()
+    assert_correct_normalzation(mpo, 0, 1)
+
+
 def test_normalization_compression():
     """If the bond dimension is too large at the boundary, qr decompostion
     in normalization may yield smaller bond dimension"""
