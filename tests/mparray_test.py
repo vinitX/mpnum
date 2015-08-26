@@ -327,7 +327,7 @@ def assert_correct_normalzation(mpo, lnormal_target, rnormal_target):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
-def test_from_full_normalization(nr_sites, local_dim, _):
+def test_normalization_from_full(nr_sites, local_dim, _):
     op = factory.random_op(nr_sites, local_dim)
     mpo = mp.MPArray.from_array(op, 2)
     assert_correct_normalzation(mpo, nr_sites - 1, nr_sites)
@@ -335,7 +335,7 @@ def test_from_full_normalization(nr_sites, local_dim, _):
 
 # FIXME Add counter to normalization functions
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_incremental_normalization(nr_sites, local_dim, bond_dim):
+def test_normalization_incremental(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo_to_global(mpo)
     assert_correct_normalzation(mpo, 0, nr_sites)
@@ -354,7 +354,7 @@ def test_incremental_normalization(nr_sites, local_dim, bond_dim):
 
 # FIXME Add counter to normalization functions
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_jump_normalization(nr_sites, local_dim, bond_dim):
+def test_normalization_jump(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo_to_global(mpo)
     assert_correct_normalzation(mpo, 0, nr_sites)
@@ -367,7 +367,7 @@ def test_jump_normalization(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_full_normalization(nr_sites, local_dim, bond_dim):
+def test_normalization_full(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo_to_global(mpo)
     assert_correct_normalzation(mpo, 0, nr_sites)
