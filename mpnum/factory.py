@@ -208,6 +208,8 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
     >>> mpo = random_mpo(4, 2, 10)
     >>> mpo.bdims, mpo.pdims
     ((10, 10, 10), ((2, 2), (2, 2), (2, 2), (2, 2)))
+    >>> mpo.normal_form
+    (0, 4)
 
     """
     mpo = random_mpa(sites, (ldim,) * 2, bdim, randstate=randstate)
@@ -217,7 +219,9 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
         for lten in mpo:
             lten += lten.swapaxes(1, 2).conj()
     if normalized:
-        mpo /= mp.norm(mpo)
+        # we do this with a copy to ensure the returned state is not
+        # normalized
+        mpo /= mp.norm(mpo.copy())
 
     return mpo
 
@@ -231,9 +235,15 @@ def random_mps(sites, ldim, bdim, randstate=None):
     :param randstate: numpy.random.RandomState instance or None
     :returns: randomly choosen matrix product (pure) state
 
+    >>> mps = random_mps(4, 2, 10)
+    >>> mps.bdims, mps.pdims
+    ((10, 10, 10), ((2,), (2,), (2,), (2,)))
+    >>> mps.normal_form
+    (0, 4)
+
     """
     mps = random_mpa(sites, ldim, bdim, randstate=randstate)
-    mps /= mp.norm(mps)
+    mps /= mp.norm(mps.copy())
     return mps
 
 
@@ -247,9 +257,11 @@ def random_mpdo(sites, ldim, bdim, randstate=None):
     :param randstate: numpy.random.RandomState instance or None
     :returns: randomly choosen matrix product (pure) state
 
-    >>> mpo = random_mpdo(4, 2, 4)
-    >>> mpo.bdims, mpo.pdims
+    >>> rho = random_mpdo(4, 2, 4)
+    >>> rho.bdims, rho.pdims
     ((4, 4, 4), ((2, 2), (2, 2), (2, 2), (2, 2)))
+    >>> rho.normal_form
+    (0, 4)
 
     """
     # generate density matrix as a mixture of `bdim` pure product states
