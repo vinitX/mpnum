@@ -433,6 +433,8 @@ class MPArray(object):
 
         :param method: Which implemention should be used for compression
             'svd': Compression based on SVD :func:`MPArray.compress_svd`
+            'svdsweep': Compression based on SVD iteratively
+                :func:`MPArray.compress_svdsweep`
             'var': Variational compression :func:`MPArray.compress_var`
         :param inplace: Compress the array in place or return new copy
         :returns: `self` if inplace is True or the compressed copy
@@ -441,6 +443,11 @@ class MPArray(object):
         if method == 'svd':
             target = self if inplace else self.copy()
             target.compress_svd(**kwargs)
+            return target
+
+        elif method == 'svdsweep':
+            target = self if inplace else self.copy()
+            target.compress_svdsweep(**kwargs)
             return target
 
         elif method == 'var':
@@ -489,6 +496,29 @@ class MPArray(object):
             return self._compress_svd_l(bdim, relerr)
 
         raise ValueError('{} is not a valid direction'.format(direction))
+
+    def compress_svdsweep(self, stages=None, bdim=None, relerr=0.0,
+                          num_sweeps=1):
+        """Compresses the MPA by sweeping & iterative SVD compression
+
+        :param stages: Iterator of (bdim, relerr) for iterative compression;
+            if None is passed, it is created from the following parameters
+        :param bdim: Maximal final bond dimension for the compressed MPA
+            (default max of current bond dimensions, i.e. no compression)
+        :param relerr: Maximal allowed final error for each truncation step,
+            that is the fraction of truncated singular values over their sum
+            (default 0.0, i.e. no compression)
+        :param num_sweeps: Number of distinct stages
+
+        """
+        if stages is None:
+            bdim = max(self.bdims) if bdim is None else bdim
+            bdims = np.linspace(bdim, max(self.bdims), num_sweeps,
+                                endpoint=False, dtype=int)
+            stages = [(bd, relerr / num_sweeps) for bd in bdims]
+        stages = reversed(sorted(stages))
+        for bdim, relerr in stages:
+            self.compress_svd(bdim, relerr)
 
     def compress_var(self, initmpa=None, bdim=None, randstate=np.random,
                      num_sweeps=5, sweep_sites=1):

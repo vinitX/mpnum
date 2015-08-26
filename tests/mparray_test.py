@@ -544,6 +544,39 @@ def test_compression_svd_compare(nr_sites, local_dim, bond_dim):
             err_msg='direction {0!r} failed'.format(direction))
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_compression_svdsweep_hard_cutoff(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    zero = factory.zero(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo_new = mpo + zero
+
+    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+    for bdims in zip(mpo.bdims, zero.bdims, mpo_new.bdims):
+        assert_equal(bdims[0] + bdims[1], bdims[2])
+
+    mpo_new = mpo + zero
+    mpo_new.compress_svdsweep(bdim=bond_dim, num_sweeps=2)
+    assert_array_equal(mpo_new.bdims, bond_dim)
+    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_compression_svdsweep_relerr(nr_sites, local_dim, bond_dim):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    zero = factory.zero(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo_new = mpo + zero
+
+    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+    for bdims in zip(mpo.bdims, zero.bdims, mpo_new.bdims):
+        assert_equal(bdims[0] + bdims[1], bdims[2])
+
+    # Right-compression
+    mpo_new = mpo + zero
+    mpo_new.compress_svdsweep(relerr=1e-6, num_sweeps=2)
+    assert_array_equal(mpo_new.bdims, bond_dim)
+    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+
+
 ############################
 # Variational compression  #
 ############################
