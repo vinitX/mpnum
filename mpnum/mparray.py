@@ -741,12 +741,21 @@ def norm(mpa):
     of the matrix product operator. In contrast to `mparray.inner`, this can
     take advantage of the normalization
 
+    WARNING This also changes the MPA inplace by normalizing.
+
     :param mpa: MPArray
     :returns: l2-norm of that array
 
     """
-    # FIXME Take advantage of normalization
-    return np.sqrt(np.abs(inner(mpa, mpa)))
+    mpa.normalize()
+    current_lnorm, current_rnorm = mpa.normal_form
+
+    if current_rnorm == 1:
+        return np.sqrt(np.vdot(mpa[0], mpa[0]))
+    elif current_lnorm == len(mpa) - 1:
+        return np.sqrt(np.vdot(mpa[-1], mpa[-1]))
+    else:
+        raise ValueError("Normalization error in MPArray.norm")
 
 
 def normdist(mpa1, mpa2):
