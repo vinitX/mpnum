@@ -22,12 +22,15 @@ def test_reductions_mpo(nr_sites, local_dim, bond_dim, keep_width):
 
     startsites = range(nr_sites - keep_width + 1)
     for site, reduced_mpo in zip(startsites,
-                                 mm.reductions_mpo(mpo, startsites, keep_width)):
+                                 mm.reductions_mpo(mpo, keep_width, startsites)):
         traceout = tuple(range(site)) \
             + tuple(range(site + keep_width, nr_sites))
         red_from_op = _tools.partial_trace(op, traceout)
         assert_array_almost_equal(mpo_to_global(reduced_mpo), red_from_op,
                                   err_msg="not equal at site {}".format(site))
+
+    # check default argument for startsite
+    assert len(list(mm.reductions_mpo(mpo, keep_width))) == nr_sites - keep_width + 1
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width',
@@ -38,13 +41,16 @@ def test_reductions_pmps(nr_sites, local_dim, bond_dim, keep_width):
 
     startsites = range(nr_sites - keep_width + 1)
     for site, reduced_mps in zip(startsites,
-                                 mm.reductions_pmps(pmps, startsites, keep_width)):
+                                 mm.reductions_pmps(pmps, keep_width, startsites)):
         reduced_mpo = mm.pmps_to_mpo(reduced_mps)
         red = mpo_to_global(reduced_mpo)
         traceout = tuple(range(site)) + tuple(range(site + keep_width, nr_sites))
         red_from_op = _tools.partial_trace(op, traceout)
         assert_array_almost_equal(red, red_from_op,
                                   err_msg="not equal at site {}".format(site))
+
+    # check default argument for startsite
+    assert len(list(mm.reductions_pmps(pmps, keep_width))) == nr_sites - keep_width + 1
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)

@@ -11,11 +11,16 @@ from inspect import isfunction
 
 import numpy as np
 import pytest as pt
-from numpy.testing import assert_array_almost_equal
+from numpy.testing import assert_array_almost_equal, assert_almost_equal, \
+    assert_array_equal
 
 import mpnum.mparray as mp
 import mpnum.povm as povm
+import mpnum.povm.mppovm as mppovm
 import mpnum.factory as factory
+import mpnum.mpsmpo as mpsmpo
+
+from mparray_test import mpo_to_global
 
 ALL_POVMS = {name: constructor for name, constructor in povm.__dict__.items()
              if name.endswith('_povm') and isfunction(constructor)}
@@ -70,3 +75,24 @@ def test_povm_ic_mpa(nr_sites, local_dim, bond_dim):
     probabs = mp.dot(probab_map, mpa)
     recons = mp.dot(inv_map, probabs)
     assert mp.norm(recons - mpa) < 1e-6
+
+
+@pt.mark.parametrize('nr_sites, width, local_dim, bond_dim',
+                     [(6, 3, 2, 5), (4, 2, 3, 4)])
+def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim):
+    paulis = povm.pauli_povm(local_dim)
+    mppaulis = mppovm.MPPovm.from_local_povm(paulis, width)
+    rho = factory.random_mpdo(nr_sites, local_dim, bond_dim)
+    pmap = paulis.probability_map
+    expectations = list(mppaulis.expectations(rho))
+
+    assert len(expectations) == nr_sites - width + 1
+    for ssite, evals_mp in zip(it.count(), expectations):
+        evals_np = next(mpsmpo.reductions_mpo(rho, width, startsites=[ssite]))
+        evals_np = evals_np.ravel().to_array()
+
+        for _ in range(width):
+            evals_np = np.tensordot(evals_np, pmap, axes=(0, 1))
+
+        assert_array_equal(evals_np.shape, (len(paulis),) * width)
+        assert_array_almost_equal(evals_mp.to_array(), evals_np)

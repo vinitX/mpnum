@@ -86,7 +86,13 @@ class MPArray(object):
 
     def __getitem__(self, index):
         """Use only for read-only access! Do not change arrays in place!"""
-        return self._ltens[index]
+        if type(index) == tuple:
+            assert len(index) == len(self)
+            return MPArray(ltens[:, i, ..., :]
+                           for i, ltens in zip(index, self._ltens))
+        else:
+            # FIXME Maybe this should be moved to another Function
+            return self._ltens[index]
 
     def __setitem__(self, index, value):
         """Update a local tensor and keep track of normalization."""
@@ -186,6 +192,30 @@ class MPArray(object):
         WARNING: This can be slow for large MPAs!
         """
         return _ltens_to_array(iter(self))[0, ..., 0]
+
+    def paxis_iter(self, axes=0):
+        """Returns an iterator yielding Sub-MPArrays of `self` by iterating
+        over the specified physical axes.
+
+        Example
+        =======
+        If `self` represents a bipartite (i.e. length 2) array with 2
+        physical dimensions on each site A[(k,l), (m,n)], self.paxis_iter(0) is
+        equivalent to
+
+            (A[(k, :), (m, :)] for m in range(...) for k in range(...))
+
+        :param axes: Iterable or int specifiying the physical axes to iterate
+            over (default 0 for each site)
+        :returns: Iterator over MPArray
+
+        """
+        if not hasattr(axes, '__iter__'):
+            axes = it.repeat(axes, len(self))
+
+        ltens_iter = it.product(*(iter(np.rollaxis(lten, i + 1))
+                                  for i, lten in zip(axes, self._ltens)))
+        return (MPArray(ltens) for ltens in ltens_iter)
 
     ##########################
     #  Algebraic operations  #
@@ -340,8 +370,12 @@ class MPArray(object):
                    self[n],...,self[-1] are right-normalized
 
         """
+        current_lnorm, current_rnorm = self.normal_form
         if ('left' not in kwargs) and ('right' not in kwargs):
-            self._lnormalize(len(self) - 1)
+            if current_lnorm < len(self) - current_rnorm:
+                self._rnormalize(1)
+            else:
+                self._lnormalize(len(self) - 1)
             return
 
         lnormalize = kwargs.get('left', 0)
@@ -349,14 +383,13 @@ class MPArray(object):
 
         assert lnormalize < rnormalize, \
             "Normalization {}:{} invalid".format(lnormalize, rnormalize)
-        current_normalization = self.normal_form
-        if current_normalization[0] < lnormalize:
+        if current_lnorm < lnormalize:
             self._lnormalize(lnormalize)
-        if current_normalization[1] > rnormalize:
+        if current_rnorm > rnormalize:
             self._rnormalize(rnormalize)
 
     def _lnormalize(self, to_site):
-        """Left-normalizes all local tensors _ltens[to_site:] in place
+        """Left-normalizes all local tensors _ltens[:to_site] in place
 
         :param to_site: Index of the site up to which normalization is to be
             performed
@@ -379,7 +412,7 @@ class MPArray(object):
         self._rnormalized = max(to_site + 1, rnormal)
 
     def _rnormalize(self, to_site):
-        """Right-normalizes all local tensors _ltens[:to_site] in place
+        """Right-normalizes all local tensors _ltens[to_site:] in place
 
         :param to_site: Index of the site up to which normalization is to be
             performed
@@ -402,16 +435,33 @@ class MPArray(object):
         self._rnormalized = to_site
 
     def compress(self, method='svd', inplace=True, **kwargs):
-        """Compresses the MPA to a fixed maximal bond dimension
+        """Unified interface for the compression functions
 
         :param method: Which implemention should be used for compression
-            'svd': Compression based on SVD [Sch11, Sec. 4.5.1]
-            'var': Variational compression [Sch11, Sec. 4.5.2]
+            'svd': Compression based on SVD :func:`MPArray.compress_svd`
+            'var': Variational compression :func:`MPArray.compress_var`
         :param inplace: Compress the array in place or return new copy
-        :returns: Depends on method and the options passed.
+        :returns: `self` if inplace is True or the compressed copy
 
-        For method='svd':
-        -----------------
+        """
+        if method == 'svd':
+            target = self if inplace else self.copy()
+            target.compress_svd(**kwargs)
+            return target
+
+        elif method == 'var':
+            compr = self.compress_var(**kwargs)
+            if inplace:
+                self._ltens = compr[:]  # no copy necessary, compr is local
+                return self
+            else:
+                return compr
+        else:
+            raise ValueError("{} is not a valid method.".format(method))
+
+    def compress_svd(self, bdim=None, relerr=0.0, direction=None):
+        """Compresses the MPA inplace using SVD [Sch11, Sec. 4.5.1]
+
         :param bdim: Maximal bond dimension for the compressed MPA (default
             max of current bond dimensions, i.e. no compression)
         :param relerr: Maximal allowed error for each truncation step, that is
@@ -428,13 +478,30 @@ class MPArray(object):
                      to the right yielding a completely left-cannonical MPA
             'left': Starting on rightmost site, the compression sweeps
                     to the left yielding a completely right-cannoncial MPA
-        :returns:
-            inplace=true: Overlap <M|M'> of the original M and its compr. M'
+        :returns: Overlap <M|M'> of the original M and its compr. M'
             inplace=false: Compressed MPA, Overlap <M|M'> of the original M and
                            its compr. M',
+        """
+        ln, rn = self.normal_form
+        default_direction = 'left' if len(self) - rn > ln else 'right'
+        direction = default_direction if direction is None else direction
+        bdim = max(self.bdims) if bdim is None else bdim
 
-        For method='var':
-        ----------------
+        if direction == 'right':
+            self.normalize(right=1)
+            return self._compress_svd_r(bdim, relerr)
+        elif direction == 'left':
+            self.normalize(left=len(self) - 1)
+            return self._compress_svd_l(bdim, relerr)
+
+        raise ValueError('{} is not a valid direction'.format(direction))
+
+    def compress_var(self, initmpa=None, bdim=None, randstate=np.random,
+                     num_sweeps=5, sweep_sites=1):
+        """Compresses the MPA using variational compression [Sch11, Sec. 4.5.2]
+
+        Does not change the current instance.
+
         :param initmpa: Initial MPA for the interative optimization, should
             have same physical shape as `self` (default random start vector
             with same norm as self)
@@ -446,62 +513,24 @@ class MPArray(object):
         :param sweep_sites: Number of neighboaring sites minimized over
             simultaniously; for too small value the algorithm may get stuck
             in local minima (default 1)
-        :returns:
-            inplace=true: Nothing
-            inplace=false: Compressed MPA
+        :returns: Compressed MPArray
 
         """
-        if method == 'svd':
-            ln, rn = self.normal_form
-            default_direction = 'left' if len(self) - rn > ln else 'right'
-            direction = kwargs.pop('direction', default_direction)
-            bdim = kwargs.get('bdim', max(self.bdims))
-            relerr = kwargs.get('relerr', 0.0)
-
-            target = self if inplace else self.copy()
-
-            if direction == 'right':
-                target.normalize(right=1)
-                overlap = target._compress_svd_r(bdim, relerr)
-            elif direction == 'left':
-                self.normalize(left=len(self) - 1)
-                overlap = target._compress_svd_l(bdim, relerr)
-            else:
-                raise ValueError('{} is not a valid direction'.format(direction))
-
-            return overlap if inplace else target, overlap
-
-        elif method == 'var':
-            assert {'initmpa', 'bdim', 'randstate', 'num_sweeps', 'sweep_sites'} \
-                .issuperset(kwargs.keys()), tuple(kwargs.keys())
-
-            num_sweeps = kwargs.get('num_sweeps', 5)
-            sweep_sites = kwargs.get('sweep_sites', 1)
-
-            try:
-                compr = kwargs['initmpa'].copy()
-                assert all(d1 == d2 for d1, d2 in zip(self.pdims, compr.pdims))
-            except KeyError:
-                from mpnum.factory import random_mpa
-                randstate = kwargs.get('randstate', np.random)
-                bdim = kwargs.get('bdim', max(self.bdims))
-                compr = random_mpa(len(self), self.pdims, bdim, randstate=randstate)
-                compr *= norm(self) / norm(compr)
-
-            # flatten the array since MPS is expected & bring back
-            shape = self.pdims
-            compr = compr.ravel()
-            compr._adapt_to(self.ravel(), num_sweeps, sweep_sites)
-            compr = compr.reshape(shape)
-
-            if inplace:
-                self._ltens = compr[:]  # no copy necessary, compr is local
-                return
-            else:
-                return compr
-
+        if initmpa is None:
+            from mpnum.factory import random_mpa
+            bdim = max(self.bdims) if bdim is None else bdim
+            compr = random_mpa(len(self), self.pdims, bdim, randstate=randstate)
+            compr *= norm(self) / norm(compr)
         else:
-            raise ValueError("{} is not a valid method.".format(method))
+            compr = initmpa.copy()
+            assert all(d1 == d2 for d1, d2 in zip(self.pdims, compr.pdims))
+
+        # flatten the array since MPS is expected & bring back
+        shape = self.pdims
+        compr = compr.ravel()
+        compr._adapt_to(self.ravel(), num_sweeps, sweep_sites)
+        compr = compr.reshape(shape)
+        return compr
 
     def _compress_svd_r(self, bdim, relerr):
         """Compresses the MPA in place from left to right using SVD;
@@ -714,12 +743,51 @@ def norm(mpa):
     of the matrix product operator. In contrast to `mparray.inner`, this can
     take advantage of the normalization
 
+    WARNING This also changes the MPA inplace by normalizing.
+
     :param mpa: MPArray
     :returns: l2-norm of that array
 
     """
-    # FIXME Take advantage of normalization
-    return np.sqrt(np.abs(inner(mpa, mpa)))
+    mpa.normalize()
+    current_lnorm, current_rnorm = mpa.normal_form
+
+    if current_rnorm == 1:
+        return np.sqrt(np.vdot(mpa[0], mpa[0]))
+    elif current_lnorm == len(mpa) - 1:
+        return np.sqrt(np.vdot(mpa[-1], mpa[-1]))
+    else:
+        raise ValueError("Normalization error in MPArray.norm")
+
+
+def normdist(mpa1, mpa2):
+    """More efficient version of norm(mpa1 - mpa2)
+
+    :param mpa1: MPArray
+    :param mpa2: MPArray
+    :returns: l2-norm of mpa1 - mpa2
+
+    """
+    return norm(mpa1 - mpa2)
+    #  return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
+
+
+def trace(mpa):
+    """Computes the trace of a MPA with 2 physical legs per sites.
+
+    :param mpa: MPArray
+    :returns: Trace of mpa
+
+    """
+    # TODO A lot to be done here:
+    #   - partial trace over different sites -> returns MPArray with ltens
+    #     traced over, but same length -> prune method to get rid of sites
+    #     with plegs == 0
+    #   - specify axes for plegs > 2
+    #   => seperate in contract & trace method
+    assert_array_equal(mpa.plegs, 2)
+    ltens = (np.trace(lten, axis1=1, axis2=2) for lten in mpa)
+    return _ltens_to_array(ltens)[0, 0]
 
 
 def trace(mpa):
@@ -1044,5 +1112,5 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
         # here. However, will generally increase the bond dimension of
         # our compressed MPS, which we do not want.
         compr_ltens = MPArray.from_array(compr_lten, plegs=1, has_bond=True)
-        compr_ltens.compress(method='svd', max_bd=max_bonddim)
+        compr_ltens.compress_svd(bdim=max_bonddim)
     return compr_ltens
