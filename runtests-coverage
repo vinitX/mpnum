@@ -1,0 +1,13 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "${DIR}"
+
+PYTEST=py.test
+
+if which py.test-3 > /dev/null; then
+  PYTEST=py.test-3
+fi
+
+$PYTEST --cov-report term --cov-report html --cov=mpnum --doctest-modules mpnum tests
+
