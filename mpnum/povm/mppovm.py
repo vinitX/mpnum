@@ -41,8 +41,8 @@ class MPPovm(mp.MPArray):
             raise NotImplementedError("MPS expectations come soon")
         elif all(pleg == 2 for pleg in mpa.plegs):
             pmap = self.probability_map
-            for ssite, rho_red in mpsmpo.reductions_mpo(mpa, len(self)):
-                yield ssite, mp.dot(pmap, rho_red.ravel())
+            for rho_red in mpsmpo.reductions_mpo(mpa, len(self)):
+                yield mp.dot(pmap, rho_red.ravel())
             return
 
         raise ValueError("Could not understand data dype.")

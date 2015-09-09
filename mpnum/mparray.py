@@ -784,6 +784,24 @@ def trace(mpa):
     return _ltens_to_array(ltens)[0, 0]
 
 
+def trace(mpa):
+    """Computes the trace of a MPA with 2 physical legs per sites.
+
+    :param mpa: MPArray
+    :returns: Trace of mpa
+
+    """
+    # TODO A lot to be done here:
+    #   - partial trace over different sites -> returns MPArray with ltens
+    #     traced over, but same length -> prune method to get rid of sites
+    #     with plegs == 0
+    #   - specify axes for plegs > 2
+    #   => seperate in contract & trace method
+    assert_array_equal(mpa.plegs, 2)
+    ltens = (np.trace(lten, axis1=1, axis2=2) for lten in mpa)
+    return _ltens_to_array(ltens)[0, 0]
+
+
 def local_sum(mpas, embed_tensor=None):
     """Embed local MPAs on a linear chain and sum as MPA.
 

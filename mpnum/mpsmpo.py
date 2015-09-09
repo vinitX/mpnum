@@ -22,7 +22,7 @@ def reductions_mpo(mpa, width, startsites=None):
     :param startsites: Iterator yielding the index of the leftmost sites of the
         supports of the results (default all possible reductions in ascending
         order)
-    :returns: Iterator over (startsite, reduced_mpa)
+    :returns: Iterator over reduced_state_as_mpo, same order as 'startsites'
     """
     if startsites is None:
         startsites = range(len(mpa) - width + 1)
@@ -65,7 +65,7 @@ def reductions_mpo(mpa, width, startsites=None):
         ltens[0] = matdot(rem, ltens[0])
         rem = get_remainder(rem_right, num_sites - (startsite + width), -1)
         ltens[-1] = matdot(ltens[-1], rem)
-        yield startsite, mp.MPArray(ltens)
+        yield mp.MPArray(ltens)
 
 
 def reductions_pmps(pmps, width, startsites=None):
@@ -81,7 +81,7 @@ def reductions_pmps(pmps, width, startsites=None):
     :param startsites: Iterator yielding the index of the leftmost sites of the
         supports of the results (default all possible reductions in ascending
         order)
-    :returns: Iterator over (startsite, reduced_locpuri_mps)
+    :returns: Iterator over reduced_state_as_pmps, same order as 'startsites'
 
     """
     if startsites is None:
@@ -106,7 +106,7 @@ def reductions_pmps(pmps, width, startsites=None):
         ltens += [lten.copy().reshape(newshape)]
 
         reduced_mps = mp.MPArray(ltens)
-        yield site, reduced_mps
+        yield reduced_mps
 
 
 def pmps_to_mpo(pmps):

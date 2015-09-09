@@ -14,13 +14,15 @@ import mpnum._tools as _tools
 from mparray_test import MP_TEST_PARAMETERS, mpo_to_global
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width',
+                     [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_reductions_mpo(nr_sites, local_dim, bond_dim, keep_width):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo_to_global(mpo)
 
     startsites = range(nr_sites - keep_width + 1)
-    for site, reduced_mpo in mm.reductions_mpo(mpo, keep_width, startsites):
+    for site, reduced_mpo in zip(startsites,
+                                 mm.reductions_mpo(mpo, keep_width, startsites)):
         traceout = tuple(range(site)) \
             + tuple(range(site + keep_width, nr_sites))
         red_from_op = _tools.partial_trace(op, traceout)
@@ -31,13 +33,15 @@ def test_reductions_mpo(nr_sites, local_dim, bond_dim, keep_width):
     assert len(list(mm.reductions_mpo(mpo, keep_width))) == nr_sites - keep_width + 1
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width',
+                     [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_reductions_pmps(nr_sites, local_dim, bond_dim, keep_width):
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo_to_global(mm.pmps_to_mpo(pmps))
 
     startsites = range(nr_sites - keep_width + 1)
-    for site, reduced_mps in mm.reductions_pmps(pmps, keep_width, startsites):
+    for site, reduced_mps in zip(startsites,
+                                 mm.reductions_pmps(pmps, keep_width, startsites)):
         reduced_mpo = mm.pmps_to_mpo(reduced_mps)
         red = mpo_to_global(reduced_mpo)
         traceout = tuple(range(site)) + tuple(range(site + keep_width, nr_sites))
