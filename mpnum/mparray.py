@@ -1109,7 +1109,7 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
         compr_ltens = (compr_lten,)
     else:
         # [Sch11, p. 49] says that we can go with QR instead of SVD
-        # here. However, will generally increase the bond dimension of
+        # here. However, this will generally increase the bond dimension of
         # our compressed MPS, which we do not want.
         compr_ltens = MPArray.from_array(compr_lten, plegs=1, has_bond=True)
         compr_ltens.compress_svd(bdim=max_bonddim)
