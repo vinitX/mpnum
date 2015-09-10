@@ -9,5 +9,5 @@ if which py.test-3 > /dev/null; then
   PYTEST=py.test-3
 fi
 
-$PYTEST --cov-report term --cov-report html --cov=mpnum --doctest-modules mpnum tests
+$PYTEST --cov-report term --cov-report html --cov=mpnum --cov=photonic_tomo --doctest-modules mpnum photonic_tomo tests tests_photonic_tomo
 

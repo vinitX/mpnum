@@ -5,10 +5,10 @@ cd "${DIR}"
 
 if which py.test > /dev/null; then
   py.test mpnum --doctest-modules
-  py.test tests
+  py.test tests tests_photonic_tomo
 fi
 if which py.test-3 > /dev/null; then
   py.test-3 mpnum --doctest-modules
-  py.test-3 tests
+  py.test-3 tests tests_photonic_tomo
 fi
 
