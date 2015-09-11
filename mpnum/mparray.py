@@ -704,6 +704,44 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
     return MPArray(ltens)
 
 
+def partial_dot(mpa1, mpa2, start_at, axes=(-1, 0)):
+    """Partial dot product of two MPAs of inequal length.
+
+    The shorter MPA will start on site 'start_at'. Local dot products
+    will be carried out on all sites of the shorter MPA. Other sites
+    will remain unmodified.
+
+    :param mpa1, mpa2: Factors as MPArrays, length must be inequal.
+    :param start_at: The shorter MPA will start on this site.
+    :param axes: 2-tuple of axes to sum over. Note the difference in
+        convention compared to np.tensordot(default: last axis of `mpa1`
+        and first axis of `mpa2`)
+    :returns: MPA with length of the longer MPA.
+
+    """
+    assert len(mpa1) != len(mpa2), \
+        "Length must be inequal: len(mpa{1,2}) = {}".format(len(mpa1))
+
+    # adapt the axes from physical to true legs
+    axes = tuple(ax + 1 if ax >= 0 else ax - 1 for ax in axes)
+
+    # Make the MPAs equal length (in fact, the shorter one will be
+    # infinite length, but that's fine because we use zip()).
+    shorter = mpa1 if len(mpa1) < len(mpa2) else mpa2
+    shorter = it.chain(
+        it.repeat(None, times=start_at), shorter, it.repeat(None))
+    if len(mpa1) < len(mpa2):
+        mpa1 = shorter
+    else:
+        mpa2 = shorter
+
+    ltens_new = (
+        l if r is None else (r if l is None else _local_dot(l, r, axes))
+        for l, r in zip(mpa1, mpa2)
+        )
+    return MPArray(ltens_new)
+
+
 # NOTE: I think this is a nice example how we could use Python's generator
 #       expression to implement lazy evaluation of the matrix product structure
 #       which is the whole point of doing this in the first place

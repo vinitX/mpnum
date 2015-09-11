@@ -107,6 +107,31 @@ def test_dot(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_partial_dot(nr_sites, local_dim, bond_dim):
+    assert nr_sites >= 2, 'test requires at least two sites'
+    part_sites = nr_sites // 2
+    start_at = min(2, nr_sites // 2)
+
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
+    mpo_part = factory.random_mpa(part_sites, (local_dim, local_dim), bond_dim)
+    op_part = mpo_to_global(mpo_part).reshape((local_dim**part_sites,) * 2)
+    op_part_embedded = np.kron(
+        np.kron(np.eye(local_dim**start_at), op_part),
+        np.eye(local_dim**(nr_sites - part_sites - start_at)))
+
+    prod1 = np.dot(op, op_part_embedded)
+    prod2 = np.dot(op_part_embedded, op)
+    prod1_mpo = mp.partial_dot(mpo, mpo_part, start_at=start_at)
+    prod2_mpo = mp.partial_dot(mpo_part, mpo, start_at=start_at)
+    prod1_mpo = mpo_to_global(prod1_mpo).reshape((local_dim**nr_sites,) * 2)
+    prod2_mpo = mpo_to_global(prod2_mpo).reshape((local_dim**nr_sites,) * 2)
+
+    assert_array_almost_equal(prod1, prod1_mpo)
+    assert_array_almost_equal(prod2, prod2_mpo)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_inner_vec(nr_sites, local_dim, bond_dim):
     mp_psi1 = factory.random_mpa(nr_sites, local_dim, bond_dim)
     psi1 = mp_psi1.to_array().ravel()
