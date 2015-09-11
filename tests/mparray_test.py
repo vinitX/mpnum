@@ -171,6 +171,22 @@ def test_normdist(nr_sites, local_dim, bond_dim):
     assert_almost_equal(mp.normdist(psi1, psi2), mp.norm(psi1 - psi2))
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width',
+                     [(6, 2, 4, 3), (4, 3, 5, 2)])
+def test_partialtrace(nr_sites, local_dim, bond_dim, keep_width):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    op = mpo_to_global(mpo)
+
+    for site in range(nr_sites - keep_width + 1):
+        traceout = tuple(range(site)) \
+            + tuple(range(site + keep_width, nr_sites))
+        axes = [(0, 1) if site in traceout else None for site in range(nr_sites)]
+        red_mpo = mp.partialtrace(mpo, axes=axes)
+        red_from_op = _tools.partial_trace(op, traceout)
+        assert_array_almost_equal(mpo_to_global(red_mpo), red_from_op,
+                                  err_msg="not equal at site {}".format(site))
+
+
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_trace(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)

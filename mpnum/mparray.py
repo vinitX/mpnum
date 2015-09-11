@@ -809,22 +809,100 @@ def normdist(mpa1, mpa2):
     #  return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
 
 
-def trace(mpa):
-    """Computes the trace of a MPA with 2 physical legs per sites.
+def _prune_ltens(mpa):
+    """Contract local tensors with no physical legs.
 
-    :param mpa: MPArray
-    :returns: Trace of mpa
+    By default, contract to the left. At the start of the chain,
+    contract to the right.
+
+    If there are no physical legs at all, yield a single scalar.
+
+    :param mpa: MPA to take local tensors from.
+    :returns: An iterator over local tensors.
 
     """
-    # TODO A lot to be done here:
-    #   - partial trace over different sites -> returns MPArray with ltens
-    #     traced over, but same length -> prune method to get rid of sites
-    #     with plegs == 0
-    #   - specify axes for plegs > 2
-    #   => seperate in contract & trace method
-    assert_array_equal(mpa.plegs, 2)
-    ltens = (np.trace(lten, axis1=1, axis2=2) for lten in mpa)
-    return _ltens_to_array(ltens)[0, 0]
+    mpa_iter = iter(mpa)
+    last_lten = next(mpa_iter)
+    last_lten_plegs = last_lten.ndim - 2
+    for lten in mpa_iter:
+        num_plegs = lten.ndim - 2
+        if num_plegs == 0 or last_lten_plegs == 0:
+            last_lten = matdot(last_lten, lten)
+            last_lten_plegs = last_lten.ndim - 2
+        else:
+            # num_plegs > 0 and last_lten_plegs > 0
+            yield last_lten
+            last_lten = lten
+            last_lten_plegs = num_plegs
+    # If there are no physical legs at all, we will yield one scalar
+    # here.
+    yield last_lten
+
+
+def prune(mpa):
+    """Contract sites with zero physical legs.
+
+    :param mpa: MPA or iterator over local tensors
+    :returns: An MPA of smaller length
+
+    """
+    return MPArray(_prune_ltens(mpa))
+
+
+def partialtrace(mpa, axes=(0, 1)):
+    """Computes the trace or partial trace of an MPA.
+
+    By default (axes=(0, 1)) compute the trace and return the value as
+    length-one MPA with zero physical legs.
+
+    For axes=(m, n) with integer m, trace over the given axes at all
+    sites and return a length-one MPA with zero physical legs. (Use
+    trace() to get the value directly.)
+
+    For axes=(axes1, axes2, ...) trace over axesN at site N, with
+    axesN=(axisN_1, axisN_2) tracing the given physical legs and
+    axesN=None leaving the site invariant. Afterwards, prune() is
+    called to remove sites with zero physical legs from the result.
+
+    If you need the reduced state of an MPO on all blocks of k
+    consecutive sites, see mpnum.mpsmpa.partialtrace_mpo() for a more
+    convenient and faster function.
+
+    :param mpa: MPArray
+    :param axes: Axes for trace, (axis1, axis2) or (axes1, axes2, ...)
+        with axesN=(axisN_1, axisN_2) or axesN=None.
+    :returns: An MPArray (possibly one site with zero physical legs)
+
+    """
+    if axes[0] is not None and not hasattr(axes[0], '__iter__'):
+        axes = it.repeat(axes)
+    axes = (None if axesitem is None else tuple(ax + 1 if ax >= 0 else ax - 1
+                                                for ax in axesitem)
+            for axesitem in axes)
+    ltens = (
+        lten if ax is None else np.trace(lten, axis1=ax[0], axis2=ax[1])
+        for lten, ax in zip(mpa, axes))
+    return prune(ltens)
+
+
+def trace(mpa, axes=(0, 1)):
+    """Compute the trace of the given MPA.
+
+    By default, just compute the trace.
+
+    If you specify axes (see partialtrace() for details), you must
+    ensure that the result has no physical legs anywhere.
+
+    :param mpa: MParray
+    :param axes: Axes for trace, (axis1, axis2) or (axes1, axes2, ...)
+        with axesN=(axisN_1, axisN_2) or axesN=None.
+    :returns: A single scalar (int/float/complex, depending on mpa)
+
+    """
+    out = partialtrace(mpa, axes)
+    out = out.to_array()
+    assert out.size == 1, 'trace must return a single scalar'
+    return out[None][0]
 
 
 def local_sum(mpas, embed_tensor=None):
