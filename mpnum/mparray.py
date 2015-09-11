@@ -31,15 +31,17 @@ from six.moves import range, zip
 
 
 class MPArray(object):
-    """Efficient representation of a general N-partite array A in matrix
+    r"""Efficient representation of a general N-partite array A in matrix
     product form with open boundary conditions:
 
-            A^((i1),...,(iN)) = prod_k A^[k]_(ik)   (*)
+    .. math::
+            A_{i_1, \ldots, i_N} = A^{[1]}_{i_1} \ldots A^{[N]}_{i_N}   \quad (*)
 
-    where the A^[k] are local tensors (with N legs). The matrix products in
-    (*) are taken with respect to the left and right leg and the multi-
-    index (ik) corresponds to the physical legs. Open boundary conditions
-    imply that shape(A[0])[0] == shape(A[-1])[-1] == 1.
+    where the :math:`A^{[k]}` are local tensors (with N legs). The
+    matrix products in (*) are taken with respect to the left and
+    right leg and the multi-index :math:`i_k` corresponds to the
+    physical legs. Open boundary conditions imply that :math:`A^{[1]}`
+    is 1-by-something and :math:`A^{[N]}` is something-by-1.
 
     By convention, the 0th and last dimension of the local tensors are reserved
     for the auxillary legs.
