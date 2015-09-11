@@ -1,4 +1,3 @@
-#..!/usr/bin/env python
 # encoding: utf-8
 """Module containing routines for dealing with general matrix product arrays.
 

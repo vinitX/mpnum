@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # encoding: utf-8
 """Module to create random test instances of matrix product arrays"""
 

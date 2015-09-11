@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # encoding: utf-8
 """TODO What considered an MPS/MPO/PMPS? What are the conventions?"""
 # TODO Are derived classes MPO/MPS/PMPS of any help?

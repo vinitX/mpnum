@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # encoding: utf-8
 """General helper functions for dealing with arrays (esp. for quantum mechanics
 """
