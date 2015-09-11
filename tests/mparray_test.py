@@ -10,7 +10,7 @@ import pytest as pt
 from numpy.linalg import svd
 from numpy.testing import assert_array_almost_equal, assert_array_equal, \
     assert_almost_equal, assert_equal
-from six.moves import range # @UnresolvedImport
+from six.moves import range
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
@@ -261,7 +261,8 @@ def test_outer(nr_sites, local_dim, bond_dim):
     assert mp.norm(diff) < 1e-6
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim, local_width', [(6, 2, 4, 3), (4, 3, 5, 2)])
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, local_width',
+                     [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_local_sum(nr_sites, local_dim, bond_dim, local_width):
     eye_mpa = factory.eye(1, local_dim)
 

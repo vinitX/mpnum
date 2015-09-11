@@ -118,13 +118,13 @@ def _generate(sites, ldim, bdim, func):
     if not hasattr(ldim[0], '__iter__'):
         ltens_l = func((1, ) + ldim + (bdim, ))
         ltenss = [func((bdim, ) + ldim + (bdim, ))
-                for _ in range(sites - 2)]
+                  for _ in range(sites - 2)]
         ltens_r = func((bdim, ) + ldim + (1, ))
     else:
         ldim_iter = iter(ldim)
         ltens_l = func((1, ) + tuple(next(ldim_iter)) + (bdim, ))
         ltenss = [func((bdim, ) + tuple(ld) + (bdim, ))
-                for _, ld in zip(range(sites - 2), ldim_iter)]
+                  for _, ld in zip(range(sites - 2), ldim_iter)]
         ltens_r = func((bdim, ) + tuple(next(ldim_iter)) + (1, ))
 
     return mp.MPArray([ltens_l] + ltenss + [ltens_r])

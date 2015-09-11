@@ -1,11 +1,12 @@
 # encoding: utf-8
-"""An informationally d-level POVM that simplifies to measuring Paulis matrices in the case of qubits.
+"""An informationally complete d-level POVM.
+
+The POVM simplifies to measuring Paulis matrices in the case of
+qubits.
 
 """
 
 from __future__ import absolute_import, division, print_function
-
-import itertools as it
 
 import numpy as np
 from numpy.testing import assert_almost_equal
