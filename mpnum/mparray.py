@@ -775,6 +775,35 @@ def outer(mpas):
     return MPArray(sum(([ltens.copy() for ltens in mpa] for mpa in mpas), []))
 
 
+def inject(mpa, pos, num, inject_ten=None):
+    """Like outer(), but place second factor somewhere inside mpa.
+
+    Return the outer product between mpa and 'num' copies of the local
+    tensor 'inject_ten', but place the copies of 'inject_ten' before
+    site 'pos' inside 'mpa'. Placing at the edges of 'mpa' is not
+    supported (use outer() for that).
+
+    If 'inject_ten' is omitted, use a square identity matrix of size
+    mpa.pdims[pos][0].
+
+    :param mpa: An MPA.
+    :param pos: Inject sites into the MPA before site 'pos'.
+    :param num: Inject 'num' copies.
+    :param inject_ten: Inject this physical tensor (if None use
+       np.eye(mpa.pdims[pos][0]))
+    :returns: An MPA of length len(mpa) + num
+
+    """
+    if inject_ten is None:
+        inject_ten = np.eye(mpa.pdims[pos][0])
+    bdim = mpa.bdims[pos - 1]
+    inject_lten = np.tensordot(np.eye(bdim), inject_ten, axes=((), ()))
+    inject_lten = np.rollaxis(inject_lten, 1, inject_lten.ndim)
+    ltens = it.chain(
+        mpa[:pos], it.repeat(inject_lten, times=num), mpa[pos:])
+    return MPArray(ltens)
+
+
 def norm(mpa):
     """Computes the norm (Hilbert space norm for MPS, Frobenius norm for MPO)
     of the matrix product operator. In contrast to `mparray.inner`, this can

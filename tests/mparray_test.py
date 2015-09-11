@@ -277,6 +277,41 @@ def test_outer(nr_sites, local_dim, bond_dim):
     assert mp.norm(diff) < 1e-6
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_inject(nr_sites, local_dim, bond_dim):
+    # plegs = 3 is hardcoded below (argument to .transpose()).
+    # Uniform local dimension is also hardcoded below (arguments to
+    # .reshape()).
+    plegs = 3
+    local_dim = (local_dim,) * plegs
+    
+    a, b, c = factory._zrandn((3, 2) + local_dim)
+    # We don't use b[1, :]
+    b = b[0, :]
+    # Here, only global order (as given by np.kron()).
+    abbc0 = _tools.mkron(a[0, :], b, b, c[0, :])
+    abbc1 = _tools.mkron(a[1, :], b, b, c[1, :])
+    abbc = (abbc0 + abbc1).reshape(4 * local_dim)
+    ac0 = np.kron(a[0, :], c[0, :])
+    ac1 = np.kron(a[1, :], c[1, :])
+    ac = (ac0 + ac1).reshape(2 * local_dim)
+    ac_mpo = mp.MPArray.from_array(global_to_local(ac, sites=2), plegs)
+    abbc_mpo = mp.inject(ac_mpo, pos=1, num=2, inject_ten=b)
+    abbc_from_mpo = mpo_to_global(abbc_mpo)
+    assert_array_almost_equal(abbc, abbc_from_mpo)
+
+    # Here, only local order.
+    ac = factory._zrandn(local_dim * 2)
+    b = factory._zrandn(local_dim)
+    acb = np.tensordot(ac, b, axes=((), ()))
+    abc = acb.transpose((0, 1, 2, 6, 7, 8, 3, 4, 5))
+    ac_mpo = mp.MPArray.from_array(ac, plegs)
+    abc_mpo = mp.inject(ac_mpo, pos=1, num=1, inject_ten=b)
+    # Keep local order
+    abc_from_mpo = abc_mpo.to_array()
+    assert_array_almost_equal(abc, abc_from_mpo)
+
+
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, local_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_local_sum(nr_sites, local_dim, bond_dim, local_width):
