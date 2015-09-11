@@ -106,7 +106,7 @@ def test_dot(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_partial_dot(nr_sites, local_dim, bond_dim):
+def test_partialdot(nr_sites, local_dim, bond_dim):
     assert nr_sites >= 2, 'test requires at least two sites'
     part_sites = nr_sites // 2
     start_at = min(2, nr_sites // 2)
@@ -121,8 +121,8 @@ def test_partial_dot(nr_sites, local_dim, bond_dim):
 
     prod1 = np.dot(op, op_part_embedded)
     prod2 = np.dot(op_part_embedded, op)
-    prod1_mpo = mp.partial_dot(mpo, mpo_part, start_at=start_at)
-    prod2_mpo = mp.partial_dot(mpo_part, mpo, start_at=start_at)
+    prod1_mpo = mp.partialdot(mpo, mpo_part, start_at=start_at)
+    prod2_mpo = mp.partialdot(mpo_part, mpo, start_at=start_at)
     prod1_mpo = mpo_to_global(prod1_mpo).reshape((local_dim**nr_sites,) * 2)
     prod2_mpo = mpo_to_global(prod2_mpo).reshape((local_dim**nr_sites,) * 2)
 

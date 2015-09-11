@@ -703,7 +703,7 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
     return MPArray(ltens)
 
 
-def partial_dot(mpa1, mpa2, start_at, axes=(-1, 0)):
+def partialdot(mpa1, mpa2, start_at, axes=(-1, 0)):
     """Partial dot product of two MPAs of inequal length.
 
     The shorter MPA will start on site 'start_at'. Local dot products
