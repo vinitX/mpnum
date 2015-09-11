@@ -228,7 +228,7 @@ class MPArray(object):
         return type(self)([_local_transpose(tens).conjugate()
                            for tens in self._ltens])
 
-    def C(self):
+    def conj(self):
         """Complex conjugate"""
         return type(self)(np.conjugate(self._ltens))
 

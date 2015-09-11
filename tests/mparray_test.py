@@ -59,7 +59,7 @@ def test_from_kron(nr_sites, local_dim, bond_dim):
 def test_conjugations(nr_sites, local_dim, _):
     op = factory.random_op(nr_sites, local_dim)
     mpo = mp.MPArray.from_array(op, 2)
-    assert_array_almost_equal(np.conj(op), mpo.C().to_array())
+    assert_array_almost_equal(np.conj(op), mpo.conj().to_array())
 
 
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
