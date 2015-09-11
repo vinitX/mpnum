@@ -284,7 +284,7 @@ def test_inject(_, local_dim, bond_dim):
     # .reshape()).
     plegs = 3
     local_dim = (local_dim,) * plegs
-    
+
     a, b, c = factory._zrandn((3, 2) + local_dim)
     # We don't use b[1, :]
     b = b[0, :]
@@ -310,13 +310,13 @@ def test_inject(_, local_dim, bond_dim):
     # Keep local order
     abc_from_mpo = abc_mpo.to_array()
     assert_array_almost_equal(abc, abc_from_mpo)
-    
+
     # plegs = 2 is hardcoded below (argument to .transpose()).
     # Uniform local dimension is also hardcoded below (arguments to
     # .reshape()).
     plegs = 2
     local_dim = (local_dim[0],) * plegs
-    
+
     a, c = factory._zrandn((2, 2) + local_dim)
     b = np.eye(local_dim[0])
     # Here, only global order (as given by np.kron()).

@@ -10,8 +10,7 @@ from inspect import isfunction
 
 import numpy as np
 import pytest as pt
-from numpy.testing import assert_array_almost_equal, assert_almost_equal, \
-    assert_array_equal
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 
 import mpnum.mparray as mp
 import mpnum.povm as povm
