@@ -710,6 +710,10 @@ def partialdot(mpa1, mpa2, start_at, axes=(-1, 0)):
     will be carried out on all sites of the shorter MPA. Other sites
     will remain unmodified.
 
+    mpa1 and mpa2 can also have equal length with start_at = 0. Then
+    we do the same as dot(), with the axes argument being more
+    flexible.
+
     :param mpa1, mpa2: Factors as MPArrays, length must be inequal.
     :param start_at: The shorter MPA will start on this site.
     :param axes: 2-tuple of axes to sum over. Note the difference in
@@ -718,9 +722,6 @@ def partialdot(mpa1, mpa2, start_at, axes=(-1, 0)):
     :returns: MPA with length of the longer MPA.
 
     """
-    assert len(mpa1) != len(mpa2), \
-        "Length must be inequal: len(mpa{1,2}) = {}".format(len(mpa1))
-
     # adapt the axes from physical to true legs
     axes = tuple(ax + 1 if ax >= 0 else ax - 1 for ax in axes)
 
