@@ -78,9 +78,9 @@ class MPArray(object):
                 raise ValueError("Shape mismatch on {}: {} != {}"
                                  .format(i, ten.shape[-1], nten.shape[0]))
 
-        # Elements _ltens[m] with m < self._lnorm are in left-cannon. form
+        # Elements _ltens[m] with m < self._lnorm are in left-canon. form
         self._lnormalized = kwargs.get('_lnormalized', None)
-        # Elements _ltens[n] with n >= self._rnorm are in right-cannon. form
+        # Elements _ltens[n] with n >= self._rnorm are in right-canon. form
         self._rnormalized = kwargs.get('_rnormalized', None)
 
     def copy(self):
@@ -497,10 +497,10 @@ class MPArray(object):
 
             * 'right': Starting on the leftmost site, the compression
               sweeps to the right yielding a completely
-              left-cannonical MPA
+              left-canonical MPA
             * 'left': Starting on rightmost site, the compression
               sweeps to the left yielding a completely
-              right-cannoncial MPA
+              right-canoncial MPA
 
         :returns:
             * inplace=True: Overlap <M|M'> of the original M and its
@@ -561,7 +561,7 @@ class MPArray(object):
 
     def _compress_svd_r(self, bdim, relerr):
         """Compresses the MPA in place from left to right using SVD;
-        yields a left-cannonical state
+        yields a left-canonical state
 
         See :func:`MPArray.compress` for parameters
         """
@@ -589,7 +589,7 @@ class MPArray(object):
 
     def _compress_svd_l(self, bdim, relerr):
         """Compresses the MPA in place from right to left using SVD;
-        yields a right-cannonical state
+        yields a right-canonical state
 
         See :func:`MPArray.compress` for parameters
 
@@ -776,7 +776,7 @@ def partialdot(mpa1, mpa2, start_at, axes=(-1, 0)):
 def inner(mpa1, mpa2):
     """Compute the inner product <mpa1|mpa2>. Both have to have the same
     physical dimensions. If these represent a MPS, inner(...) corresponds to
-    the cannoncial Hilbert space scalar product, if these represent a MPO,
+    the canoncial Hilbert space scalar product, if these represent a MPO,
     inner(...) corresponds to the Frobenius scalar product (with Hermitian
     conjugation in the first argument)
 

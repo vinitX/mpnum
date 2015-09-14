@@ -405,14 +405,14 @@ def test_split_sites(nr_sites, local_dim, bond_dim, sites_per_group):
 ###############################################################################
 #                         Normalization & Compression                         #
 ###############################################################################
-def assert_lcannonical(ltens, msg=''):
+def assert_lcanonical(ltens, msg=''):
     ltens = ltens.reshape((np.prod(ltens.shape[:-1]), ltens.shape[-1]))
     prod = ltens.conj().T.dot(ltens)
     assert_array_almost_equal(prod, np.identity(prod.shape[0]),
                               err_msg=msg)
 
 
-def assert_rcannonical(ltens, msg=''):
+def assert_rcanonical(ltens, msg=''):
     ltens = ltens.reshape((ltens.shape[0], np.prod(ltens.shape[1:])))
     prod = ltens.dot(ltens.conj().T)
     assert_array_almost_equal(prod, np.identity(prod.shape[0]),
@@ -426,10 +426,10 @@ def assert_correct_normalzation(mpo, lnormal_target, rnormal_target):
     assert_equal(rnormal, rnormal_target)
 
     for n in range(lnormal):
-        assert_lcannonical(mpo[n], msg="Failure left cannonical (n={}/{})"
+        assert_lcanonical(mpo[n], msg="Failure left canonical (n={}/{})"
                            .format(n, lnormal_target))
     for n in range(rnormal, len(mpo)):
-        assert_rcannonical(mpo[n], msg="Failure right cannonical (n={}/{})"
+        assert_rcanonical(mpo[n], msg="Failure right canonical (n={}/{})"
                            .format(n, rnormal_target))
 
 
