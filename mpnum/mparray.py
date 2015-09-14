@@ -490,6 +490,9 @@ class MPArray(object):
         If both bdim and relerr is passed, the smaller resulting bond
         dimension is used.
 
+        .. todo:: The documentation of `inplace` must be moved to
+                  :func:`compress()`.
+
         :param direction: In which direction the compression should
             operate. (default: depending on the current normalization,
             such that the number of sites that need to be normalized
