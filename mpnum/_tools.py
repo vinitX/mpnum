@@ -127,7 +127,6 @@ def block_diag(summands, axes=(0, 1)):
     :param axes: Along these axes, perform a block-diagonal sum. Can
         be negative.
 
-    >>> import numpy as np
     >>> a = np.arange(8).reshape((2, 2, 2))
     >>> b = np.arange(8, 16).reshape((2, 2, 2))
     >>> a
@@ -152,7 +151,6 @@ def block_diag(summands, axes=(0, 1)):
             [ 6,  7,  0,  0],
             [ 0,  0, 12, 13],
             [ 0,  0, 14, 15]]])
-    >>>
 
     """
     axes = np.array(axes)
