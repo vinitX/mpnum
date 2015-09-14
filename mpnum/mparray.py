@@ -2,8 +2,17 @@
 """Module containing routines for dealing with general matrix product arrays.
 
 References:
-    [Sch11] U. Schollwöck, The density-matrix renormalization group in the age
-        of matrix product states
+
+* .. _Sch11:
+
+  [Sch11] Schollwöck, U. (2011). “The density-matrix renormalization
+  group in the age of matrix product states”. Ann. Phys. 326(1),
+  pp. 96–192. `DOI: 10.1016/j.aop.2010.09.012`_. `arXiv: 1008.3477`_.
+
+  .. _`DOI: 10.1016/j.aop.2010.09.012`:
+     http://dx.doi.org/10.1016/j.aop.2010.09.012
+
+  .. _`arXiv: 1008.3477`: http://arxiv.org/abs/1008.3477
 
 """
 # FIXME Possible Optimization:
@@ -146,7 +155,7 @@ class MPArray(object):
         is done by factoring the off the left and the "physical" legs from
         the rest of the tensor by a QR decomposition and working its way
         through the tensor from the left. This yields a left-canonical
-        representation of `array`. [Sch11, Sec. 4.3.1]
+        representation of `array`. [Sch11_, Sec. 4.3.1]
 
         The result is a chain of local tensors with `plegs` physical legs at
         each location and has array.ndim // plegs number of sites.
@@ -361,7 +370,7 @@ class MPArray(object):
         most local tensor is not normalized since this can be done by
         simply calculating its norm (instead of using SVD)
 
-        [Sch11, Sec. 4.4]
+        [Sch11_, Sec. 4.4]
 
         Possible combinations:
             normalize() = normalize(left=len(self) - 1)
@@ -465,7 +474,7 @@ class MPArray(object):
             raise ValueError("{} is not a valid method.".format(method))
 
     def compress_svd(self, bdim=None, relerr=0.0, direction=None):
-        """Compresses the MPA inplace using SVD [Sch11, Sec. 4.5.1]
+        """Compresses the MPA inplace using SVD [Sch11_, Sec. 4.5.1]
 
         :param bdim: Maximal bond dimension for the compressed MPA (default
             max of current bond dimensions, i.e. no compression)
@@ -511,7 +520,7 @@ class MPArray(object):
 
     def compress_var(self, initmpa=None, bdim=None, randstate=np.random,
                      num_sweeps=5, sweep_sites=1):
-        """Compresses the MPA using variational compression [Sch11, Sec. 4.5.2]
+        """Compresses the MPA using variational compression [Sch11_, Sec. 4.5.2]
 
         Does not change the current instance.
 
@@ -611,7 +620,7 @@ class MPArray(object):
     #  is small
     #  - maybe increase bond dimension of given error cannot be reached
     #  - Shall we track the error in the SVD truncation for multi-site
-    #  updates? [Sch11] says it turns out to be useful in actual DMRG.
+    #  updates? [Sch11_] says it turns out to be useful in actual DMRG.
     #  - return these details for tracking errors in larger computations
     # TODO Refactor. Way too involved!
     # FIXME Does this play nice with different bdims?
@@ -695,7 +704,7 @@ class MPArray(object):
 #############################################
 def dot(mpa1, mpa2, axes=(-1, 0)):
     """Compute the matrix product representation of a.b over the given
-    (physical) axes. [Sch11, Sec. 4.2]
+    (physical) axes. [Sch11_, Sec. 4.2]
 
     :param mpa1, mpa2: Factors as MPArrays
     :param axes: 2-tuple of axes to sum over. Note the difference in
@@ -962,7 +971,7 @@ def local_sum(mpas, embed_tensor=None):
     width * D + len(mpas).
 
     The basic idea behind the construction we use is similar to
-    [Sch11, Sec. 6.1].
+    [Sch11_, Sec. 6.1].
 
     :param mpas: A list of MPArrays with the same length.
     :param embed_tensor: If the MPAs do not have two physical legs or
@@ -1139,7 +1148,7 @@ def _adapt_to_add_l(leftvec, compr_lten, tgt_lten):
     :param compr_lten: Local tensor of the compressed MPS
     :param tgt_lten: Local tensor of the target MPS
 
-    Construct L from [Sch11, Fig. 27, p. 48]. We have compr_lten in
+    Construct L from [Sch11_, Fig. 27, p. 48]. We have compr_lten in
     the top row of the figure without complex conjugation and tgt_lten
     in the bottom row with complex conjugation.
 
@@ -1175,7 +1184,7 @@ def _adapt_to_add_r(rightvec, compr_lten, tgt_lten):
     :param compr_lten: Local tensor of the compressed MPS
     :param tgt_lten: Local tensor of the target MPS
 
-    Construct R from [Sch11, Fig. 27, p. 48]. See comments in
+    Construct R from [Sch11_, Fig. 27, p. 48]. See comments in
     _variational_compression_leftvec_add() for further details.
 
     """
@@ -1212,12 +1221,12 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
         It has two indices: compr_mps_bond and tgt_mps_bond
     :param int max_bonddim: Maximal bond dimension of the result
 
-    Compute the right-hand side of [Sch11, Fig. 27, p. 48]. We have
+    Compute the right-hand side of [Sch11_, Fig. 27, p. 48]. We have
     compr_lten in the top row of the figure without complex
     conjugation and tgt_lten in the bottom row with complex
     conjugation.
 
-    For len(tgt_ltens) > 1, compute the right-hand side of [Sch11,
+    For len(tgt_ltens) > 1, compute the right-hand side of [Sch11_,
     Fig. 29, p. 49].
 
     """
@@ -1249,7 +1258,7 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
     if len(tgt_ltens) == 1:
         compr_ltens = (compr_lten,)
     else:
-        # [Sch11, p. 49] says that we can go with QR instead of SVD
+        # [Sch11_, p. 49] says that we can go with QR instead of SVD
         # here. However, this will generally increase the bond dimension of
         # our compressed MPS, which we do not want.
         compr_ltens = MPArray.from_array(compr_lten, plegs=1, has_bond=True)
