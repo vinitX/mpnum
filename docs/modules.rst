@@ -6,6 +6,3 @@ Project Modules
 
    mpnum
    photonic_tomo
-   runprofile
-   runtests
-   tmpmytest
