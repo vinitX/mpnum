@@ -1,6 +1,13 @@
 # encoding: utf-8
-"""TODO What considered an MPS/MPO/PMPS? What are the conventions?"""
-# TODO Are derived classes MPO/MPS/PMPS of any help?
+
+
+"""
+
+.. todo:: What considered an MPS/MPO/PMPS? What are the conventions?
+
+.. todo:: Are derived classes MPO/MPS/PMPS of any help?
+
+"""
 
 from __future__ import absolute_import, division, print_function
 
