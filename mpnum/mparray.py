@@ -499,7 +499,7 @@ class MPArray(object):
               sweeps to the left yielding a completely
               right-cannoncial MPA
 
-        :returns: 
+        :returns:
             * inplace=True: Overlap <M|M'> of the original M and its
               compr. M'
             * inplace=False: Compressed MPA, Overlap <M|M'> of the
