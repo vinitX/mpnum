@@ -198,13 +198,17 @@ class MPArray(object):
         """Returns an iterator yielding Sub-MPArrays of `self` by iterating
         over the specified physical axes.
 
-        Example
-        =======
-        If `self` represents a bipartite (i.e. length 2) array with 2
-        physical dimensions on each site A[(k,l), (m,n)], self.paxis_iter(0) is
-        equivalent to
+        **Example:** If `self` represents a bipartite (i.e. length 2)
+        array with 2 physical dimensions on each site A[(k,l), (m,n)],
+        self.paxis_iter(0) is equivalent to::
 
             (A[(k, :), (m, :)] for m in range(...) for k in range(...))
+
+        FIXME: The previous code is not highlighted because
+        :code:`A[(k, :)]` is invalid syntax. Example of working
+        highlighting::
+
+            (x**2 for x in range(...))
 
         :param axes: Iterable or int specifiying the physical axes to iterate
             over (default 0 for each site)
@@ -472,16 +476,24 @@ class MPArray(object):
         If both bdim and relerr is passed, the smaller resulting bond
         dimension is used.
 
-        :param direction: In which direction the compression should operate.
-            (default: depending on the current normalization, such that the
-             number of sites that need to be normalized is smaller)
-            'right': Starting on the leftmost site, the compression sweeps
-                     to the right yielding a completely left-cannonical MPA
-            'left': Starting on rightmost site, the compression sweeps
-                    to the left yielding a completely right-cannoncial MPA
-        :returns: Overlap <M|M'> of the original M and its compr. M'
-            inplace=false: Compressed MPA, Overlap <M|M'> of the original M and
-                           its compr. M',
+        :param direction: In which direction the compression should
+            operate. (default: depending on the current normalization,
+            such that the number of sites that need to be normalized
+            is smaller)
+
+            * 'right': Starting on the leftmost site, the compression
+              sweeps to the right yielding a completely
+              left-cannonical MPA
+            * 'left': Starting on rightmost site, the compression
+              sweeps to the left yielding a completely
+              right-cannoncial MPA
+
+        :returns: 
+            * inplace=True: Overlap <M|M'> of the original M and its
+              compr. M'
+            * inplace=False: Compressed MPA, Overlap <M|M'> of the
+              original M and its compr. M',
+
         """
         ln, rn = self.normal_form
         default_direction = 'left' if len(self) - rn > ln else 'right'
@@ -767,7 +779,7 @@ def inner(mpa1, mpa2):
 
 
 def outer(mpas):
-    """Performs the tensor product of MPAs given in *args
+    """Performs the tensor product of MPAs given in `*args`
 
     :param mpas: Iterable of MPAs same order as they should appear in the chain
     :returns: MPA of length len(args[0]) + ... + len(args[-1])

@@ -135,10 +135,13 @@ def random_mpa(sites, ldim, bdim, randstate=None):
 
     :param sites: Number of sites
     :param ldim: Depending on the type passed (checked in the following order)
-        iterable of iterable: Detailed list of physical dimensions, retured
-                              mpa will have exactly this for mpa.plegs
-        iterable of scalar: Same physical dimension for each site
-        scalar: Single physical leg for each site with given dimension
+
+        * iterable of iterable: Detailed list of physical dimensions,
+          retured mpa will have exactly this for mpa.plegs
+        * iterable of scalar: Same physical dimension for each site
+        * scalar: Single physical leg for each site with given
+          dimension
+
     :param bdim: Bond dimension
     :param randstate: numpy.random.RandomState instance or None
     :returns: randomly choosen matrix product array
@@ -164,10 +167,13 @@ def zero(sites, ldim, bdim):
 
     :param sites: Number of sites
     :param ldim: Depending on the type passed (checked in the following order)
-        iterable of iterable: Detailed list of physical dimensions, retured
-                              mpa will have exactly this for mpa.plegs
-        iterable of scalar: Same physical dimension for each site
-        scalar: Single physical leg for each site with given dimension
+
+        * iterable of iterable: Detailed list of physical dimensions,
+          retured mpa will have exactly this for mpa.plegs
+        * iterable of scalar: Same physical dimension for each site
+        * scalar: Single physical leg for each site with given
+          dimension
+
     :param bdim: Bond dimension
     :returns: Representation of the zero-array as MPA
 
