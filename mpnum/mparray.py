@@ -627,7 +627,7 @@ class MPArray(object):
     # TODO Refactor. Way too involved!
     # FIXME Does this play nice with different bdims?
     def _adapt_to(self, target, num_sweeps, sweep_sites):
-        """Iteratively minimize the l2 distance between `self` and `target.`
+        """Iteratively minimize the l2 distance between `self` and `target`.
         This is especially important for variational compression, where `self`
         is the initial guess and target the MPA to be compressed.
 
