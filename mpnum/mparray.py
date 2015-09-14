@@ -44,11 +44,13 @@ class MPArray(object):
     product form with open boundary conditions:
 
     .. math::
-            A_{i_1, \ldots, i_N} = A^{[1]}_{i_1} \ldots A^{[N]}_{i_N}   \quad (*)
+       :label: mpa
+
+       A_{i_1, \ldots, i_N} = A^{[1]}_{i_1} \ldots A^{[N]}_{i_N}
 
     where the :math:`A^{[k]}` are local tensors (with N legs). The
-    matrix products in (*) are taken with respect to the left and
-    right leg and the multi-index :math:`i_k` corresponds to the
+    matrix products in :eq:`mpa` are taken with respect to the left
+    and right leg and the multi-index :math:`i_k` corresponds to the
     physical legs. Open boundary conditions imply that :math:`A^{[1]}`
     is 1-by-something and :math:`A^{[N]}` is something-by-1.
 
