@@ -100,34 +100,46 @@ def _generate(sites, ldim, bdim, func):
     of the physical legs. The local tensors are generated using `func`
 
     :param sites: Number of sites
-    :param ldim: Depending on the type passed (checked in the following order)
-        iterable of iterable: Detailed list of physical dimensions, retured
-                              mpa will have exactly this for mpa.plegs
-        iterable of scalar: Same physical dimension for each site
-        scalar: Single physical leg for each site with given dimension
-    :param bdim: Bond dimension
-    :param func: Generator function for local tensors, should accept shape as
-        tuple in first argument and should return numpy.ndarray of given shape
+
+    :param ldim: Physical legs, depending on the type passed:
+
+        * scalar: Single physical leg for each site with given dimension
+        * iterable of scalar: Same physical legs for all sites
+        * iterable of iterable: Generated MPA will have exactly this
+          as `plegs`
+
+    :param bdim: Bond dimension, depending on the type passed:
+
+        * scalar: Same bond dimension everywhere
+        * iterable of length :code:`sites - 1`: Generated MPA will
+          have exactly this as `bdims`
+
+    :param func: Generator function for local tensors, should accept
+        shape as tuple in first argument and should return
+        numpy.ndarray of given shape
+
     :returns: randomly choosen matrix product array
 
     """
-    assert sites > 1, "Cannot generate MPA with sites {} < 2".format(sites)
-    # if ldim is passed as scalar, make it 1-element tuple
+    # If ldim is passed as scalar, make it 1-element tuple.
     ldim = tuple(ldim) if hasattr(ldim, '__iter__') else (ldim, )
-    # FIXME Make more concise
+    # If ldim[0] is not iterable, we want the same physical legs on
+    # all sites.
     if not hasattr(ldim[0], '__iter__'):
-        ltens_l = func((1, ) + ldim + (bdim, ))
-        ltenss = [func((bdim, ) + ldim + (bdim, ))
-                  for _ in range(sites - 2)]
-        ltens_r = func((bdim, ) + ldim + (1, ))
+        ldim = it.repeat(ldim, times=sites)
+    # If bdim is not iterable, we want the same bond dimension
+    # everywhere.
+    if not hasattr(bdim, '__iter__'):
+        bdim = (bdim,) * (sites - 1)
     else:
-        ldim_iter = iter(ldim)
-        ltens_l = func((1, ) + tuple(next(ldim_iter)) + (bdim, ))
-        ltenss = [func((bdim, ) + tuple(ld) + (bdim, ))
-                  for _, ld in zip(range(sites - 2), ldim_iter)]
-        ltens_r = func((bdim, ) + tuple(next(ldim_iter)) + (1, ))
+        bdim = tuple(bdim)
+    bdim_l = (1,) + bdim
+    bdim_r = bdim + (1,)
 
-    return mp.MPArray([ltens_l] + ltenss + [ltens_r])
+    ltens = (
+        func((b_l,) + tuple(ld) + (b_r,))
+        for b_l, ld, b_r in zip(bdim_l, ldim, bdim_r))
+    return mp.MPArray(ltens)
 
 
 def random_mpa(sites, ldim, bdim, randstate=None):
