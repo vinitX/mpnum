@@ -19,7 +19,8 @@ from mpnum import _tools
 
 
 # nr_sites, local_dim, bond_dim
-MP_TEST_PARAMETERS = [(6, 2, 4), (4, 3, 5), (5, 2, 1)]
+MP_TEST_PARAMETERS = [(1, 7, np.nan), (2, 3, 3), (3, 2, 4), (6, 2, 4),
+                      (4, 3, 5), (5, 2, 1)]
 # nr_sites, local_dim, bond_dim, sites_per_group
 MP_TEST_PARAMETERS_GROUPS = [(6, 2, 4, 3), (6, 2, 4, 2), (4, 3, 5, 2)]
 
@@ -107,7 +108,10 @@ def test_dot(nr_sites, local_dim, bond_dim):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_partialdot(nr_sites, local_dim, bond_dim):
-    assert nr_sites >= 2, 'test requires at least two sites'
+    # Only for at least two sites, we can apply an operator to a part
+    # of a chain.
+    if nr_sites < 2:
+        return
     part_sites = nr_sites // 2
     start_at = min(2, nr_sites // 2)
 
@@ -234,7 +238,9 @@ def test_operations_typesafety(nr_sites, local_dim, bond_dim):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op = mpo_to_global(mpo)
+    # For nr_sites == 1, changing `mpo` below will change `op` as
+    # well, unless we call .copy().
+    op = mpo_to_global(mpo).copy()
     scalar = np.random.randn()
 
     assert_array_almost_equal(scalar * op, mpo_to_global(scalar * mpo))
@@ -246,7 +252,9 @@ def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_div_mpo_scalar(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op = mpo_to_global(mpo)
+    # For nr_sites == 1, changing `mpo` below will change `op` as
+    # well, unless we call .copy().
+    op = mpo_to_global(mpo).copy()
     scalar = np.random.randn()
 
     assert_array_almost_equal(op / scalar, mpo_to_global(mpo / scalar))
@@ -257,9 +265,12 @@ def test_div_mpo_scalar(nr_sites, local_dim, bond_dim):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_outer(nr_sites, local_dim, bond_dim):
-    # NOTE: Everything here is in local form!!!
-    assert nr_sites > 1
+    # This test produces at most `nr_sites` by tensoring two
+    # MPOs. This doesn't work for :code:`nr_sites = 1`.
+    if nr_sites < 2:
+        return
 
+    # NOTE: Everything here is in local form!!!
     mpo = factory.random_mpa(nr_sites // 2, (local_dim, local_dim), bond_dim)
     op = mpo.to_array()
 
@@ -279,6 +290,11 @@ def test_outer(nr_sites, local_dim, bond_dim):
 
 @pt.mark.parametrize('_, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_inject(_, local_dim, bond_dim):
+    # bond_dim is np.nan for nr_sites = 1 (first argument,
+    # ignored). We require a value for bond_dim.
+    if np.isnan(bond_dim):
+        return
+    
     # plegs = 3 is hardcoded below (argument to .transpose()).
     # Uniform local dimension is also hardcoded below (arguments to
     # .reshape()).
@@ -462,6 +478,10 @@ def test_normalization_incremental(nr_sites, local_dim, bond_dim):
 # FIXME Add counter to normalization functions
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_normalization_jump(nr_sites, local_dim, bond_dim):
+    # This test assumes at least two sites.
+    if nr_sites == 1:
+        return
+
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo_to_global(mpo)
     assert_correct_normalzation(mpo, 0, nr_sites)
@@ -497,6 +517,10 @@ def test_normalization_full(nr_sites, local_dim, bond_dim):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_normalization_default_args(nr_sites, local_dim, bond_dim):
+    # The following normalizations assume at least two sites.
+    if nr_sites == 1:
+        return
+
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     assert_correct_normalzation(mpo, 0, nr_sites)
 
@@ -506,6 +530,10 @@ def test_normalization_default_args(nr_sites, local_dim, bond_dim):
 
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     assert_correct_normalzation(mpo, 0, nr_sites)
+
+    # The following normalization assumes at least three sites.
+    if nr_sites == 2:
+        return
 
     mpo.normalize(left=1)
     mpo.normalize(right=nr_sites - 2)
@@ -529,6 +557,11 @@ def test_normalization_compression():
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim):
+    if nr_sites < 2:
+        # Re-normalization has no effect for nr_sites == 1. There is
+        # nothing more to test than :func:`test_mult_mpo_scalar`.
+        return
+
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo_to_global(mpo)
     scalar = np.random.randn()

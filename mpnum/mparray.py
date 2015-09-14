@@ -255,6 +255,9 @@ class MPArray(object):
     def __add__(self, summand):
         assert len(self) == len(summand), \
             "Length is not equal: {} != {}".format(len(self), len(summand))
+        if len(self) == 1:
+            # The code below assumes at least two sites.
+            return MPArray((self[0] + summand[0],))
 
         ltens = [np.concatenate((self[0], summand[0]), axis=-1)]
         ltens += [_local_add(l, r) for l, r in zip(self[1:-1], summand[1:-1])]
@@ -512,6 +515,10 @@ class MPArray(object):
               original M and its compr. M',
 
         """
+        if len(self) == 1:
+            # Cannot do anything. Return perfect overlap.
+            return norm(self)**2
+
         ln, rn = self.normal_form
         default_direction = 'left' if len(self) - rn > ln else 'right'
         direction = default_direction if direction is None else direction
@@ -546,6 +553,10 @@ class MPArray(object):
         :returns: Compressed MPArray
 
         """
+        if len(self) == 1:
+            # Cannot do anything.
+            return self
+
         if initmpa is None:
             from mpnum.factory import random_mpa
             bdim = max(self.bdims) if bdim is None else bdim

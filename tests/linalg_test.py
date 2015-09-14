@@ -17,6 +17,9 @@ from mparray_test import mpo_to_global, MP_TEST_PARAMETERS
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mineig(nr_sites, local_dim, bond_dim):
+    # Need at least two sites
+    if nr_sites < 2:
+        return
     # With startvec_bonddim = 2 * bonddim and this seed, mineig() gets
     # stuck in a local minimum. With startvec_bonddim = 3 * bonddim,
     # it does not.
@@ -43,6 +46,9 @@ def test_mineig(nr_sites, local_dim, bond_dim):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim):
+    # Need at least three sites for minimize_sites = 2
+    if nr_sites < 3:
+        return
     # With startvec_bonddim = 2 * bonddim and minimize_sites=1,
     # mineig() gets stuck in a local minimum. With minimize_sites=2,
     # it does not.

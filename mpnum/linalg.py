@@ -289,6 +289,9 @@ def mineig(mpo,
     #  - return these details for tracking errors in larger computations
 
     nr_sites = len(mpo)
+    assert nr_sites - minimize_sites > 0, (
+        'Require ({} =) nr_sites > minimize_sites (= {})'
+        .format(nr_sites, minimize_sites))
 
     if startvec is None:
         pdims = max(dim[0] for dim in mpo.pdims)
