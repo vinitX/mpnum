@@ -16,7 +16,8 @@ from six.moves import range
 
 
 def _zrandn(shape, randstate=None):
-    """Shortcut for np.random.randn(*shape) + 1.j * np.random.randn(*shape)
+    """Shortcut for :code:`np.random.randn(*shape) + 1.j *
+    np.random.randn(*shape)`
 
     :param randstate: Instance of np.radom.RandomState or None (which yields
         the default np.random) (default None)

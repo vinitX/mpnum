@@ -60,13 +60,16 @@ class MPArray(object):
 
     def __init__(self, ltens, **kwargs):
         """
-        :param list ltens: List of local tensors for the MPA. In order to be
-            valid the elements of `tens` need to be N-dimensional arrays
-            with N > 1 and need to fullfill
+        :param list ltens: List of local tensors for the MPA. In order
+            to be valid the elements of `tens` need to be
+            :code:`N`-dimensional arrays with :code:`N > 1` and need
+            to fullfill::
 
-                    shape(tens[i])[-1] == shape(tens[i])[0].
-        :param **kwargs: Additional paramters to set protected variables, not
-            for use by user
+                shape(tens[i])[-1] == shape(tens[i])[0].
+
+
+        :param `**kwargs`: Additional paramters to set protected
+            variables, not for use by user
 
         """
         self._ltens = list(ltens)
@@ -1093,9 +1096,11 @@ def _local_add(ltens_l, ltens_r):
 def _local_ravel(ltens):
     """Flattens the physical legs of ltens, the bond-legs remain untouched
 
-    :param ltens: numpy.ndarray with ndim > 1
-    :returns: Reshaped ltens with shape (ltens.shape[0], *, ltens.shape[-1]),
-        where * is determined from the size of ltens
+    :param ltens: :func:`numpy.ndarray` with :code:`ndim > 1`
+
+    :returns: Reshaped `ltens` with shape :code:`(ltens.shape[0], ...,
+        ltens.shape[-1])`, where :code`...` is determined from the
+        size of ltens
 
     """
     return _local_reshape(ltens, (-1, ))
