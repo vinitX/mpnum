@@ -245,7 +245,7 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
 
 
 def random_mps(sites, ldim, bdim, randstate=None):
-    """Returns a randomly choosen matrix product state
+    """Returns a randomly choosen normalized matrix product state
 
     :param sites: Number of sites
     :param ldim: Local dimension
@@ -258,6 +258,8 @@ def random_mps(sites, ldim, bdim, randstate=None):
     ((10, 10, 10), ((2,), (2,), (2,), (2,)))
     >>> mps.normal_form
     (0, 4)
+    >>> round(abs(1 - mp.inner(mps, mps)), 10)
+    0.0
 
     """
     mps = random_mpa(sites, ldim, bdim, randstate=randstate)
