@@ -294,7 +294,7 @@ def test_inject(_, local_dim, bond_dim):
     # ignored). We require a value for bond_dim.
     if np.isnan(bond_dim):
         return
-    
+
     # plegs = 3 is hardcoded below (argument to .transpose()).
     # Uniform local dimension is also hardcoded below (arguments to
     # .reshape()).
@@ -443,10 +443,10 @@ def assert_correct_normalzation(mpo, lnormal_target, rnormal_target):
 
     for n in range(lnormal):
         assert_lcanonical(mpo[n], msg="Failure left canonical (n={}/{})"
-                           .format(n, lnormal_target))
+                          .format(n, lnormal_target))
     for n in range(rnormal, len(mpo)):
         assert_rcanonical(mpo[n], msg="Failure right canonical (n={}/{})"
-                           .format(n, rnormal_target))
+                          .format(n, rnormal_target))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
