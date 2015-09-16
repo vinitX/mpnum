@@ -83,7 +83,7 @@ def x_povm(dim):
     """The X POVM simplifies to measuring Pauli X eigenvectors for dim=2.
 
     :param dim: Dimension of the system
-    :return: POVM with generalized X measurments
+    :returns: POVM with generalized X measurments
     """
     vectors = np.zeros([dim * (dim - 1), dim])
     k = 0
@@ -102,7 +102,7 @@ def y_povm(dim):
     """The Y POVM simplifies to measuring Pauli Y eigenvectors for dim=2.
 
     :param dim: Dimension of the system
-    :return: POVM with generalized Y measurments
+    :returns: POVM with generalized Y measurments
     """
     vectors = np.zeros([dim * (dim - 1), dim], dtype=complex)
     k = 0
@@ -121,7 +121,7 @@ def z_povm(dim):
     """The Z POVM simplifies to measuring Pauli Z eigenvectors for dim=2.
 
     :param dim: Dimension of the system
-    :return: POVM with generalized Z measurments
+    :returns: POVM with generalized Z measurments
     """
     return POVM.from_vectors(np.eye(dim, dim), info_complete=False)
 
@@ -131,7 +131,7 @@ def pauli_povm(dim):
     Pauli matrices in the case d=2.
 
     :param dim: Dimension of the system
-    :return: POVM with generalized Pauli measurments
+    :returns: POVM with generalized Pauli measurments
     """
     assert dim > 1, "What do you mean by 1-dim. Pauli measurements?"
 
