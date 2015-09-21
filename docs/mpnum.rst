@@ -62,6 +62,7 @@ Subpackages
 
 .. toctree::
 
+    mpnum.localcert
     mpnum.povm
     mpnum.tomography
 

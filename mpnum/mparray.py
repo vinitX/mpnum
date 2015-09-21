@@ -28,6 +28,7 @@ References:
 
 from __future__ import absolute_import, division, print_function
 
+import functools as ft
 import itertools as it
 
 import numpy as np
@@ -977,7 +978,78 @@ def trace(mpa, axes=(0, 1)):
     return out[None][0]
 
 
-def local_sum(mpas, embed_tensor=None):
+class regular_slices:
+
+    def __init__(self, length, width, offset):
+        """
+    
+        .. todo:: This table needs cell borders (-> CSS), and the
+                  tabularcolumns command doesn't  work.
+    
+        .. tabularcolumns:: |c|c|c|
+    
+        +------------------+--------+
+        | #### width ##### |        |
+        +--------+---------+--------+
+        | offset | overlap | offset |
+        +--------+---------+--------+
+        |        | ##### width #### |
+        +--------+------------------+
+    
+        >>> n = 5
+        >>> [tuple(range(*s.indices(n))) for s in regular_slices(n, 3, 2)]
+        [(0, 1, 2), (2, 3, 4)]
+        >>> n = 7
+        >>> [tuple(range(*s.indices(n))) for s in regular_slices(n, 3, 2)]
+        [(0, 1, 2), (2, 3, 4), (4, 5, 6)]
+    
+        """
+        assert ((length - width) % offset) == 0
+        num_slices = (length - width) // offset + 1
+
+        self.length, self.width, self.offset = length, width, offset
+        self.num_slices = num_slices
+    
+    def __iter__(self):
+        for i in range(self.num_slices):
+            yield slice(self.offset * i, self.offset * i + self.width)
+
+
+def default_embed_ltens(mpa, embed_tensor):
+    if embed_tensor is None:
+        pdims = mpa.pdims[0]
+        assert len(pdims) == 2 and pdims[0] == pdims[1], (
+            "For plegs != 2 or non-square pdims, you must supply a tensor"
+            "for embedding")
+        embed_tensor = np.eye(pdims[0])
+    embed_ltens = embed_tensor[None, ..., None]
+    return embed_ltens
+
+
+def embed_slice(length, slice_, mpa, embed_tensor=None):
+    start, stop, step = slice_.indices(length)
+    assert step == 1
+    assert len(mpa) == stop - start
+    embed_ltens = default_embed_ltens(mpa, embed_tensor)
+    left = it.repeat(embed_ltens, times=start)
+    right = it.repeat(embed_ltens, times=length - stop)
+    return MPArray(it.chain(left, mpa, right))
+
+
+def local_sum(mpas, embed_tensor=None, length=None, slices=None):
+    if isinstance(slices, regular_slices) and slices.offset == 1:
+        mpas = tuple(mpas)
+        assert len(tuple(slices)) == len(mpas)
+        assert all(slices.width == len(mpa) for mpa in mpas)
+        slices = None
+    if slices is None:
+        return local_sum_simple(mpas, embed_tensor)
+    mpas = (embed_slice(length, slice_, mpa, embed_tensor)
+            for mpa, slice_ in zip(mpas, slices))
+    return ft.reduce(MPArray.__add__, mpas)
+
+
+def local_sum_simple(mpas, embed_tensor=None):
     """Embed local MPAs on a linear chain and sum as MPA.
 
     The resulting MPA has smaller bond dimension than naive
@@ -1001,12 +1073,7 @@ def local_sum(mpas, embed_tensor=None):
     width = len(mpas[0])
     nr_sites = len(mpas) + width - 1
     ltens = []
-    if embed_tensor is None:
-        pdims = mpas[0].pdims[0]
-        assert len(pdims) == 2 and pdims[0] == pdims[1], \
-            "For plegs != 2 or non-square pdims, you must supply a tensor for embedding"
-        embed_tensor = np.eye(pdims[0])
-    embed_ltens = embed_tensor[None, ..., None]
+    embed_ltens = default_embed_ltens(mpas[0], embed_tensor)
 
     for pos in range(nr_sites):
         # At this position, we local summands mpas[i] starting at the
