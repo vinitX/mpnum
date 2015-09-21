@@ -330,7 +330,7 @@ def _gue(dim, randstate=None):
         It should take the shape of the output as numpy.random.randn does
         (default: numpy.random.randn)
     """
-    z = (_zrandn((dim, dim))) / np.sqrt(2.0)
+    z = _zrandn((dim, dim), randstate) / np.sqrt(2.0)
     q, r = qr(z)
     d = np.diagonal(r)
     ph = d / np.abs(d)
