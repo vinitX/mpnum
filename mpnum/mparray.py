@@ -549,7 +549,7 @@ class MPArray(object):
             suitable for :func:`factory.zrandn` (default numpy.random)
         :param num_sweeps: Maximum number of sweeps to do
         :param sweep_sites: Number of neighboaring sites minimized over
-            simultaniously; for too small value the algorithm may get stuck
+            simultaneously; for too small value the algorithm may get stuck
             in local minima (default 1)
         :returns: Compressed MPArray
 
@@ -653,7 +653,7 @@ class MPArray(object):
             site
         :param num_sweeps: Maximum number of sweeps to do
         :param sweep_sites: Number of neighboaring sites minimized over
-            simultaniously; for too small value the algorithm may get stuck
+            simultaneously; for too small value the algorithm may get stuck
             in local minima (default 1)
         """
         # For
