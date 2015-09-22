@@ -1001,7 +1001,7 @@ def regular_slices(length, width, offset):
     +--------+---------+--------+
     |        | ##### width #### |
     +--------+------------------+
-    
+
     .. todo:: This table needs cell borders in the HTML output (->
               CSS) and the tabularcolumns command doesn't work.
 
@@ -1077,12 +1077,12 @@ def local_sum(mpas, embed_tensor=None, length=None, slices=None):
     """Embed local MPAs on a linear chain and sum as MPA.
 
     We return the sum over :func:`embed_slice(length, slices[i],
-    mpas[i], embed_tensor) <embed_slice>` as MPA. 
+    mpas[i], embed_tensor) <embed_slice>` as MPA.
 
     If `slices` is omitted, we use :func:`regular_slices(length,
     width, offset) <regular_slices>` with :code:`offset = 1`,
     :code:`width = len(mpas[0])` and :code:`length = len(mpas) + width
-    - offset`. 
+    - offset`.
 
     If `slices` is omitted or if the slices just described are given,
     we call :func:`local_sum_simple()`, which gives a smaller bond
@@ -1121,7 +1121,7 @@ def local_sum_simple(mpas, embed_tensor=None):
 
     mpas is a list of MPAs. The width 'width' of all the mpas[i] must
     be the same. mpas[i] is embedded onto a linear chain on sites i,
-    ..., i + width - 1. 
+    ..., i + width - 1.
 
     Let D the bond dimension of the mpas[i]. Then the MPA we return
     has bond dimension width * D + 1 instead of width * D + len(mpas).
