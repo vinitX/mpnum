@@ -58,4 +58,8 @@ docs/_build/
 target/
 
 # IDE stuff
-.idea/
+/.idea/
+/.project
+/.pydevproject
+/.settings
+*~
