@@ -1021,7 +1021,8 @@ def regular_slices(length, width, offset):
     :returns: Iterator over slices.
 
     """
-    assert ((length - width) % offset) == 0
+    assert ((length - width) % offset) == 0, \
+        'length {}, width {}, offset {}'.format(length, width, offset)
     num_slices = (length - width) // offset + 1
 
     for i in range(num_slices):
