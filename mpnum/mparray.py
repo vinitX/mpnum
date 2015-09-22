@@ -978,44 +978,68 @@ def trace(mpa, axes=(0, 1)):
     return out[None][0]
 
 
-class regular_slices:
+def regular_slices(length, width, offset):
+    """Iterate over regular slices on a linear chain.
 
-    def __init__(self, length, width, offset):
-        """
-    
-        .. todo:: This table needs cell borders (-> CSS), and the
-                  tabularcolumns command doesn't  work.
-    
-        .. tabularcolumns:: |c|c|c|
-    
-        +------------------+--------+
-        | #### width ##### |        |
-        +--------+---------+--------+
-        | offset | overlap | offset |
-        +--------+---------+--------+
-        |        | ##### width #### |
-        +--------+------------------+
-    
-        >>> n = 5
-        >>> [tuple(range(*s.indices(n))) for s in regular_slices(n, 3, 2)]
-        [(0, 1, 2), (2, 3, 4)]
-        >>> n = 7
-        >>> [tuple(range(*s.indices(n))) for s in regular_slices(n, 3, 2)]
-        [(0, 1, 2), (2, 3, 4), (4, 5, 6)]
-    
-        """
-        assert ((length - width) % offset) == 0
-        num_slices = (length - width) // offset + 1
+    Put slices on a linear chain as follows:
 
-        self.length, self.width, self.offset = length, width, offset
-        self.num_slices = num_slices
+    >>> n = 5
+    >>> [tuple(range(*s.indices(n))) for s in regular_slices(n, 3, 2)]
+    [(0, 1, 2), (2, 3, 4)]
+    >>> n = 7
+    >>> [tuple(range(*s.indices(n))) for s in regular_slices(n, 3, 2)]
+    [(0, 1, 2), (2, 3, 4), (4, 5, 6)]
+
+    The scheme is illustrated by the following figure:
+
+    .. tabularcolumns:: |c|c|c|
+
+    +------------------+--------+
+    | #### width ##### |        |
+    +--------+---------+--------+
+    | offset | overlap | offset |
+    +--------+---------+--------+
+    |        | ##### width #### |
+    +--------+------------------+
     
-    def __iter__(self):
-        for i in range(self.num_slices):
-            yield slice(self.offset * i, self.offset * i + self.width)
+    .. todo:: This table needs cell borders in the HTML output (->
+              CSS) and the tabularcolumns command doesn't work.
+
+    Note that the overlap may be larger than, equal to or smaller than
+    zero.
+
+    We enforce that the last slice coincides with the end of the
+    chain, i.e. :code:`(length - width) / offset` must be integer.  We
+    produce :code:`(length - width) / offset + 1` slices and the i-th
+    slice is :code:`slice(offset * i, offset * i + width)`, with
+    :code:`i` starting at zero.
+
+    :param int length: The length of the chain.
+    :param int width: The width of each slice.
+    :param int offset: Difference between starting positions of
+        successive slices. First slice starts at 0.
+    :returns: Iterator over slices.
+
+    """
+    assert ((length - width) % offset) == 0
+    num_slices = (length - width) // offset + 1
+
+    for i in range(num_slices):
+        yield slice(offset * i, offset * i + width)
 
 
 def default_embed_ltens(mpa, embed_tensor):
+    """Embed with identity matrices by default.
+
+    :param embed_tensor: If the MPAs do not have two physical legs or
+        have non-square physical dimensions, you must provide an
+        embedding tensor. The default is to use the square identity
+        matrix, assuming that the size of the two physical legs is the
+        same at each site.
+    :returns: `embed_tensor` with one size-one bond leg added at each
+        end.
+
+    """
     if embed_tensor is None:
         pdims = mpa.pdims[0]
         assert len(pdims) == 2 and pdims[0] == pdims[1], (
@@ -1027,6 +1051,18 @@ def default_embed_ltens(mpa, embed_tensor):
 
 
 def embed_slice(length, slice_, mpa, embed_tensor=None):
+    """Embed a local MPA on a linear chain.
+
+    :param int length: Length of the resulting MPA.
+    :param slice slice_: Specifies the position of `mpa` in the
+        result.
+    :param MPArray mpa: MPA of length :code:`slice_.stop -
+        slice_.start`.
+    :param embed_tensor: Defaults to square identity matrix (see
+        :func:`default_embed_ltens` for details)
+    :returns: MPA of length `length`
+
+    """
     start, stop, step = slice_.indices(length)
     assert step == 1
     assert len(mpa) == stop - start
@@ -1037,37 +1073,64 @@ def embed_slice(length, slice_, mpa, embed_tensor=None):
 
 
 def local_sum(mpas, embed_tensor=None, length=None, slices=None):
-    if isinstance(slices, regular_slices) and slices.offset == 1:
-        mpas = tuple(mpas)
-        assert len(tuple(slices)) == len(mpas)
-        assert all(slices.width == len(mpa) for mpa in mpas)
-        slices = None
+    """Embed local MPAs on a linear chain and sum as MPA.
+
+    We return the sum over :func:`embed_slice(length, slices[i],
+    mpas[i], embed_tensor) <embed_slice>` as MPA. 
+
+    If `slices` is omitted, we use :func:`regular_slices(length,
+    width, offset) <regular_slices>` with :code:`offset = 1`,
+    :code:`width = len(mpas[0])` and :code:`length = len(mpas) + width
+    - offset`. 
+
+    If `slices` is omitted or if the slices just described are given,
+    we call :func:`local_sum_simple()`, which gives a smaller bond
+    dimension than naive embedding and summing.
+
+    :param mpas: List of local MPAs.
+    :param embed_tensor: Defaults to square identity matrix (see
+        :func:`default_embed_ltens` for details)
+    :param length: Length of the resulting chain, ignored unless
+        slices is given.
+    :param slices: slice[i] specifies the position of mpas[i],
+        optional.
+    :returns: An MPA.
+
+    If `slices` is omitted, assume
+
+    """
+    if slices is not None:
+        assert length is not None
+        slices = tuple(slices)
+        reg = regular_slices(length, slices[0].stop - slices[0].start, offset=1)
+        if all(s == t for s, t in it.zip_longest(slices, reg)):
+            slices = None
     if slices is None:
-        return local_sum_simple(mpas, embed_tensor)
+        return local_sum_simple(tuple(mpas), embed_tensor)
     mpas = (embed_slice(length, slice_, mpa, embed_tensor)
             for mpa, slice_ in zip(mpas, slices))
     return ft.reduce(MPArray.__add__, mpas)
 
 
 def local_sum_simple(mpas, embed_tensor=None):
-    """Embed local MPAs on a linear chain and sum as MPA.
+    """Implement a special case of :func:`local_sum`.
 
-    The resulting MPA has smaller bond dimension than naive
-    embed+MPA-sum.
+    See :func:`local_sum` for a description.  We return an MPA with
+    smaller bond dimension than naive embed+MPA-sum.
 
     mpas is a list of MPAs. The width 'width' of all the mpas[i] must
     be the same. mpas[i] is embedded onto a linear chain on sites i,
-    ..., i + width - 1. Let D the bond dimension of the mpas[i]. Then
-    the MPA we return has bond dimension width * D + 1 instead of
-    width * D + len(mpas).
+    ..., i + width - 1. 
+
+    Let D the bond dimension of the mpas[i]. Then the MPA we return
+    has bond dimension width * D + 1 instead of width * D + len(mpas).
 
     The basic idea behind the construction we use is similar to
     [Sch11_, Sec. 6.1].
 
     :param mpas: A list of MPArrays with the same length.
-    :param embed_tensor: If the MPAs do not have two physical legs or
-        have non-square physical dimensions, you must provide an
-        embedding tensor instead of the identity matrix.
+    :param embed_tensor: Defaults to square identity matrix (see
+        :func:`default_embed_ltens` for details)
 
     """
     width = len(mpas[0])
