@@ -37,7 +37,7 @@ from numpy.testing import assert_array_equal
 
 from mpnum._tools import block_diag, matdot
 from mpnum._named_ndarray import named_ndarray
-from six.moves import range, zip
+from six.moves import range, zip, zip_longest
 
 
 class MPArray(object):
@@ -1103,7 +1103,7 @@ def local_sum(mpas, embed_tensor=None, length=None, slices=None):
         assert length is not None
         slices = tuple(slices)
         reg = regular_slices(length, slices[0].stop - slices[0].start, offset=1)
-        if all(s == t for s, t in it.zip_longest(slices, reg)):
+        if all(s == t for s, t in zip_longest(slices, reg)):
             slices = None
     if slices is None:
         return local_sum_simple(tuple(mpas), embed_tensor)
