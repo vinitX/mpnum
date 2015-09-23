@@ -578,7 +578,7 @@ class MPArray(object):
         .. todo:: Check whether the return value is precisely verified
                   in the tests.
 
-        References: 
+        References:
 
         * 'svd': Singular value truncation, [Sch11_, Sec. 4.5.1]
         * 'var': Variational compression, [Sch11_, Sec. 4.5.2]
@@ -749,12 +749,11 @@ class MPArray(object):
         This is especially important for variational compression, where `self`
         is the initial guess and target the MPA to be compressed.
 
-        :param target: MPS to compress; i.e. MPA with only one physical leg per
-            site
-        :param num_sweeps: Maximum number of sweeps to do
-        :param var_sites: Number of neighbouring sites minimized over
-            simultaneously; for too small value the algorithm may get stuck
-            in local minima (default 1)
+        :param target: MPS to compress; i.e. MPA with only one
+            physical leg per site
+
+        Other parameters: See :func:`MPArray.compress()`.
+
         """
         # For
         #
@@ -784,7 +783,7 @@ class MPArray(object):
             rvecs[pos] = _adapt_to_add_r(rvecs[pos + 1], self[pos_end],
                                          target[pos_end])
 
-        max_bonddim = max(self.bdims)
+        max_bonddim = self.bdim
         for num_sweep in range(num_sweeps):
             # Sweep from left to right
             for pos in range(nr_sites - var_sites + 1):
