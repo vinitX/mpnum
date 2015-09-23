@@ -23,7 +23,7 @@ def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten):
     :param op_lten: Local tensor of the MPO
     :param mps_lten: Local tensor of the current MPS eigenstate
 
-    leftvecs[i] is L_{i-1}, See [Sch11, arXiv version, Fig. 39 ond
+    leftvecs[i] is L_{i-1}, See [Sch11_, arXiv version, Fig. 39 ond
     p. 63 and Fig. 38 and Eq. (191) on p. 62].  Regarding Fig. 39,
     things are as follows:
 
@@ -126,7 +126,7 @@ def _mineig_local_op(leftvec, mpo_ltens, rightvec):
     :param rightvec: Right vector
         Three indices: mps bond, mpo bond, complex conjugate mps bond
 
-    See [Sch11, arXiv version, Fig. 38 on p. 62].  If len(mpo_ltens)
+    See [Sch11_, arXiv version, Fig. 38 on p. 62].  If len(mpo_ltens)
     == 1, this method implements the contractions across the dashed
     lines in the figure. For let(mpo_ltens) > 1, we return the
     operator for what is probably called "multi-site DMRG".
@@ -193,7 +193,7 @@ def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
     :param eigvec_ltens: List of local tensors of the MPS eigenvector
     :returns: mineigval, mineigval_eigvec_lten
 
-    See [Sch11, arXiv version, Fig. 42 on p. 67].  This method
+    See [Sch11_, arXiv version, Fig. 42 on p. 67].  This method
     computes the operator ('op'), defined by everything except the
     circle of the first term in the figure. It then obtains the
     minimal eigenvalue (lambda in the figure) and eigenvector (circled
@@ -227,7 +227,7 @@ def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
         #
         # "the truncation error of conventional DMRG [...] has emerged
         # as a highly reliable tool for gauging the quality of
-        # results" [Sch11, Sec. 6.4, p. 74]
+        # results" [Sch11_, Sec. 6.4, p. 74]
         eigvec_lten = mp.MPArray.from_array(eigvec_lten, 1, has_bond=True)
         eigvec_lten.compress(method='svd', bdim=eigvec_bonddim)
     return eigval, eigvec_lten
@@ -238,7 +238,7 @@ def mineig(mpo,
            max_num_sweeps=5, eigs_opts=None, minimize_sites=1):
     """Iterative search for smallest eigenvalue and eigenvector of an MPO.
 
-    Algorithm: [Sch11, Sec. 6.3]
+    Algorithm: [Sch11_, Sec. 6.3]
 
     :param MPArray mpo: A matrix product operator (MPA with two physical legs)
     :param startvec: initial guess for eigenvector (default random MPS with
@@ -255,12 +255,12 @@ def mineig(mpo,
     We minimize the eigenvalue by obtaining the minimal eigenvalue of
     an operator supported on 'minimize_sites' many sites. For
     minimize_sites=1, this is called "variational MPS ground state
-    search" or "single-site DMRG" [Sch11, Sec. 6.3, p. 69]. For
+    search" or "single-site DMRG" [Sch11_, Sec. 6.3, p. 69]. For
     minimize_sites>1, this is called "multi-site DMRG".
 
     Comments on the implementation, for minimize_sites=1:
 
-    References are to the arXiv version of [Sch11] assuming we replace
+    References are to the arXiv version of [Sch11_] assuming we replace
     zero-based with one-based indices there.
 
     leftvecs[i] is L_{i-1}  \
