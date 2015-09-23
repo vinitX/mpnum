@@ -390,39 +390,98 @@ class MPArray(object):
     ################################
     #  Normalizaton & Compression  #
     ################################
-    def normalize(self, **kwargs):
-        """Brings the MPA to canonnical form in place. Note that we do not
-        support full left- or right-normalization. The right- (left- resp.)
-        most local tensor is not normalized since this can be done by
-        simply calculating its norm (instead of using SVD)
+    def normalize(self, left=None, right=None, allbutone=False):
+        """Brings the MPA to canonical form in place [Sch11_, Sec. 4.4]
 
-        [Sch11_, Sec. 4.4]
+        Note that we do not support full left- or right-normalization
+        (yet?). The right- (left- resp.)  most local tensor is not
+        normalized since this can be done by simply calculating its
+        norm (instead of using SVD).
 
-        Possible combinations:
-            normalize() = normalize(left=len(self) - 1)
-                -> full left-normalization
-            normalize(left=m) for 0 <= m < len(self)
-                -> self[0],..., self[m-1] are left-normalized
-            normalize(right=n) for 0 < n <= len(self)
-                -> self[n],..., self[-1] are right-normalized
-            normalize(left=m, right=n) valid for m < n
-                -> self[0],...,self[m-1] are left normalized and
-                   self[n],...,self[-1] are right-normalized
+        If `left` and `right` are both :code:`None`, you have to set
+        `allbutone` to :code:`True` to let the function decide whether
+        to normalize to `left=-1` or to `right=1`. Apart from that,
+        the following values for `left` and `right` will be needed
+        most frequently:
+
+        +--------------+--------------+-------------+-------------------+
+        | Left-/Right- | Nothing      | All but one | All               |
+        | normalize:   |              |             |                   |
+        +==============+==============+=============+===================+
+        | `left`       | :code:`None` | :code:`-1`  | :code:`'full'`,   |
+        |              |              |             | :code:`len(self)` |
+        +--------------+--------------+-------------+-------------------+
+        | `right`      | :code:`None` | :code:`1`   | :code:`'full'`,   |
+        |              |              |             | :code:`0`         |
+        +--------------+--------------+-------------+-------------------+
+
+        Arbitrary integer values of `left` and `right` have the
+        following meaning:
+
+        - :code:`self[:left]` will be left-normalized
+
+        - :code:`self[right:]` will be right-normalized
+
+        In accordance with the last table, the special values
+        :code:`None` and :code:`full` will be replaced by the
+        following integers:
+
+        +---------+--------------+----------------+
+        |         | :code:`None` | :code:`'full'` |
+        +---------+--------------+----------------+
+        | `left`  | 0            | len(self)      |
+        +---------+--------------+----------------+
+        | `right` | len(self)    | 0              |
+        +---------+--------------+----------------+
+
+        Note that normalizing to :code:`'full'` and equivalent values
+        is not implemented yet. Also, you must provide arguments such
+        that no matrix is supposed to be both left- and right
+        normalized.
+
+        Exceptions raised:
+
+        - Integer argument too large or small: `IndexError`
+
+        - Matrix would be both left- and right-normalized: `ValueError`
+
+        - :code:`'full'` or equivalent argument: `NotImplementedError`
 
         """
         current_lnorm, current_rnorm = self.normal_form
-        if ('left' not in kwargs) and ('right' not in kwargs):
+        if left is None and right is None:
+            if not allbutone:
+                raise ValueError('Invalid combination of arguments')
             if current_lnorm < len(self) - current_rnorm:
                 self._rnormalize(1)
             else:
                 self._lnormalize(len(self) - 1)
             return
+        if allbutone:
+            raise ValueError('Invalid arguments, left={!r}, right={!r}'
+                             .format(left, right))
 
-        lnormalize = kwargs.get('left', 0)
-        rnormalize = kwargs.get('right', len(self))
+        # Fill the special values for `None` and 'full'.
+        lnormalize = {None: 0, 'full': len(self)}.get(left, left)
+        rnormalize = {None: len(self), 'full': 0}.get(right, right)
+        # Support negative indices.
+        if lnormalize < 0:
+            lnormalize += len(self)
+        if rnormalize < 0:
+            rnormalize += len(self)
+        # Perform range checks.
+        if not 0 <= lnormalize <= len(self):
+            raise IndexError('len={!r}, left={!r}'.format(len(self), left))
+        if not 0 <= rnormalize <= len(self):
+            raise IndexError('len={!r}, right={!r}'.format(len(self), right))
+        if lnormalize == len(self) or rnormalize == 0:
+            raise NotImplementedError('left={!r}, right={!r}'
+                                      .format(left, right))
 
-        assert lnormalize < rnormalize, \
-            "Normalization {}:{} invalid".format(lnormalize, rnormalize)
+
+        if not lnormalize < rnormalize:
+            raise ValueError("Normalization {}:{} invalid"
+                             .format(lnormalize, rnormalize))
         if current_lnorm < lnormalize:
             self._lnormalize(lnormalize)
         if current_rnorm > rnormalize:
@@ -435,8 +494,7 @@ class MPArray(object):
             performed
 
         """
-        assert to_site < len(self), "Cannot left-normalize rightmost site: {} >= {}" \
-            .format(to_site, len(self))
+        assert 0 <= to_site < len(self), 'to_site={!r}'.format(to_site)
 
         lnormal, rnormal = self.normal_form
         for site in range(lnormal, to_site):
@@ -458,8 +516,7 @@ class MPArray(object):
             performed
 
         """
-        assert to_site > 0, "Cannot right-normalize leftmost to_site: {} >= {}" \
-            .format(to_site, len(self))
+        assert 0 < to_site <= len(self), 'to_site={!r}'.format(to_site)
 
         lnormal, rnormal = self.normal_form
         for site in range(rnormal - 1, to_site - 1, -1):
@@ -878,7 +935,7 @@ def norm(mpa):
     :returns: l2-norm of that array
 
     """
-    mpa.normalize()
+    mpa.normalize(allbutone=True)
     current_lnorm, current_rnorm = mpa.normal_form
 
     if current_rnorm == 1:
