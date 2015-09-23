@@ -57,6 +57,12 @@ class MPArray(object):
 
     By convention, the 0th and last dimension of the local tensors are reserved
     for the auxillary legs.
+
+    .. todo:: If we enable all special members (e.g. `__len__`) to be
+              shown, we get things like `__dict__` with very long
+              contents. Therefore, special members are hidden at the
+              moment, but we should show the interesting one.
+
     """
 
     def __init__(self, ltens, **kwargs):

@@ -270,6 +270,6 @@ autodoc_default_flags = [
     'members', 
     'undoc-members',
     'private-members',   # _private
-    'special-members',   # __special__
+    #'special-members',   # __special__
     'show-inheritance',
 ]
