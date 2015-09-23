@@ -10,14 +10,14 @@ from numpy.testing import assert_array_almost_equal
 import mpnum.factory as factory
 import mpnum.mpsmpo as mm
 import mpnum._tools as _tools
-from mparray_test import MP_TEST_PARAMETERS, mpo_to_global
+from mparray_test import MP_TEST_PARAMETERS
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_reductions_mpo(nr_sites, local_dim, bond_dim, keep_width):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op = mpo_to_global(mpo)
+    op = mpo.to_array_global()
 
     startsites = range(nr_sites - keep_width + 1)
     for site, reduced_mpo in zip(startsites,
@@ -25,7 +25,7 @@ def test_reductions_mpo(nr_sites, local_dim, bond_dim, keep_width):
         traceout = tuple(range(site)) \
             + tuple(range(site + keep_width, nr_sites))
         red_from_op = _tools.partial_trace(op, traceout)
-        assert_array_almost_equal(mpo_to_global(reduced_mpo), red_from_op,
+        assert_array_almost_equal(reduced_mpo.to_array_global(), red_from_op,
                                   err_msg="not equal at site {}".format(site))
 
     # check default argument for startsite
@@ -36,13 +36,13 @@ def test_reductions_mpo(nr_sites, local_dim, bond_dim, keep_width):
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_reductions_pmps(nr_sites, local_dim, bond_dim, keep_width):
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op = mpo_to_global(mm.pmps_to_mpo(pmps))
+    op = mm.pmps_to_mpo(pmps).to_array_global()
 
     startsites = range(nr_sites - keep_width + 1)
     for site, reduced_mps in zip(startsites,
                                  mm.reductions_pmps(pmps, keep_width, startsites)):
         reduced_mpo = mm.pmps_to_mpo(reduced_mps)
-        red = mpo_to_global(reduced_mpo)
+        red = reduced_mpo.to_array_global()
         traceout = tuple(range(site)) + tuple(range(site + keep_width, nr_sites))
         red_from_op = _tools.partial_trace(op, traceout)
         assert_array_almost_equal(red, red_from_op,
@@ -58,7 +58,7 @@ def test_pmps_to_mpo(nr_sites, local_dim, bond_dim):
         return
     nr_sites = nr_sites // 2
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    rho_mp = mpo_to_global(mm.pmps_to_mpo(pmps))
+    rho_mp = mm.pmps_to_mpo(pmps).to_array_global()
 
     # Local form is what we will use: One system site, one ancilla site, etc
     purification = pmps.to_array()
@@ -88,5 +88,5 @@ def test_mps_as_mpo(nr_sites, local_dim, bond_dim):
     state = mps.to_array()
     state = np.outer(state, state.conj())
     state.shape = (local_dim,) * (2 * nr_sites)
-    state2 = mpo_to_global(mpo)
+    state2 = mpo.to_array_global()
     assert_array_almost_equal(state, state2)

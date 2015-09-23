@@ -28,12 +28,10 @@ MP_TEST_PARAMETERS = [(1, 7, np.nan), (2, 3, 3), (3, 2, 4), (6, 2, 4),
 MP_TEST_PARAMETERS_GROUPS = [(6, 2, 4, 3), (6, 2, 4, 2), (4, 3, 5, 2)]
 
 
-# We choose to use a global reperentation of multipartite arrays throughout our
-# tests to be consistent and a few operations (i.e. matrix multiplication) are
-# easier to express
-def mpo_to_global(mpo):
-    # FIXME remove this function
-    return mpo.to_array_global()
+# We choose to use mostly a global reperentation of multipartite
+# arrays throughout our tests. A few operations (i.e. matrix
+# multiplication) are easier to express. Sometimes, local
+# representation will be used as well.
 
 
 ###############################################################################
@@ -92,10 +90,10 @@ def test_dot(nr_sites, local_dim, bond_dim):
                           op2.reshape((local_dim**nr_sites, ) * 2),
                           axes=([1], [0]))
     dot_np = dot_np.reshape(op1.shape)
-    dot_mp = mpo_to_global(mp.dot(mpo1, mpo2, axes=(1, 0)))
+    dot_mp = mp.dot(mpo1, mpo2, axes=(1, 0)).to_array_global()
     assert_array_almost_equal(dot_np, dot_mp)
     # this should also be the default axes
-    dot_mp = mpo_to_global(mp.dot(mpo1, mpo2))
+    dot_mp = mp.dot(mpo1, mpo2).to_array_global()
     assert_array_almost_equal(dot_np, dot_mp)
 
     # Dotproduct of all 0th physical with 1st physical legs = np.dot
@@ -103,10 +101,10 @@ def test_dot(nr_sites, local_dim, bond_dim):
                           op2.reshape((local_dim**nr_sites, ) * 2),
                           axes=([0], [1]))
     dot_np = dot_np.reshape(op1.shape)
-    dot_mp = mpo_to_global(mp.dot(mpo1, mpo2, axes=(0, 1)))
+    dot_mp = mp.dot(mpo1, mpo2, axes=(0, 1)).to_array_global()
     assert_array_almost_equal(dot_np, dot_mp)
     # this should also be the default axes
-    dot_mp = mpo_to_global(mp.dot(mpo1, mpo2, axes=(-2, -1)))
+    dot_mp = mp.dot(mpo1, mpo2, axes=(-2, -1)).to_array_global()
     assert_array_almost_equal(dot_np, dot_mp)
 
 
@@ -210,8 +208,8 @@ def test_add_and_subtr(nr_sites, local_dim, bond_dim):
     mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op2 = mpo2.to_array_global()
 
-    assert_array_almost_equal(op1 + op2, mpo_to_global(mpo1 + mpo2))
-    assert_array_almost_equal(op1 - op2, mpo_to_global(mpo1 - mpo2))
+    assert_array_almost_equal(op1 + op2, (mpo1 + mpo2).to_array_global())
+    assert_array_almost_equal(op1 - op2, (mpo1 - mpo2).to_array_global())
 
     mpo1 += mpo2
     assert_array_almost_equal(op1 + op2, mpo1.to_array_global())
@@ -247,7 +245,7 @@ def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim):
     op = mpo.to_array_global().copy()
     scalar = np.random.randn()
 
-    assert_array_almost_equal(scalar * op, mpo_to_global(scalar * mpo))
+    assert_array_almost_equal(scalar * op, (scalar * mpo).to_array_global())
 
     mpo *= scalar
     assert_array_almost_equal(scalar * op, mpo.to_array_global())
@@ -261,7 +259,7 @@ def test_div_mpo_scalar(nr_sites, local_dim, bond_dim):
     op = mpo.to_array_global().copy()
     scalar = np.random.randn()
 
-    assert_array_almost_equal(op / scalar, mpo_to_global(mpo / scalar))
+    assert_array_almost_equal(op / scalar, (mpo / scalar).to_array_global())
 
     mpo /= scalar
     assert_array_almost_equal(op / scalar, mpo.to_array_global())
