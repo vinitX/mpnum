@@ -143,7 +143,7 @@ def _generate(sites, ldim, bdim, func):
     return mp.MPArray(ltens)
 
 
-def random_mpa(sites, ldim, bdim, randstate=None):
+def random_mpa(sites, ldim, bdim, randstate=None, norm1=True):
     """Returns a MPA with randomly choosen local tensors
 
     :param sites: Number of sites
@@ -157,6 +157,7 @@ def random_mpa(sites, ldim, bdim, randstate=None):
 
     :param bdim: Bond dimension
     :param randstate: numpy.random.RandomState instance or None
+    :param norm1: Resulting MPA has mp.norm() == 1
     :returns: randomly choosen matrix product array
 
     >>> mpa = random_mpa(4, 2, 10)
@@ -172,7 +173,10 @@ def random_mpa(sites, ldim, bdim, randstate=None):
     ((10, 10, 10), ((1,), (2, 3), (4, 5), (1,)))
 
     """
-    return _generate(sites, ldim, bdim, ft.partial(_zrandn, randstate=randstate))
+    mpa = _generate(sites, ldim, bdim, ft.partial(_zrandn, randstate=randstate))
+    if norm1:
+        mpa /= mp.norm(mpa.copy())
+    return mpa
 
 
 def zero(sites, ldim, bdim):
