@@ -531,34 +531,29 @@ class MPArray(object):
         self._lnormalized = min(to_site - 1, lnormal)
         self._rnormalized = to_site
 
-    def compress(self, method='svd', inplace=True, **kwargs):
-        """Unified interface for the compression functions
-
-        :param method: Which implemention should be used for compression
-            'svd': Compression based on SVD :func:`MPArray.compress_svd`
-            'var': Variational compression :func:`MPArray.compress_var`
-        :param inplace: Compress the array in place or return new copy
-        :returns: `self` if inplace is True or the compressed copy
-
-        """
+    def compress(self, method='svd', **kwargs):
         if method == 'svd':
-            target = self if inplace else self.copy()
-            target.compress_svd(**kwargs)
-            return target
-
+            return self._compress_svd(**kwargs)
         elif method == 'var':
-            compr = self.compress_var(**kwargs)
-            if inplace:
-                self._lnormalized = compr._lnormalized
-                self._rnormalized = compr._rnormalized
-                self._ltens = compr[:]  # no copy necessary, compr is local
-                return self
-            else:
-                return compr
+            compr, overlap = self._compression_var(**kwargs)
+            self._lnormalized = compr._lnormalized
+            self._rnormalized = compr._rnormalized
+            self._ltens = compr[:]
+            return overlap
         else:
-            raise ValueError("{} is not a valid method.".format(method))
+            raise ValueError('{!r} is not a valid method'.format(method))
 
-    def compress_svd(self, bdim=None, relerr=0.0, direction=None):
+    def compression(self, method='svd', **kwargs):
+        if method == 'svd':
+            target = self.copy()
+            overlap = target._compress_svd(**kwargs)
+            return target, overlap
+        elif method == 'var':
+            return self._compression_var(**kwargs)
+        else:
+            raise ValueError('{!r} is not a valid method'.format(method))
+
+    def _compress_svd(self, bdim=None, relerr=0.0, direction=None):
         """Compresses the MPA inplace using SVD [Sch11_, Sec. 4.5.1]
 
         :param bdim: Maximal bond dimension for the compressed MPA (default
@@ -610,8 +605,8 @@ class MPArray(object):
 
         raise ValueError('{} is not a valid direction'.format(direction))
 
-    def compress_var(self, initmpa=None, bdim=None, randstate=np.random,
-                     num_sweeps=5, sweep_sites=1):
+    def _compression_var(self, initmpa=None, bdim=None, randstate=np.random,
+                     num_sweeps=5, var_sites=1):
         """Compresses the MPA using variational compression [Sch11_, Sec. 4.5.2]
 
         Does not change the current instance.
@@ -624,7 +619,7 @@ class MPArray(object):
         :param randstate: numpy.random.RandomState instance or something
             suitable for :func:`factory.zrandn` (default numpy.random)
         :param num_sweeps: Maximum number of sweeps to do
-        :param sweep_sites: Number of neighboaring sites minimized over
+        :param var_sites: Number of neighbouring sites minimized over
             simultaneously; for too small value the algorithm may get stuck
             in local minima (default 1)
         :returns: Compressed MPArray
@@ -632,11 +627,17 @@ class MPArray(object):
         """
         if len(self) == 1:
             # Cannot do anything.
-            return self
+            return self, 1
 
+        if initmpa is not None:
+            bdim = initmpa.bdim
+        elif bdim is None:
+            raise ValueError('You must provide initmpa or bdim')
+        if bdim > self.bdim:
+            return self.copy(), 1
+        
         if initmpa is None:
             from mpnum.factory import random_mpa
-            bdim = max(self.bdims) if bdim is None else bdim
             compr = random_mpa(len(self), self.pdims, bdim, randstate=randstate)
             compr *= norm(self) / norm(compr)
         else:
@@ -646,9 +647,11 @@ class MPArray(object):
         # flatten the array since MPS is expected & bring back
         shape = self.pdims
         compr = compr.ravel()
-        compr._adapt_to(self.ravel(), num_sweeps, sweep_sites)
+        compr._adapt_to(self.ravel(), num_sweeps, var_sites)
         compr = compr.reshape(shape)
-        return compr
+        # FIXME compute overlap differently?
+        overlap = inner(self, compr)
+        return compr, overlap
 
     def _compress_svd_r(self, bdim, relerr):
         """Compresses the MPA in place from left to right using SVD;
@@ -720,7 +723,7 @@ class MPArray(object):
     #  - return these details for tracking errors in larger computations
     # TODO Refactor. Way too involved!
     # FIXME Does this play nice with different bdims?
-    def _adapt_to(self, target, num_sweeps, sweep_sites):
+    def _adapt_to(self, target, num_sweeps, var_sites):
         """Iteratively minimize the l2 distance between `self` and `target`.
         This is especially important for variational compression, where `self`
         is the initial guess and target the MPA to be compressed.
@@ -728,13 +731,13 @@ class MPArray(object):
         :param target: MPS to compress; i.e. MPA with only one physical leg per
             site
         :param num_sweeps: Maximum number of sweeps to do
-        :param sweep_sites: Number of neighboaring sites minimized over
+        :param var_sites: Number of neighbouring sites minimized over
             simultaneously; for too small value the algorithm may get stuck
             in local minima (default 1)
         """
         # For
         #
-        #   pos in range(nr_sites - sweep_sites),
+        #   pos in range(nr_sites - var_sites),
         #
         # we find the ground state of an operator supported on
         #
@@ -752,18 +755,18 @@ class MPArray(object):
         assert_array_equal(target.plegs, 1, "Target is not a MPS")
 
         nr_sites = len(target)
-        lvecs = [np.array(1, ndmin=2)] + [None] * (nr_sites - sweep_sites)
-        rvecs = [None] * (nr_sites - sweep_sites) + [np.array(1, ndmin=2)]
+        lvecs = [np.array(1, ndmin=2)] + [None] * (nr_sites - var_sites)
+        rvecs = [None] * (nr_sites - var_sites) + [np.array(1, ndmin=2)]
         self.normalize(right=1)
-        for pos in reversed(range(nr_sites - sweep_sites)):
-            pos_end = pos + sweep_sites
+        for pos in reversed(range(nr_sites - var_sites)):
+            pos_end = pos + var_sites
             rvecs[pos] = _adapt_to_add_r(rvecs[pos + 1], self[pos_end],
                                          target[pos_end])
 
         max_bonddim = max(self.bdims)
         for num_sweep in range(num_sweeps):
             # Sweep from left to right
-            for pos in range(nr_sites - sweep_sites + 1):
+            for pos in range(nr_sites - var_sites + 1):
                 if pos == 0 and num_sweep > 0:
                     # Don't do first site again if we are not in the first sweep.
                     continue
@@ -772,16 +775,16 @@ class MPArray(object):
                     rvecs[pos - 1] = None
                     lvecs[pos] = _adapt_to_add_l(lvecs[pos - 1], self[pos - 1],
                                                  target[pos - 1])
-                pos_end = pos + sweep_sites
+                pos_end = pos + var_sites
                 self[pos:pos_end] = _adapt_to_new_lten(lvecs[pos],
                                                        target[pos:pos_end],
                                                        rvecs[pos], max_bonddim)
 
             # NOTE Why no num_sweep > 0 here???
             # Sweep from right to left (don't do last site again)
-            for pos in reversed(range(nr_sites - sweep_sites)):
-                pos_end = pos + sweep_sites
-                if pos < nr_sites - sweep_sites:
+            for pos in reversed(range(nr_sites - var_sites)):
+                pos_end = pos + var_sites
+                if pos < nr_sites - var_sites:
                     # We always do this, because we don't do the last site again.
                     self.normalize(right=pos_end)
                     lvecs[pos + 1] = None
@@ -1490,5 +1493,5 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
         # here. However, this will generally increase the bond dimension of
         # our compressed MPS, which we do not want.
         compr_ltens = MPArray.from_array(compr_lten, plegs=1, has_bond=True)
-        compr_ltens.compress_svd(bdim=max_bonddim)
+        compr_ltens.compress('svd', bdim=max_bonddim)
     return compr_ltens
