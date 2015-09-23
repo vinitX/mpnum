@@ -135,6 +135,11 @@ class MPArray(object):
         return tuple(m.shape[0] for m in self._ltens[1:])
 
     @property
+    def bdim(self):
+        """Largest bond dimension across the chain"""
+        return max(self.bdims)
+
+    @property
     def pdims(self):
         """Tuple of physical dimensions"""
         return tuple((m.shape[1:-1]) for m in self._ltens)
