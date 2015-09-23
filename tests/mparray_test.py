@@ -435,9 +435,16 @@ def assert_rcanonical(ltens, msg=''):
                               err_msg=msg)
 
 
-def assert_correct_normalzation(mpo, lnormal_target, rnormal_target):
+def assert_correct_normalzation(mpo, lnormal_target=None, rnormal_target=None):
     lnormal, rnormal = mpo.normal_form
 
+    # If no targets are given, verify that the data matches the
+    # information in `mpo.normal_form`.
+    lnormal_target = lnormal_target or lnormal
+    rnormal_target = rnormal_target or rnormal
+
+    # If targets are given, verify that the information in
+    # `mpo.normal_form` matches the targets.
     assert_equal(lnormal, lnormal_target)
     assert_equal(rnormal, rnormal_target)
 
@@ -717,11 +724,12 @@ def test_compression_var_hard_cutoff(nr_sites, local_dim, bond_dim):
 
     mpo_new = mpo + zero
     initmpa = factory.random_mpa(nr_sites, (local_dim, ) * 2, bond_dim)
-    mpo_new = mpo_new.compress_var(initmpa=initmpa)
+    mpo_new.normalize()
+    mpo_new = mpo_new.compress(method='var', initmpa=initmpa)
     #  overlap = mpo_new.compress(bdim=bond_dim, method='var')
     assert_array_equal(mpo_new.bdims, bond_dim)
     assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
-    # FIXME assert_correct_normalzation(mpo_new, nr_sites - 1, nr_sites)
+    assert_correct_normalzation(mpo_new)
     # since no truncation error should occur
     # FIXME assert_almost_equal(overlap, mp.norm(mpo)**2, decimal=5)
 
