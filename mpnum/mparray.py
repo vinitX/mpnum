@@ -556,10 +556,11 @@ class MPArray(object):
 
         Parameters for 'var':
 
-        :param bdim: Maximal bond dimension for the result. Required.
+        :param startmpa: Start vector, also fixes the bond dimension
+            of the result. Default: Random, with same norm as self.
 
-        :param startmpa: Start vector. Default: Random, with same norm
-            as self.
+        :param bdim: Maximal bond dimension for the result. Either
+            `startmpa` or `bdim` is required.
 
         :param randstate: `numpy.random.RandomState` instance used for
             random start vector. Default: `numpy.random`.
@@ -636,7 +637,7 @@ class MPArray(object):
 
         raise ValueError('{} is not a valid direction'.format(direction))
 
-    def _compression_var(self, bdim, startmpa=None, randstate=np.random,
+    def _compression_var(self, startmpa=None, bdim=None, randstate=np.random,
                          num_sweeps=5, var_sites=1):
         """Return a compression from variational compression [Sch11_,
         Sec. 4.5.2]
