@@ -475,6 +475,8 @@ class MPArray(object):
         elif method == 'var':
             compr = self.compress_var(**kwargs)
             if inplace:
+                self._lnormalized = compr._lnormalized
+                self._rnormalized = compr._rnormalized
                 self._ltens = compr[:]  # no copy necessary, compr is local
                 return self
             else:
