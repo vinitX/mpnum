@@ -5,6 +5,7 @@
 
 from __future__ import absolute_import, division, print_function
 
+import collections as col
 import numpy as np
 import pytest as pt
 from numpy.linalg import svd
@@ -14,8 +15,10 @@ from six.moves import range
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
-from mpnum._tools import global_to_local, local_to_global
 from mpnum import _tools
+from mpnum._tools import global_to_local, local_to_global
+from mpnum.testing import params_product, tuplize, assert_mpa_almost_equal, \
+    assert_mpa_identical
 
 
 # nr_sites, local_dim, bond_dim
@@ -582,260 +585,196 @@ def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim):
     assert_correct_normalization(mpo_times_two, center - 1, center)
 
     mpo *= scalar
-    assert_array_almost_equal(scalar * op, mpo_to_global(mpo))
-    assert_correct_normalzation(mpo, center - 1, center)
+    assert_array_almost_equal(scalar * op, mpo.to_array_global())
+    assert_correct_normalization(mpo, center - 1, center)
 
 
-#####################
-#  SVD compression  #
-#####################
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_compression_svd_trivial(nr_sites, local_dim, bond_dim):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+#####################################
+#  SVD and variational compression  #
+#####################################
 
-    mpo_new = mpo.copy()
-    mpo_new.compress_svd(bdim=10 * bond_dim, direction='right')
-    assert_array_equal(mpo.bdims, mpo_new.bdims)
-    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+# nr_sites, local_dims, bond_dim
+COMPR_SIZES = ((4, (2, 3), 5),)
 
-    mpo_new = mpo.copy()
-    mpo_new.compress_svd(bdim=10 * bond_dim, direction='left')
-    assert_array_equal(mpo.bdims, mpo_new.bdims)
-    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+COMPR_SETTINGS = tuplize((
+    dict(method='svd', direction='left'),
+    dict(method='svd', direction='right'),
+    dict(method='svd', direction='left', relerr=1e-6),
+    dict(method='svd', direction='right', relerr=1e-6),
+    dict(method='var', num_sweeps=1, var_sites=1),
+    dict(method='var', num_sweeps=2, var_sites=1),
+    dict(method='var', num_sweeps=3, var_sites=1),
+    dict(method='var', num_sweeps=1, var_sites=2),
+    dict(method='var', num_sweeps=2, var_sites=2),
+    dict(method='var', num_sweeps=3, var_sites=2),
+    dict(method='var', num_sweeps=2, var_sites=2, initmpa='fillbelow'),
+))
 
+COMPR_NORM = tuplize((
+    None, dict(allbutone=True),
+    dict(left=1), dict(left=-1), dict(right=1), dict(right=-1),
+    dict(left=1, right=2), dict(left=-2, right=-1), dict(left=1, right=-1),
+))
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_compression_svd_hard_cutoff(nr_sites, local_dim, bond_dim):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    zero = factory.zero(nr_sites, (local_dim, local_dim), bond_dim)
-    mpo_new = mpo + zero
+COMPR_SETTINGS = params_product(COMPR_SIZES, COMPR_NORM, COMPR_SETTINGS)
 
-    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
-    for bdims in zip(mpo.bdims, zero.bdims, mpo_new.bdims):
-        assert_equal(bdims[0] + bdims[1], bdims[2])
+def normalize_if_applicable(mpa, arg):
+    if arg is not None:
+        if 'allbutone' not in arg and len(mpa) == 1:
+            return False
+        mpa.normalize(**arg)
+    return True
 
-    # Right-compression
-    mpo_new = mpo + zero
-    overlap = mpo_new.compress_svd(bdim=bond_dim, direction='right')
-    assert_array_equal(mpo_new.bdims, bond_dim)
-    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
-    assert_correct_normalzation(mpo_new, nr_sites - 1, nr_sites)
-    # since no truncation error should occur
-    assert_almost_equal(overlap, mp.norm(mpo)**2, decimal=5)
+def call_compression(mpa, comparg, bonddim, call_compress=False):
+    """Add bonddim if relerr is not given.
 
-    # Left-compression
-    mpo_new = mpo + zero
-    overlap = mpo_new.compress_svd(bdim=bond_dim, direction='left')
-    assert_array_equal(mpo_new.bdims, bond_dim)
-    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
-    assert_correct_normalzation(mpo_new, 0, 1)
-    # since no truncation error should occur
-    assert_almost_equal(overlap, mp.norm(mpo)**2, decimal=5)
-
-
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_compression_svd_relerr(nr_sites, local_dim, bond_dim):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    zero = factory.zero(nr_sites, (local_dim, local_dim), bond_dim)
-    mpo_new = mpo + zero
-
-    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
-    for bdims in zip(mpo.bdims, zero.bdims, mpo_new.bdims):
-        assert_equal(bdims[0] + bdims[1], bdims[2])
-
-    # Right-compression
-    mpo_new = mpo + zero
-    mpo_new.compress_svd(relerr=1e-6, direction='right')
-    assert_array_equal(mpo_new.bdims, bond_dim)
-    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
-    assert_correct_normalzation(mpo_new, nr_sites - 1, nr_sites)
-
-    # Left-compression
-    mpo_new = mpo + zero
-    mpo_new.compress_svd(relerr=1e-6, direction='left')
-    assert_array_equal(mpo_new.bdims, bond_dim)
-    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
-    assert_correct_normalzation(mpo_new, 0, 1)
+    """
+    if 'relerr' in comparg:
+        pass
+    elif comparg.get('initmpa') == 'fillbelow':
+        initmpa = factory.random_mpa(len(mpa), mpa.pdims[0], bonddim, norm1=True)
+        comparg = col.ChainMap({'initmpa': initmpa}, comparg)
+    else:
+        comparg = col.ChainMap({'bdim': bonddim}, comparg)
+    if call_compress:
+        return mpa.compress(**comparg)
+    else:
+        return mpa.compression(**comparg)
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_compression_svd_overlap(nr_sites, local_dim, bond_dim):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    mpo_new = mpo.copy()
+@pt.mark.parametrize(
+    'nr_sites, local_dims, bond_dim, normalize, comparg', COMPR_SETTINGS)
+def test_ncompression_and_compress(nr_sites, local_dims, bond_dim, normalize, comparg):
+    """Test that .compression() and .compress() produce identical results.
 
-    # Catch superficious compression paramter
-    max_bdim = max(bond_dim // 2, 1)
+    """
+    mpa = factory.random_mpa(nr_sites, local_dims, bond_dim * 2, norm1=True)
+    if not normalize_if_applicable(mpa, normalize):
+        return
 
-    overlap = mpo_new.compress_svd(bdim=max_bdim, direction='right')
-    assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
-    assert all(bdim <= max_bdim for bdim in mpo_new.bdims)
+    comparg = comparg.copy()
+    if comparg['method'] == 'var':
+        # Exact equality between `compr` and `compr2` below requires a
+        # fixed start vector.
+        comparg['initmpa'] = factory.random_mpa(nr_sites, local_dims, bond_dim)
 
-    mpo_new = mpo.copy()
-    overlap = mpo_new.compress_svd(bdim=max_bdim, direction='left')
-    assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
-    assert all(bdim <= max_bdim for bdim in mpo_new.bdims)
-
-
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_compression_svd_compare(nr_sites, local_dim, bond_dim):
-    randstate = np.random.RandomState(seed=46)
-    mpa = factory.random_mpa(nr_sites, (local_dim,) * 2, bond_dim, randstate)
-    target_bonddim = max(2 * bond_dim // 3, 1)
-    directions = ('left', 'right')
-    for direction in directions:
-        target_array = _svd_compression_full(mpa, direction, target_bonddim)
-        mpa_compr = mpa.copy()
-        mpa_compr.compress_svd(bdim=target_bonddim, direction=direction)
-        array_compr = mpa_compr.to_array()
-        assert_array_almost_equal(
-            target_array, array_compr,
-            err_msg='direction {0!r} failed'.format(direction))
+    # The results from .compression() and .compress() must match
+    # exactly. No numerical difference is allowed.
+    compr2 = mpa.copy()
+    overlap2 = call_compression(compr2, comparg, bond_dim, call_compress=True)
+    compr, overlap = call_compression(mpa, comparg, bond_dim)
+    assert overlap == overlap2
+    assert_mpa_identical(compr, compr2)
 
 
-############################
-# Variational compression  #
-############################
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_compression_var_trivial(nr_sites, local_dim, bond_dim):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+@pt.mark.parametrize(
+    'nr_sites, local_dims, bond_dim, normalize, comparg', COMPR_SETTINGS)
+def test_ncompression_result_properties(nr_sites, local_dims, bond_dim, normalize, comparg):
+    """Test general properties of the MPA coming from a compression.
 
-    # using internal initial vector
-    mpo_new = mpo.compress_var(bdim=10 * bond_dim)
-    # since var. compression doesnt take into account the original bond dim
-    assert all(d1 <= d2 for d1, d2 in zip(mpo.bdims, mpo_new.bdims))
-    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+    """
+    st = None
+    if comparg['method'] == 'var' and comparg['num_sweeps'] == 3:
+        # Do a large number of sweeps and use a fixed seed to compare
+        # with SVD compression below.
+        comparg = col.ChainMap({'num_sweeps': 20 // comparg['var_sites']}, comparg)
+        st = np.random.RandomState(seed=42)
 
-    # using an external initial vector
-    initmpa = factory.random_mpa(nr_sites, (local_dim, ) * 2, 10 * bond_dim)
-    initmpa *= mp.norm(mpo) / mp.norm(initmpa)
-    mpo_new = mpo.compress_var(initmpa=initmpa)
-    assert all(d1 <= d2 for d1, d2 in zip(mpo.bdims, mpo_new.bdims))
-    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
+    mpa = factory.random_mpa(nr_sites, local_dims, bond_dim * 2, st, norm1=True)
+    if not normalize_if_applicable(mpa, normalize):
+        return
+    compr, overlap = call_compression(mpa, comparg, bond_dim)
 
+    # 'relerr' is currently 1e-6 and no bond_dim is provided, so no
+    # compression will occur.
+    if 'relerr' not in comparg:
+        # Check that the bond dimension has changed.
+        assert compr.bdim < mpa.bdim
+        # Check that the target bond dimension is satisfied
+        assert compr.bdim <= bond_dim
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_compression_var_hard_cutoff(nr_sites, local_dim, bond_dim):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    zero = factory.zero(nr_sites, (local_dim, local_dim), bond_dim)
-    mpo_new = mpo + zero
+    # Check that the overlap is correct.
+    assert_almost_equal(overlap, mp.inner(mpa, compr))
 
-    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
-    for bdims in zip(mpo.bdims, zero.bdims, mpo_new.bdims):
-        assert_equal(bdims[0] + bdims[1], bdims[2])
+    # SVD: Check that .normal_form is as expected.
+    if comparg['method'] == 'svd':
+        normtarget = {'left': (0, 1), 'right': (len(compr) - 1, len(compr))}
+        assert compr.normal_form == normtarget[comparg['direction']]
 
-    mpo_new = mpo + zero
-    initmpa = factory.random_mpa(nr_sites, (local_dim, ) * 2, bond_dim)
-    mpo_new.normalize()
-    mpo_new = mpo_new.compress(method='var', initmpa=initmpa)
-    #  overlap = mpo_new.compress(bdim=bond_dim, method='var')
-    assert_array_equal(mpo_new.bdims, bond_dim)
-    assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
-    assert_correct_normalzation(mpo_new)
-    # since no truncation error should occur
-    # FIXME assert_almost_equal(overlap, mp.norm(mpo)**2, decimal=5)
+    # Check the content of .normal_form is correct.
+    assert_correct_normalization(compr)
 
-# FIXME
-#  @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-#  def test_compression_var_relerr(nr_sites, local_dim, bond_dim):
-#      mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-#      zero = factory.zero(nr_sites, (local_dim, local_dim), bond_dim)
-#      mpo_new = mpo + zero
+    # SVD: compare with alternative implementation
+    if comparg['method'] == 'svd' and 'relerr' not in comparg:
+        alt_compr = _svd_compression_full(mpa, comparg['direction'], bond_dim)
+        compr = compr.to_array()
+        assert_array_almost_equal(alt_compr, compr)
 
-#      assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
-#      for bdims in zip(mpo.bdims, zero.bdims, mpo_new.bdims):
-#          assert_equal(bdims[0] + bdims[1], bdims[2])
-
-#      # Right-compression
-#      mpo_new = mpo + zero
-#      mpo_new.compress(relerr=1e-6, method='var', direction='right')
-#      assert_array_equal(mpo_new.bdims, bond_dim)
-#      assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
-#      assert_correct_normalzation(mpo_new, nr_sites - 1, nr_sites)
-
-#      # Left-compression
-#      mpo_new = mpo + zero
-#      mpo_new.compress(relerr=1e-6, method='var', direction='left')
-#      assert_array_equal(mpo_new.bdims, bond_dim)
-#      assert_array_almost_equal(mpo_to_global(mpo), mpo_to_global(mpo_new))
-#      assert_correct_normalzation(mpo_new, 0, 1)
-
-# FIXME
-#  @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-#  def test_compression_var_overlap(nr_sites, local_dim, bond_dim):
-#      mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-#      mpo_new = mpo.copy()
-
-#      # Catch superficious compression paramter
-#      max_bdim = max(bond_dim // 2, 1)
-
-#      overlap = mpo_new.compress(max_bdim=max_bdim, method='var', direction='right')
-#      assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
-#      assert all(bdim <= max_bdim for bdim in mpo_new.bdims)
-
-#      mpo_new = mpo.copy()
-#      overlap = mpo_new.compress(max_bdim=max_bdim, method='var', direction='left')
-#      assert_almost_equal(overlap, mp.inner(mpo, mpo_new), decimal=5)
-#      assert all(bdim <= max_bdim for bdim in mpo_new.bdims)
+    if comparg['method'] == 'var' and comparg['num_sweeps'] > 5:
+        right_svd_res = _svd_compression_full(mpa, 'right', bond_dim)
+        left_svd_res = _svd_compression_full(mpa, 'left', bond_dim)
+        array = mpa.to_array()
+        right_svd_overlap = np.abs(np.vdot(array, right_svd_res))
+        left_svd_overlap = np.abs(np.vdot(array, left_svd_res))
+        overlap_rel_tol = 1e-6
+        assert abs(overlap) >= right_svd_overlap * (1 - overlap_rel_tol)
+        assert abs(overlap) >= left_svd_overlap * (1 - overlap_rel_tol)
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_compression_var_to_svd(nr_sites, local_dim, bond_dim):
-    randstate = np.random.RandomState(seed=42)
-    mpa = factory.random_mpo(nr_sites, local_dim, bond_dim,
-                             randstate=randstate, normalized=True)
-    array = mpa.to_array()
-    target_bonddim = max(2 * bond_dim // 3, 1)
+@pt.mark.parametrize(
+    'nr_sites, local_dims, bond_dim, normalize, comparg', COMPR_SETTINGS)
+def test_ncompression_bonddim_noincrease(nr_sites, local_dims, bond_dim, normalize, comparg):
+    """Compression to larger bond dimension doesn't increase bond
+    dimension.
 
-    right_svd_res = _svd_compression_full(mpa, 'right', target_bonddim)
-    left_svd_res = _svd_compression_full(mpa, 'left', target_bonddim)
-    right_svd_overlap = np.abs(np.vdot(array, right_svd_res))
-    left_svd_overlap = np.abs(np.vdot(array, left_svd_res))
+    """
+    if 'relerr' in COMPR_SETTINGS:
+        return  # Test does not apply
+    mpa = factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True)
+    if not normalize_if_applicable(mpa, normalize):
+        return
 
-    # max_num_sweeps = 3 and 4 is sometimes not good enough.
-    mpa = mpa.compress_var(num_sweeps=5, bdim=target_bonddim, randstate=randstate)
-    mpa_compr_overlap = np.abs(np.vdot(array, mpa.to_array()))
-
-    # The basic intuition is that variational compression, given
-    # enough sweeps, should be at least as good as left and right SVD
-    # compression because the SVD compression scheme has a strong
-    # interdependence between truncations at the individual sites,
-    # while variational compression does not have that. Therefore, we
-    # check exactly that.
-
-    overlap_rel_tol = 1e-6
-    assert mpa_compr_overlap >= right_svd_overlap * (1 - overlap_rel_tol)
-    assert mpa_compr_overlap >= left_svd_overlap * (1 - overlap_rel_tol)
+    for factor in (1, 2):
+        compr, overlap = call_compression(mpa, comparg, bond_dim * factor)
+        assert_almost_equal(overlap, 1)
+        assert_mpa_almost_equal(compr, mpa, full=True)
+        assert compr.bdims == mpa.bdims
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_compression_var_to_svd_twosite(nr_sites, local_dim, bond_dim):
-    randstate = np.random.RandomState(seed=42)
-    mpa = factory.random_mpo(nr_sites, local_dim, bond_dim,
-                             randstate=randstate, normalized=True)
-    array = mpa.to_array()
-    target_bonddim = max(2 * bond_dim // 3, 1)
+@pt.mark.parametrize(
+    'nr_sites, local_dims, bond_dim, normalize, comparg, add',
+    params_product(COMPR_SETTINGS, (('zero',), ('self',))))
+def test_ncompression_trivialsum(nr_sites, local_dims, bond_dim, normalize, comparg, add):
+    """`a + b` compresses exactly to a multiple of `a` if `b` is `0`, `a`
+    or `-2*a`
 
-    right_svd_res = _svd_compression_full(mpa, 'right', target_bonddim)
-    left_svd_res = _svd_compression_full(mpa, 'left', target_bonddim)
-    right_svd_overlap = np.abs(np.vdot(array, right_svd_res))
-    left_svd_overlap = np.abs(np.vdot(array, left_svd_res))
+    """
+    mpa = factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True)
+    if not normalize_if_applicable(mpa, normalize):
+        return
+    zero = factory.zero(nr_sites, local_dims, bond_dim)
+    choices = {'zero': (zero, 1), 'self': (mpa, 2), 'self2': (-2*mpa, -1)}
+    add, factor = choices[add]
 
-    # same as test_compression_var_to_svd, but with sweep_sites=2
-    mpa = mpa.compress_var(num_sweeps=3, sweep_sites=2,
-                           bdim=target_bonddim, randstate=randstate)
-    mpa_compr_overlap = np.abs(np.vdot(array, mpa.to_array()))
+    msum = mpa + add
+    assert_mpa_almost_equal(msum, factor * mpa, full=True)
 
-    overlap_rel_tol = 1e-6
-    assert mpa_compr_overlap >= right_svd_overlap * (1 - overlap_rel_tol)
-    assert mpa_compr_overlap >= left_svd_overlap * (1 - overlap_rel_tol)
+    # Check that bond dimension has increased (they exactly add)
+    for dim1, dim2, sum_dim in zip(mpa.bdims, add.bdims, msum.bdims):
+        assert dim1 + dim2 == sum_dim
+
+    compr, overlap = call_compression(msum, comparg, bond_dim)
+    assert_almost_equal(overlap, factor**2)
+    assert_mpa_almost_equal(compr, factor * mpa, full=True)
+    assert compr.bdims == mpa.bdims
 
 
 #######################################
 #  Compression test helper functions  #
 #######################################
 def _svd_compression_full(mpa, direction, target_bonddim):
-    """Re-implement what SVD compression on MPAs does but on the level of the
-    full matrix representation, i.e. it truncates the Schmidt-decompostion
+    """Re-implement MPArray.compress('svd') but on the level of the full
+    matrix representation, i.e. it truncates the Schmidt-decompostion
     on each bipartition sequentially.
 
     Two implementations that produce the same data are not a guarantee
