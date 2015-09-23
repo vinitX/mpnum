@@ -478,7 +478,6 @@ class MPArray(object):
             raise NotImplementedError('left={!r}, right={!r}'
                                       .format(left, right))
 
-
         if not lnormalize < rnormalize:
             raise ValueError("Normalization {}:{} invalid"
                              .format(lnormalize, rnormalize))
@@ -606,7 +605,7 @@ class MPArray(object):
         raise ValueError('{} is not a valid direction'.format(direction))
 
     def _compression_var(self, initmpa=None, bdim=None, randstate=np.random,
-                     num_sweeps=5, var_sites=1):
+                         num_sweeps=5, var_sites=1):
         """Compresses the MPA using variational compression [Sch11_, Sec. 4.5.2]
 
         Does not change the current instance.
@@ -635,7 +634,7 @@ class MPArray(object):
             raise ValueError('You must provide initmpa or bdim')
         if bdim > self.bdim:
             return self.copy(), 1
-        
+
         if initmpa is None:
             from mpnum.factory import random_mpa
             compr = random_mpa(len(self), self.pdims, bdim, randstate=randstate)

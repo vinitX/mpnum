@@ -16,7 +16,7 @@ from six.moves import range
 import mpnum.factory as factory
 import mpnum.mparray as mp
 from mpnum import _tools
-from mpnum._tools import global_to_local, local_to_global
+from mpnum._tools import global_to_local
 from mpnum.testing import params_product, tuplize, assert_mpa_almost_equal, \
     assert_mpa_identical
 
@@ -616,15 +616,27 @@ COMPR_NORM = tuplize((
 
 COMPR_SETTINGS = params_product(COMPR_SIZES, COMPR_NORM, COMPR_SETTINGS)
 
-def normalize_if_applicable(mpa, arg):
-    if arg is not None:
-        if 'allbutone' not in arg and len(mpa) == 1:
+
+def normalize_if_applicable(mpa, normalization):
+    """Check whether the given normalization can be applied.
+
+    :returns: True if the normalization has been applied.
+
+    `normalization=None` means not to call `mpa.normalize()` at all.
+
+    The test whether the normalization can be applied is not
+    comprehensive.
+
+    """
+    if normalization is not None:
+        if 'allbutone' not in normalization and len(mpa) == 1:
             return False
-        mpa.normalize(**arg)
+        mpa.normalize(**normalization)
     return True
 
+
 def call_compression(mpa, comparg, bonddim, call_compress=False):
-    """Add bonddim if relerr is not given.
+    """Add 'bdim' if relerr is not given. Add 'initmpa' if requested.
 
     """
     if 'relerr' in comparg:
@@ -667,7 +679,8 @@ def test_ncompression_and_compress(nr_sites, local_dims, bond_dim, normalize, co
 
 @pt.mark.parametrize(
     'nr_sites, local_dims, bond_dim, normalize, comparg', COMPR_SETTINGS)
-def test_ncompression_result_properties(nr_sites, local_dims, bond_dim, normalize, comparg):
+def test_ncompression_result_properties(nr_sites, local_dims, bond_dim,
+                                        normalize, comparg):
     """Test general properties of the MPA coming from a compression.
 
     """
@@ -721,7 +734,8 @@ def test_ncompression_result_properties(nr_sites, local_dims, bond_dim, normaliz
 
 @pt.mark.parametrize(
     'nr_sites, local_dims, bond_dim, normalize, comparg', COMPR_SETTINGS)
-def test_ncompression_bonddim_noincrease(nr_sites, local_dims, bond_dim, normalize, comparg):
+def test_ncompression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
+                                         normalize, comparg):
     """Compression to larger bond dimension doesn't increase bond
     dimension.
 

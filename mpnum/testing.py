@@ -21,6 +21,7 @@ def params_product(*iterables):
     return tuple(tuple(it.chain(*setting))
                  for setting in it.product(*iterables))
 
+
 def tuplize(iterable):
     """tuple((x,) for x in iterable) says it all
 
@@ -52,4 +53,3 @@ def assert_mpa_identical(mpa1, mpa2):
     assert mpa1.normal_form == mpa2.normal_form
     # TODO: We should make a comprehensive comparison between `mpa1`
     # and `mpa2`.  Are we missing other things?
-
