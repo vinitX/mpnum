@@ -26,7 +26,7 @@ def test_mineig(nr_sites, local_dim, bond_dim):
     randstate = np.random.RandomState(seed=46)
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=randstate,
                              hermitian=True, normalized=True)
-    mpo.normalize()
+    mpo.normalize(allbutone=True)
     op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
     eigvals, eigvec = np.linalg.eig(op)
 
@@ -55,7 +55,7 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim):
     randstate = np.random.RandomState(seed=46)
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=randstate,
                              hermitian=True, normalized=True)
-    mpo.normalize()
+    mpo.normalize(allbutone=True)
     op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
     eigvals, eigvec = np.linalg.eig(op)
 
