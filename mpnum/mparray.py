@@ -531,6 +531,52 @@ class MPArray(object):
         self._rnormalized = to_site
 
     def compress(self, method='svd', **kwargs):
+        """Compress `self`, modifying it in-place.
+
+        :param method: 'svd' or 'var'
+
+        Parameters for 'svd':
+
+        :param bdim: Maximal bond dimension of the result. Default
+            `None`.
+
+        :param relerr: Maximal fraction of discarded singular values.
+            Default `0`.  If both bdim and relerr are given, the
+            smaller resulting bond dimension is used.
+
+        :param direction: `right` (sweep from left to right), `left`
+            (inverse) or `None` (choose depending on
+            normalization). Default `None`.
+
+        Parameters for 'var':
+
+        :param bdim: Maximal bond dimension for the result. Required.
+
+        :param startmpa: Start vector. Default: Random, with same norm
+            as self.
+
+        :param randstate: `numpy.random.RandomState` instance used for
+            random start vector. Default: `numpy.random`.
+
+        :param num_sweeps: Maximum number of sweeps to do. Default 5.
+
+        :param var_sites: Number of sites to modify
+            simultaneausly. Default 1.
+
+        Increasing `var_sites` makes it less likely to get stuck in a
+        local minimum.
+
+        :returns: Overlap <M|M'> of the original M and its compr. M'
+
+        .. todo:: Check whether the return value is precisely verified
+                  in the tests.
+
+        References: 
+
+        * 'svd': Singular value truncation, [Sch11_, Sec. 4.5.1]
+        * 'var': Variational compression, [Sch11_, Sec. 4.5.2]
+
+        """
         if method == 'svd':
             return self._compress_svd(**kwargs)
         elif method == 'var':
@@ -543,6 +589,14 @@ class MPArray(object):
             raise ValueError('{!r} is not a valid method'.format(method))
 
     def compression(self, method='svd', **kwargs):
+        """Return a compression of `self`. Does not modify `self`.
+
+        Parameters: See :func:`MPArray.compress()`.
+
+        :returns: `(compressed_mpa, overlap)`, for `overlap` see
+            :func:`MPArray.compress()`.
+
+        """
         if method == 'svd':
             target = self.copy()
             overlap = target._compress_svd(**kwargs)
@@ -553,37 +607,9 @@ class MPArray(object):
             raise ValueError('{!r} is not a valid method'.format(method))
 
     def _compress_svd(self, bdim=None, relerr=0.0, direction=None):
-        """Compresses the MPA inplace using SVD [Sch11_, Sec. 4.5.1]
+        """Compress `self` using SVD [Sch11_, Sec. 4.5.1]
 
-        :param bdim: Maximal bond dimension for the compressed MPA (default
-            max of current bond dimensions, i.e. no compression)
-        :param relerr: Maximal allowed error for each truncation step, that is
-            the fraction of truncated singular values over their sum (default
-            0.0, i.e. no compression)
-
-        If both bdim and relerr is passed, the smaller resulting bond
-        dimension is used.
-
-        .. todo:: The documentation of `inplace` must be moved to
-                  :func:`compress()`.
-
-        :param direction: In which direction the compression should
-            operate. (default: depending on the current normalization,
-            such that the number of sites that need to be normalized
-            is smaller)
-
-            * 'right': Starting on the leftmost site, the compression
-              sweeps to the right yielding a completely
-              left-canonical MPA
-            * 'left': Starting on rightmost site, the compression
-              sweeps to the left yielding a completely
-              right-canoncial MPA
-
-        :returns:
-            * inplace=True: Overlap <M|M'> of the original M and its
-              compr. M'
-            * inplace=False: Compressed MPA, Overlap <M|M'> of the
-              original M and its compr. M',
+        Parameters: See :func:`MPArray.compress()`.
 
         """
         if len(self) == 1:
@@ -604,43 +630,32 @@ class MPArray(object):
 
         raise ValueError('{} is not a valid direction'.format(direction))
 
-    def _compression_var(self, initmpa=None, bdim=None, randstate=np.random,
+    def _compression_var(self, bdim, startmpa=None, randstate=np.random,
                          num_sweeps=5, var_sites=1):
-        """Compresses the MPA using variational compression [Sch11_, Sec. 4.5.2]
+        """Return a compression from variational compression [Sch11_,
+        Sec. 4.5.2]
 
-        Does not change the current instance.
-
-        :param initmpa: Initial MPA for the interative optimization, should
-            have same physical shape as `self` (default random start vector
-            with same norm as self)
-        :param bdim: Maximal bond dimension for the random start vector
-            (default max of current bond dimensions, i.e. no compression)
-        :param randstate: numpy.random.RandomState instance or something
-            suitable for :func:`factory.zrandn` (default numpy.random)
-        :param num_sweeps: Maximum number of sweeps to do
-        :param var_sites: Number of neighbouring sites minimized over
-            simultaneously; for too small value the algorithm may get stuck
-            in local minima (default 1)
-        :returns: Compressed MPArray
+        Parameters and return value: See
+        :func:`MPArray.compression()`.
 
         """
         if len(self) == 1:
             # Cannot do anything.
             return self, 1
 
-        if initmpa is not None:
-            bdim = initmpa.bdim
+        if startmpa is not None:
+            bdim = startmpa.bdim
         elif bdim is None:
-            raise ValueError('You must provide initmpa or bdim')
+            raise ValueError('You must provide startmpa or bdim')
         if bdim > self.bdim:
             return self.copy(), 1
 
-        if initmpa is None:
+        if startmpa is None:
             from mpnum.factory import random_mpa
             compr = random_mpa(len(self), self.pdims, bdim, randstate=randstate)
             compr *= norm(self) / norm(compr)
         else:
-            compr = initmpa.copy()
+            compr = startmpa.copy()
             assert all(d1 == d2 for d1, d2 in zip(self.pdims, compr.pdims))
 
         # flatten the array since MPS is expected & bring back

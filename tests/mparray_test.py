@@ -615,7 +615,7 @@ COMPR_SETTINGS = tuplize((
     dict(method='var', num_sweeps=1, var_sites=2),
     dict(method='var', num_sweeps=2, var_sites=2),
     dict(method='var', num_sweeps=3, var_sites=2),
-    dict(method='var', num_sweeps=2, var_sites=2, initmpa='fillbelow'),
+    dict(method='var', num_sweeps=2, var_sites=2, startmpa='fillbelow'),
 ))
 
 COMPR_NORM = tuplize((
@@ -646,14 +646,14 @@ def normalize_if_applicable(mpa, normalization):
 
 
 def call_compression(mpa, comparg, bonddim, call_compress=False):
-    """Add 'bdim' if relerr is not given. Add 'initmpa' if requested.
+    """Add 'bdim' if relerr is not given. Add 'startmpa' if requested.
 
     """
     if 'relerr' in comparg:
         pass
-    elif comparg.get('initmpa') == 'fillbelow':
-        initmpa = factory.random_mpa(len(mpa), mpa.pdims[0], bonddim, norm1=True)
-        comparg = ChainMap({'initmpa': initmpa}, comparg)
+    elif comparg.get('startmpa') == 'fillbelow':
+        startmpa = factory.random_mpa(len(mpa), mpa.pdims[0], bonddim, norm1=True)
+        comparg = ChainMap({'startmpa': startmpa}, comparg)
     else:
         comparg = ChainMap({'bdim': bonddim}, comparg)
     if call_compress:
@@ -676,7 +676,7 @@ def test_ncompression_and_compress(nr_sites, local_dims, bond_dim, normalize, co
     if comparg['method'] == 'var':
         # Exact equality between `compr` and `compr2` below requires a
         # fixed start vector.
-        comparg['initmpa'] = factory.random_mpa(nr_sites, local_dims, bond_dim)
+        comparg['startmpa'] = factory.random_mpa(nr_sites, local_dims, bond_dim)
 
     # The results from .compression() and .compress() must match
     # exactly. No numerical difference is allowed.
