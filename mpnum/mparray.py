@@ -35,7 +35,7 @@ import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
 
-from mpnum._tools import block_diag, matdot
+from mpnum._tools import block_diag, matdot, local_to_global, global_to_local
 from mpnum._named_ndarray import named_ndarray
 from six.moves import range, zip, zip_longest
 
@@ -160,6 +160,15 @@ class MPArray(object):
         return self._lnormalized or 0, self._rnormalized or len(self)
 
     @classmethod
+    def from_array_global(cls, array, plegs=None, has_bond=False):
+        assert not has_bond, 'not implemented yet'
+        plegs = plegs if plegs is not None else array.ndim
+        assert array.ndim % plegs == 0, \
+            "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
+        sites = array.ndim // plegs
+        return cls.from_array(global_to_local(array, sites), plegs, has_bond)
+
+    @classmethod
     def from_array(cls, array, plegs=None, has_bond=False):
         """Computes the (exact) representation of `array` as MPA with open
         boundary conditions, i.e. bond dimension 1 at the boundary. This
@@ -213,6 +222,9 @@ class MPArray(object):
         WARNING: This can be slow for large MPAs!
         """
         return _ltens_to_array(iter(self))[0, ..., 0]
+
+    def to_array_global(self):
+        return local_to_global(self.to_array(), sites=len(self))
 
     def paxis_iter(self, axes=0):
         """Returns an iterator yielding Sub-MPArrays of `self` by iterating
