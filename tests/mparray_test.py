@@ -5,13 +5,12 @@
 
 from __future__ import absolute_import, division, print_function
 
-import collections as col
 import numpy as np
 import pytest as pt
 from numpy.linalg import svd
 from numpy.testing import assert_array_almost_equal, assert_array_equal, \
     assert_almost_equal, assert_equal
-from six.moves import range
+from six.moves import range, zip
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
@@ -19,6 +18,17 @@ from mpnum import _tools
 from mpnum._tools import global_to_local
 from mpnum.testing import params_product, tuplize, assert_mpa_almost_equal, \
     assert_mpa_identical
+
+try:
+    from collections import ChainMap
+except ImportError:
+    # Python 2 :(
+    # Let's make up a cheap replacement:
+    def ChainMap(*dicts):
+        res = {}
+        for d in reversed(dicts):
+            res.update(d)
+        return res
 
 
 # nr_sites, local_dim, bond_dim
@@ -643,9 +653,9 @@ def call_compression(mpa, comparg, bonddim, call_compress=False):
         pass
     elif comparg.get('initmpa') == 'fillbelow':
         initmpa = factory.random_mpa(len(mpa), mpa.pdims[0], bonddim, norm1=True)
-        comparg = col.ChainMap({'initmpa': initmpa}, comparg)
+        comparg = ChainMap({'initmpa': initmpa}, comparg)
     else:
-        comparg = col.ChainMap({'bdim': bonddim}, comparg)
+        comparg = ChainMap({'bdim': bonddim}, comparg)
     if call_compress:
         return mpa.compress(**comparg)
     else:
@@ -688,7 +698,7 @@ def test_ncompression_result_properties(nr_sites, local_dims, bond_dim,
     if comparg['method'] == 'var' and comparg['num_sweeps'] == 3:
         # Do a large number of sweeps and use a fixed seed to compare
         # with SVD compression below.
-        comparg = col.ChainMap({'num_sweeps': 20 // comparg['var_sites']}, comparg)
+        comparg = ChainMap({'num_sweeps': 20 // comparg['var_sites']}, comparg)
         st = np.random.RandomState(seed=42)
 
     mpa = factory.random_mpa(nr_sites, local_dims, bond_dim * 2, st, norm1=True)
