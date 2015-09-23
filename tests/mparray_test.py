@@ -664,7 +664,7 @@ def call_compression(mpa, comparg, bonddim, call_compress=False):
 
 @pt.mark.parametrize(
     'nr_sites, local_dims, bond_dim, normalize, comparg', COMPR_SETTINGS)
-def test_ncompression_and_compress(nr_sites, local_dims, bond_dim, normalize, comparg):
+def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize, comparg):
     """Test that .compression() and .compress() produce identical results.
 
     """
@@ -689,7 +689,7 @@ def test_ncompression_and_compress(nr_sites, local_dims, bond_dim, normalize, co
 
 @pt.mark.parametrize(
     'nr_sites, local_dims, bond_dim, normalize, comparg', COMPR_SETTINGS)
-def test_ncompression_result_properties(nr_sites, local_dims, bond_dim,
+def test_compression_result_properties(nr_sites, local_dims, bond_dim,
                                         normalize, comparg):
     """Test general properties of the MPA coming from a compression.
 
@@ -744,7 +744,7 @@ def test_ncompression_result_properties(nr_sites, local_dims, bond_dim,
 
 @pt.mark.parametrize(
     'nr_sites, local_dims, bond_dim, normalize, comparg', COMPR_SETTINGS)
-def test_ncompression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
+def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
                                          normalize, comparg):
     """Compression to larger bond dimension doesn't increase bond
     dimension.
@@ -766,7 +766,7 @@ def test_ncompression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
 @pt.mark.parametrize(
     'nr_sites, local_dims, bond_dim, normalize, comparg, add',
     params_product(COMPR_SETTINGS, (('zero',), ('self',))))
-def test_ncompression_trivialsum(nr_sites, local_dims, bond_dim, normalize, comparg, add):
+def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize, comparg, add):
     """`a + b` compresses exactly to a multiple of `a` if `b` is `0`, `a`
     or `-2*a`
 
