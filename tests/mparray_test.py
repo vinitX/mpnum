@@ -693,6 +693,14 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
                                         normalize, comparg):
     """Test general properties of the MPA coming from a compression.
 
+    TODO: The worst case for compression is that all singular values
+    have the same size.  This gives a fidelity lower bound for the
+    compression result.  Check that lower bound.
+
+    TODO: Make this test a wrapper around MPArray.compression() to
+    reduce code duplication.  This wrapper would replace
+    call_compression().
+
     """
     st = None
     if comparg['method'] == 'var' and comparg['num_sweeps'] == 3:
