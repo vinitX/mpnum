@@ -180,6 +180,15 @@ class MPArray(object):
 
     @classmethod
     def from_array_global(cls, array, plegs=None, has_bond=False):
+        """Create MPA from array in global form.
+
+        See :func:`mpnum._tools.global_to_local()` for global
+        vs. local form.
+
+        Parameters and return value: See
+        `from_array()`. `has_bond=True` is not supported yet.
+
+        """
         assert not has_bond, 'not implemented yet'
         plegs = plegs if plegs is not None else array.ndim
         assert array.ndim % plegs == 0, \
@@ -189,12 +198,18 @@ class MPArray(object):
 
     @classmethod
     def from_array(cls, array, plegs=None, has_bond=False):
-        """Computes the (exact) representation of `array` as MPA with open
-        boundary conditions, i.e. bond dimension 1 at the boundary. This
-        is done by factoring the off the left and the "physical" legs from
-        the rest of the tensor by a QR decomposition and working its way
-        through the tensor from the left. This yields a left-canonical
-        representation of `array`. [Sch11_, Sec. 4.3.1]
+        """Create MPA from array in local form.
+
+        See :func:`mpnum._tools.global_to_local()` for global
+        vs. local form.
+
+        Computes the (exact) representation of `array` as MPA with
+        open boundary conditions, i.e. bond dimension 1 at the
+        boundary. This is done by factoring the off the left and the
+        "physical" legs from the rest of the tensor by a QR
+        decomposition and working its way through the tensor from the
+        left. This yields a left-canonical representation of
+        `array`. [Sch11_, Sec. 4.3.1]
 
         The result is a chain of local tensors with `plegs` physical legs at
         each location and has array.ndim // plegs number of sites.
@@ -235,14 +250,30 @@ class MPArray(object):
         return cls(a[None, ..., None] for a in factors)
 
     def to_array(self):
-        """Returns the full array representation of the MPA
-        :returns: Full matrix A as array of shape [(i1),...,(iN)]
+        """Return MPA as array in local form.
 
-        WARNING: This can be slow for large MPAs!
+        See :func:`mpnum._tools.global_to_local()` for global
+        vs. local form.
+
+        :returns: ndarray of shape :code:`sum(self.pdims, ())`
+
+        .. note:: Full arrays can require much more memory than
+                  MPAs. (That's why you are using MPAs, right?)
+
         """
         return _ltens_to_array(iter(self))[0, ..., 0]
 
     def to_array_global(self):
+        """Return MPA as array in global form.
+
+        See :func:`mpnum._tools.global_to_local()` for global
+        vs. local form.
+
+        :returns: ndarray of shape :code:`sum(zip(*self.pdims, ()))`
+
+        See :func:`to_array()` for more details.
+
+        """
         return local_to_global(self.to_array(), sites=len(self))
 
     def paxis_iter(self, axes=0):
