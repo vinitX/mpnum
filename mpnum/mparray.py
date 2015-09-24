@@ -743,7 +743,6 @@ class MPArray(object):
     #  updates? [Sch11_] says it turns out to be useful in actual DMRG.
     #  - return these details for tracking errors in larger computations
     # TODO Refactor. Way too involved!
-    # FIXME Does this play nice with different bdims?
     def _adapt_to(self, target, num_sweeps, var_sites):
         """Iteratively minimize the l2 distance between `self` and `target`.
         This is especially important for variational compression, where `self`
