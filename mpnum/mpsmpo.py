@@ -1,9 +1,99 @@
 # encoding: utf-8
 
 
-"""
+r"""Matrix Product State (MPS) and Operator (MPO) functions
 
-.. todo:: What considered an MPS/MPO/PMPS? What are the conventions?
+Definitions
+-----------
+
+We consider a linear chain of :math:`n` sites with associated Hilbert
+spaces \mathcal H_k = \C^{d_k}, :math:`d_k`, :math:`k \in [1..n] :=
+\{1, 2, \ldots, n\}`. The set of linear operators :math:`\mathcal H_k
+\to \mathcal H_k` is denoted by :math:`\mathcal B_k`. We write
+:math:`\mathcal H = \mathcal H_1 \otimes \cdots \otimes \mathcal H_n`
+and the same for :math:`\mathcal B`.
+
+We use the following three representations:
+
+* Matrix product state (MPS): Vector :math:`\lvert \psi \rangle \in
+  \mathcal H`
+
+* Matrix product operator (MPO): Operator :math:`M \in \mathcal B`
+
+* Locally purified matrix product state (PMPS): Positive semidefinite
+  operator :math:`\rho \in \mathcal B`
+
+All objects are represented by :math:`n` local tensors.
+
+Matrix product state (MPS)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Represent a vector :math:`\lvert \psi \rangle \in \mathcal H` as
+
+.. math::
+
+   \langle i_1 \ldots i_n \vert \psi \rangle 
+   = A^{(1)}_{i_1} \cdots A^{(n)}_{i_n}, 
+   \quad A^{(k)}_{i_k} \in \mathbb C^{D_{k-1} \times D_k}, 
+   \quad D_0 = 1 = D_n.
+
+The :math:`k`-th local tensor is :math:`T_{l,i,r} =
+(A^{(k)}_i)_{l,r}`.
+
+The vector :math:`\lvert \psi \rangle` can be a state, with the
+density matrix given by :math:`\rho = \lvert \psi \rangle \langle \psi
+\rvert \in \mathcal B`.
+
+Matrix product operator (MPO)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Represent an operator :math:`M \in \mathcal B` as
+
+.. math::
+
+  \langle i_1 \ldots i_n \vert M \vert j_1 \ldots j_n \rangle
+  = A^{(1)}_{i_1 j_1} \cdots A^{(n)}_{i_n j_n},
+  \quad A^{(k)}_{i_k j_k} \in \mathbb C^{D_{k-1} \times D_k}, 
+   \quad D_0 = 1 = D_n.
+
+The :math:`k`-th local tensor is :math:`T_{l,i,j,r} = (A^{(k)}_{i
+j})_{l,r}`.
+
+This representation can be used to represent a mixed state :math:`\rho
+= M`, but it is not limited to positive semidefinite :math:`M`.
+
+Locally purified matrix product state (PMPS)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Represent a positive semidefinite operator :math:`\rho \in \mathcal B`
+as follows: Let :math:`\mathcal H_k' = \mathbb C^{d'_k}` with suitable
+:math:`d'_k` and :math:`\mathcal P = \mathcal H_1 \otimes \mathcal
+H'_1 \otimes \cdots \otimes \mathcal H_n \otimes \mathcal H'_n`. Find
+:math:`\vert \Phi \rangle \in \mathcal P` such that
+
+.. math::
+
+   \rho = \operatorname{tr}_{\mathcal H'_1, \ldots, \mathcal H'_n}
+   (\lvert \Phi \rangle \langle \Phi \rvert)
+
+and represent :math:`\lvert \Phi \rangle` as
+
+.. math::
+
+   \langle i_1 i'_1 \ldots i_n i'_n \vert \Phi \rangle
+   = A^{(1)}_{i_1 i'_1} \cdots A^{(n)}_{i_n i'_n},
+   \quad A^{(k)}_{i_k j_k} \in \mathbb C^{D_{k-1} \times D_k}, 
+   \quad D_0 = 1 = D_n.
+
+The :math:`k`-th local tensor is :math:`T_{l,i,i',r} = (A^{(k)}_{i
+i'})_{l,r}`.
+
+The ancillary dimensions :math:`d'_i` are not determined by the
+:math:`d_i` but depend on the state. E.g. if :math:`\rho` is pure, one
+can set all :math:`d_i = 1`.
+
+
+.. todo:: Add references.
 
 .. todo:: Are derived classes MPO/MPS/PMPS of any help?
 
