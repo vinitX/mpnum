@@ -23,7 +23,8 @@ try:
     from collections import ChainMap
 except ImportError:
     # Python 2 :(
-    # Let's make up a cheap replacement:
+    # We could do:  from ConfigParser import _Chainmap as ChainMap
+    # Or we make up a cheap replacement:
     def ChainMap(*dicts):
         res = {}
         for d in reversed(dicts):
