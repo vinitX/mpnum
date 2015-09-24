@@ -327,6 +327,9 @@ def mineig(mpo,
                                               mpo[pos + minimize_sites],
                                               eigvec[pos + minimize_sites])
 
+    # The iteration pattern is very similar to
+    # :func:`mpnum.mparray.MPArray._adapt_to()`. See there for more
+    # comments.
     for num_sweep in range(max_num_sweeps):
         # Sweep from left to right
         for pos in range(nr_sites - minimize_sites + 1):

@@ -752,25 +752,28 @@ class MPArray(object):
         :param target: MPS to compress; i.e. MPA with only one
             physical leg per site
 
-        Other parameters: See :func:`MPArray.compress()`.
+        Other parameters and references: See
+        :func:`MPArray.compress()`.
 
         """
         # For
         #
         #   pos in range(nr_sites - var_sites),
         #
-        # we find the ground state of an operator supported on
+        # we increase the overlap between `self` and `target` by
+        # varying the local tensors of `self` on sites
         #
-        #   range(pos, pos_end),  pos_end = pos + minimize_sites
+        #   range(pos, pos_end),  pos_end = pos + var_sites
         #
-        # lvecs[pos] and rvecs[pos] contain the vectors needed to construct that
-        # operator for that. Therefore, lvecs[pos] is constructed from matrices on
+        # lvecs[pos] and rvecs[pos] contain the vectors needed to
+        # obtain the new local tensors. Therefore, lvecs[pos] is
+        # constructed from matrices on
         #
         #   range(0, pos - 1)
         #
         # and rvecs[pos] is constructed from matrices on
         #
-        #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
+        #   range(pos_end, nr_sites),  pos_end = pos + var_sites 
         assert_array_equal(self.plegs, 1, "Self is not a MPS")
         assert_array_equal(target.plegs, 1, "Target is not a MPS")
 
@@ -783,9 +786,18 @@ class MPArray(object):
             rvecs[pos] = _adapt_to_add_r(rvecs[pos + 1], self[pos_end],
                                          target[pos_end])
 
+        # Example: For `num_sweeps = 3`, `nr_sites = 3` and `var_sites
+        # = 1`, we want the following sequence for `pos`:
+        #
+        #    0    1    2    1    0    1    2    1    0    1    2    1    0
+        #    \_________/    \____/    \____/    \____/    \____/    \____/
+        #        LTR         RTL       LTR       RTL       LTR       RTL
+        #    \___________________/    \______________/    \______________/
+        #     num_sweep = 0            num_sweep = 1       num_sweep = 1
+
         max_bonddim = self.bdim
         for num_sweep in range(num_sweeps):
-            # Sweep from left to right
+            # Sweep from left to right (LTR)
             for pos in range(nr_sites - var_sites + 1):
                 if pos == 0 and num_sweep > 0:
                     # Don't do first site again if we are not in the first sweep.
@@ -800,8 +812,8 @@ class MPArray(object):
                                                        target[pos:pos_end],
                                                        rvecs[pos], max_bonddim)
 
-            # NOTE Why no num_sweep > 0 here???
-            # Sweep from right to left (don't do last site again)
+            # Sweep from right to left (RTL; don't do `pos = nr_sites
+            # - var_sites` again)
             for pos in reversed(range(nr_sites - var_sites)):
                 pos_end = pos + var_sites
                 if pos < nr_sites - var_sites:
