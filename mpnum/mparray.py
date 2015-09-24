@@ -827,7 +827,7 @@ class MPArray(object):
         #
         # and rvecs[pos] is constructed from matrices on
         #
-        #   range(pos_end, nr_sites),  pos_end = pos + var_sites 
+        #   range(pos_end, nr_sites),  pos_end = pos + var_sites
         assert_array_equal(self.plegs, 1, "Self is not a MPS")
         assert_array_equal(target.plegs, 1, "Target is not a MPS")
 
