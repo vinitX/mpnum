@@ -17,13 +17,16 @@ def params_product(*iterables):
     >>> params_product(((1, 11), (2, 22)), tuplize(('a', 'b')))
     ((1, 11, 'a'), (1, 11, 'b'), (2, 22, 'a'), (2, 22, 'b'))
 
+    .. todo:: Surely, something like this (but more convenient) has
+              been implemented somewhere?
+
     """
     return tuple(tuple(it.chain(*setting))
                  for setting in it.product(*iterables))
 
 
 def tuplize(iterable):
-    """tuple((x,) for x in iterable) says it all
+    """Return :code:`tuple((x,) for x in iterable)`
 
     >>> tuplize([1, 2, 3])
     ((1,), (2,), (3,))

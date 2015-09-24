@@ -602,7 +602,18 @@ def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim):
 #####################################
 
 # nr_sites, local_dims, bond_dim
-COMPR_SIZES = ((4, (2, 3), 5),)
+COMPR_SIZES = (
+    (2, (2, 3), 5),
+    (5, 3, 4),
+    # TODO Some of the following settings take very long. Read the
+    # pytest documentation and find a way to conveniently run tests
+    # with larger parameter sets.
+    # (4, (2, 3), 5),
+    # (6, 2, 3),
+    # (5, (2, 2, 2), 20),  # about  2 minutes (Core i5-3380M)
+    # (16, 2, 10),         # about  2 minutes
+    # (16, 2, 30),         # about 10 minutes
+)
 
 COMPR_SETTINGS = tuplize((
     dict(method='svd', direction='left'),
@@ -627,21 +638,26 @@ COMPR_NORM = tuplize((
 COMPR_SETTINGS = params_product(COMPR_SIZES, COMPR_NORM, COMPR_SETTINGS)
 
 
-def normalize_if_applicable(mpa, normalization):
+def normalize_if_applicable(mpa, nmz):
     """Check whether the given normalization can be applied.
+
+    :param mp.MPArray mpa: Will call `mpa.normalize()`
+    :param nmz: Keyword arguments for `mpa.normalize()` or `None`
 
     :returns: True if the normalization has been applied.
 
-    `normalization=None` means not to call `mpa.normalize()` at all.
+    `nmz=None` means not to call `mpa.normalize()` at all.
 
     The test whether the normalization can be applied is not
     comprehensive.
 
     """
-    if normalization is not None:
-        if 'allbutone' not in normalization and len(mpa) == 1:
+    if nmz is not None:
+        if 'allbutone' not in nmz and len(mpa) == 1:
             return False
-        mpa.normalize(**normalization)
+        if nmz.get('left') == 1 and nmz.get('right') == -1 and len(mpa) == 2:
+            return False
+        mpa.normalize(**nmz)
     return True
 
 
@@ -768,7 +784,7 @@ def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
         compr, overlap = call_compression(mpa, comparg, bond_dim * factor)
         assert_almost_equal(overlap, 1)
         assert_mpa_almost_equal(compr, mpa, full=True)
-        assert compr.bdims == mpa.bdims
+        assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
 
 
 @pt.mark.parametrize(
@@ -796,7 +812,7 @@ def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize, compa
     compr, overlap = call_compression(msum, comparg, bond_dim)
     assert_almost_equal(overlap, factor**2)
     assert_mpa_almost_equal(compr, factor * mpa, full=True)
-    assert compr.bdims == mpa.bdims
+    assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
 
 
 #######################################
@@ -820,7 +836,7 @@ def _svd_compression_full(mpa, direction, target_bonddim):
     def singlecut(array, nr_left, plegs, target_bonddim):
         array_shape = array.shape
         array = array.reshape((np.prod(array_shape[:nr_left * plegs]), -1))
-        u, s, v = svd(array)
+        u, s, v = svd(array, full_matrices=False)
         u = u[:, :target_bonddim]
         s = s[:target_bonddim]
         v = v[:target_bonddim, :]
