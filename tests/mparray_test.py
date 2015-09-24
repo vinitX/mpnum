@@ -713,9 +713,10 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
     have the same size.  This gives a fidelity lower bound for the
     compression result.  Check that lower bound.
 
-    TODO: Make this test a wrapper around MPArray.compression() to
+    FIXME: Make this test a wrapper around MPArray.compression() to
     reduce code duplication.  This wrapper would replace
-    call_compression().
+    call_compression().  This would also apply more tests
+    .compress(). At the moment, we mostly test .compression().
 
     """
     st = None
@@ -728,7 +729,7 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
     mpa = factory.random_mpa(nr_sites, local_dims, bond_dim * 2, st, norm1=True)
     if not normalize_if_applicable(mpa, normalize):
         return
-    compr, overlap = call_compression(mpa, comparg, bond_dim)
+    compr, overlap = call_compression(mpa.copy(), comparg, bond_dim)
 
     # 'relerr' is currently 1e-6 and no bond_dim is provided, so no
     # compression will occur.

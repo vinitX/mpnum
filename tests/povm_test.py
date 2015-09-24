@@ -1,7 +1,5 @@
 # encoding: utf-8
-# FIXME Is there a better metric to compare two arrays/scalars than
-#       assert_(array)_almost_equal? Something that takes magnitude into
-#       account?
+
 
 from __future__ import division, print_function
 

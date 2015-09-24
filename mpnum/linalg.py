@@ -273,10 +273,8 @@ def mineig(mpo,
     Figs. 14 and 15 and pages 28 and 29.)
 
     """
-    # FIXME Function too complicated, can we split the iterative part into
-    #       subfunctions?
-
     # Possible TODOs:
+    #  - Can we refactor this function into several shorter functions?
     #  - compute the overlap between 'eigvec' from successive iterations
     #    to check whether we have converged
     #  - compute var(H) = <psi| H^2 |psi> - (<psi| H |psi>)^2 every n-th

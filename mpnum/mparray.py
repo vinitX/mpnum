@@ -15,13 +15,14 @@ References:
   .. _`arXiv: 1008.3477`: http://arxiv.org/abs/1008.3477
 
 """
+# FIXME single site MPAs -- what is left?
+# FIXME Local tensor ownership -- see MPArray class comment
 # FIXME Possible Optimization:
 #   - replace integer-for loops with iterataor (not obviously possible
-#   everwhere)
+#     everwhere)
 #   - replace internal structure as list of arrays with lazy generator of
-#   arrays (might not be possible, since we often iterate both ways!)
+#     arrays (might not be possible, since we often iterate both ways!)
 #   - more in place operations for addition, subtraction, multiplication
-# FIXME single site MPAs
 # TODO Replace all occurences of self._ltens with self[...] or similar &
 #      benchmark. This will allow easier transition to lazy evaluation of
 #      local tensors
@@ -57,6 +58,17 @@ class MPArray(object):
 
     By convention, the 0th and last dimension of the local tensors are reserved
     for the auxillary legs.
+
+    .. todo:: As it is now, e.g. :func:`MPArray.__imul__()` modifies
+              items from `self._ltens`.  This requires
+              e.g. :func:`outer()` to take copies of the local
+              tensors.  The data model seems to be that an `MPArray`
+              instance owns its local tensors and everyone else,
+              including each new `MPArray` instance, must take
+              copies. Is this correct?
+
+    .. todo:: :func:`MPArray.copy()` adheres to the model from the
+              last item. Check whether this is the case everywhere.
 
     .. todo:: If we enable all special members (e.g. `__len__`) to be
               shown, we get things like `__dict__` with very long
@@ -109,6 +121,7 @@ class MPArray(object):
     def __getitem__(self, index):
         """Use only for read-only access! Do not change arrays in place!"""
         if type(index) == tuple:
+            # FIXME Right now, this code is unused.
             assert len(index) == len(self)
             return MPArray(ltens[:, i, ..., :]
                            for i, ltens in zip(index, self._ltens))
@@ -242,7 +255,7 @@ class MPArray(object):
 
             (A[(k, :), (m, :)] for m in range(...) for k in range(...))
 
-        FIXME: The previous code is not highlighted because
+        FIXME The previous code is not highlighted because
         :code:`A[(k, :)]` is invalid syntax. Example of working
         highlighting::
 
@@ -655,6 +668,10 @@ class MPArray(object):
         elif bdim is None:
             raise ValueError('You must provide startmpa or bdim')
         if bdim > self.bdim:
+            # The caller expects that the result is indpendent from
+            # `self`. Take a copy. If we are called from .compress()
+            # instead of .compression(), we could avoid the copy just
+            # return self.
             return self.copy(), 1
 
         if startmpa is None:
@@ -670,7 +687,8 @@ class MPArray(object):
         compr = compr.ravel()
         compr._adapt_to(self.ravel(), num_sweeps, var_sites)
         compr = compr.reshape(shape)
-        # FIXME compute overlap differently?
+        # FIXME Compute overlap from the norms of `self` and `target`,
+        # which are faster to obtain because they are normalized.
         overlap = inner(self, compr)
         return compr, overlap
 
@@ -734,6 +752,7 @@ class MPArray(object):
 
     #  Possible TODOs:
     #
+    #  - Can we refactor this function into several shorter functions?
     #  - implement calculating the overlap between 'compr' and 'target' from
     #  the norm of 'compr', given that 'target' is normalized
     #  - track overlap between 'compr' and 'target' and stop sweeping if it
@@ -742,7 +761,6 @@ class MPArray(object):
     #  - Shall we track the error in the SVD truncation for multi-site
     #  updates? [Sch11_] says it turns out to be useful in actual DMRG.
     #  - return these details for tracking errors in larger computations
-    # TODO Refactor. Way too involved!
     def _adapt_to(self, target, num_sweeps, var_sites):
         """Iteratively minimize the l2 distance between `self` and `target`.
         This is especially important for variational compression, where `self`
