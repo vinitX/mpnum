@@ -601,6 +601,11 @@ def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim):
 #  SVD and variational compression  #
 #####################################
 
+# TODO To check non-normalized inputs, we take a normalized state and
+# multiply it with a constant with magnitude different from 1. This is
+# to avoid errors like "123456789.1 and 123456789.2 are not equal to
+# six decimals" and is related to the FIXME at the module start.
+
 # nr_sites, local_dims, bond_dim
 COMPR_SIZES = (
     (2, (2, 3), 5),
@@ -684,7 +689,7 @@ def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize, com
     """Test that .compression() and .compress() produce identical results.
 
     """
-    mpa = factory.random_mpa(nr_sites, local_dims, bond_dim * 2, norm1=True)
+    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2, norm1=True)
     if not normalize_if_applicable(mpa, normalize):
         return
 
@@ -726,7 +731,7 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
         comparg = ChainMap({'num_sweeps': 20 // comparg['var_sites']}, comparg)
         st = np.random.RandomState(seed=42)
 
-    mpa = factory.random_mpa(nr_sites, local_dims, bond_dim * 2, st, norm1=True)
+    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2, st, norm1=True)
     if not normalize_if_applicable(mpa, normalize):
         return
     compr, overlap = call_compression(mpa.copy(), comparg, bond_dim)
@@ -777,13 +782,14 @@ def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
     """
     if 'relerr' in COMPR_SETTINGS:
         return  # Test does not apply
-    mpa = factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True)
+    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True)
+    norm = mp.norm(mpa.copy())
     if not normalize_if_applicable(mpa, normalize):
         return
 
     for factor in (1, 2):
         compr, overlap = call_compression(mpa, comparg, bond_dim * factor)
-        assert_almost_equal(overlap, 1)
+        assert_almost_equal(overlap, norm**2)
         assert_mpa_almost_equal(compr, mpa, full=True)
         assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
 
@@ -796,7 +802,8 @@ def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize, compa
     or `-2*a`
 
     """
-    mpa = factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True)
+    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True)
+    norm = mp.norm(mpa.copy())
     if not normalize_if_applicable(mpa, normalize):
         return
     zero = factory.zero(nr_sites, local_dims, bond_dim)
@@ -811,7 +818,7 @@ def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize, compa
         assert dim1 + dim2 == sum_dim
 
     compr, overlap = call_compression(msum, comparg, bond_dim)
-    assert_almost_equal(overlap, factor**2)
+    assert_almost_equal(overlap, (norm * factor)**2)
     assert_mpa_almost_equal(compr, factor * mpa, full=True)
     assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
 

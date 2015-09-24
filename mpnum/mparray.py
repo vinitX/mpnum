@@ -616,6 +616,10 @@ class MPArray(object):
         :returns: `(compressed_mpa, overlap)`, for `overlap` see
             :func:`MPArray.compress()`.
 
+        Note that this function does not modify `self`, but it may
+        change the normalization of `self`. (Call to :func:`norm` in
+        :func:`_compression_var`.)
+
         """
         if method == 'svd':
             target = self.copy()
@@ -660,8 +664,9 @@ class MPArray(object):
 
         """
         if len(self) == 1:
-            # Cannot do anything.
-            return self, 1
+            # Cannot do anything. We make a copy, see below.
+            copy = self.copy()
+            return copy, norm(copy)**2
 
         if startmpa is not None:
             bdim = startmpa.bdim
@@ -672,7 +677,8 @@ class MPArray(object):
             # `self`. Take a copy. If we are called from .compress()
             # instead of .compression(), we could avoid the copy just
             # return self.
-            return self.copy(), 1
+            copy = self.copy()
+            return copy, norm(copy)**2
 
         if startmpa is None:
             from mpnum.factory import random_mpa
