@@ -57,6 +57,14 @@ mpnum Package
     :undoc-members:
     :show-inheritance:
 
+:mod:`testing` Module
+---------------------
+
+.. automodule:: mpnum.testing
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Subpackages
 -----------
 
