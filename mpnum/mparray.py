@@ -1043,8 +1043,8 @@ def normdist(mpa1, mpa2):
     :returns: l2-norm of mpa1 - mpa2
 
     """
-    return norm(mpa1 - mpa2)
-    #  return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
+    #return norm(mpa1 - mpa2)
+    return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
 
 
 def _prune_ltens(mpa):
