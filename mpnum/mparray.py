@@ -1043,8 +1043,21 @@ def normdist(mpa1, mpa2):
     :returns: l2-norm of mpa1 - mpa2
 
     """
-    #return norm(mpa1 - mpa2)
-    return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
+    return norm(mpa1 - mpa2)
+    # This implementation doesn't produce an MPA with double bond dimension:
+    #
+    # return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
+    #
+    # However, there are precision issues which show up e.g. in
+    # test_project_fused_clusters(). Due to rounding errors, the term
+    # inside np.sqrt() can be slightly negative and np.sqrt() will
+    # return nan. Even if we replace slightly negative terms by zero,
+    # the slightly-positive-instead-of-zero rounding errors are
+    # amplified by np.sqrt().
+    #
+    # On the other hand, the test which fails checks the result to 7
+    # decimals. Given that np.sqrt() amplifies errors in small values,
+    # this is too strict.
 
 
 def _prune_ltens(mpa):
