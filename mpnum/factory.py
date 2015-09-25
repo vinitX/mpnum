@@ -11,7 +11,7 @@ from scipy.linalg import qr
 
 import mpnum.mparray as mp
 import mpnum.mpsmpo as mpsmpo
-from mpnum._tools import global_to_local, norm_2, matdot
+from mpnum._tools import global_to_local, matdot
 from six.moves import range
 
 
@@ -44,7 +44,7 @@ def random_vec(sites, ldim, randstate=None):
     """
     shape = (ldim, ) * sites
     psi = _zrandn(shape, randstate=randstate)
-    psi /= np.sqrt(np.vdot(psi, psi))
+    psi /= np.linalg.norm(psi)
     return psi
 
 
@@ -66,7 +66,7 @@ def random_op(sites, ldim, hermitian=False, normalized=False, randstate=None):
     if hermitian:
         op += np.transpose(op).conj()
     if normalized:
-        op /= norm_2(op)
+        op /= np.linalg.norm(op)
     return op.reshape((ldim,) * 2 * sites)
 
 

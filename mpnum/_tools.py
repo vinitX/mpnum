@@ -112,11 +112,6 @@ def mkron(*args):
     return mkron(np.kron(args[0], args[1]), *args[2:])
 
 
-def norm_2(x):
-    """l2 norm of the vector x"""
-    return np.sqrt(np.vdot(x, x))
-
-
 def block_diag(summands, axes=(0, 1)):
     """Block-diagonal sum for n-dimensional arrays.
 

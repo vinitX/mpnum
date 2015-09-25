@@ -1028,9 +1028,9 @@ def norm(mpa):
     current_lnorm, current_rnorm = mpa.normal_form
 
     if current_rnorm == 1:
-        return np.sqrt(np.vdot(mpa[0], mpa[0]))
+        return np.linalg.norm(mpa[0])
     elif current_lnorm == len(mpa) - 1:
-        return np.sqrt(np.vdot(mpa[-1], mpa[-1]))
+        return np.linalg.norm(mpa[-1])
     else:
         raise ValueError("Normalization error in MPArray.norm")
 
