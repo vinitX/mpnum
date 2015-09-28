@@ -171,3 +171,27 @@ def block_diag(summands, axes=(0, 1)):
     old_axes_order = np.argsort(axes_order)
     res = res.transpose(old_axes_order)
     return res
+
+
+def verify_real_nonnegative(values, zero_tol=1e-6, zero_cutoff=None):
+    """Check that values are real and non-negative.
+
+    :param numpy.ndarray values: An ndarray of complex or real values.
+
+    :param zero_tol: Replace negative real values and imaginary parts
+        with modulus smaller than or equal to `zero_tol` with zero.
+
+    :param zero_cutoff: Replace positive real values smaller than or
+       equal to zero_cutoff with zero. Default: None (`zero_tol` will
+       be used).
+
+    :returns: An ndarray of real values.
+
+    """
+    if zero_cutoff is None:
+        zero_cutoff = zero_tol
+    assert all(abs(values.imag) <= zero_tol), 'non-real values found'
+    values = values.real
+    assert all(values >= -zero_tol), 'negative values found'
+    values[values <= zero_cutoff] = 0
+    return values
