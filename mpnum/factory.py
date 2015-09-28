@@ -271,14 +271,14 @@ def random_mps(sites, ldim, bdim, randstate=None):
     return mps
 
 
-def random_mpdo(sites, ldim, bdim, randstate=None):
+def random_mpdo(sites, ldim, bdim, randstate=np.random):
     """Returns a randomly choosen matrix product density operator (i.e.
     positive semidefinite matrix product operator with trace 1).
 
     :param sites: Number of sites
     :param ldim: Local dimension
     :param bdim: Bond dimension
-    :param randstate: numpy.random.RandomState instance or None
+    :param randstate: numpy.random.RandomState instance
     :returns: randomly choosen matrix product (pure) state
 
     >>> rho = random_mpdo(4, 2, 4)
@@ -290,7 +290,7 @@ def random_mpdo(sites, ldim, bdim, randstate=None):
     """
     # generate density matrix as a mixture of `bdim` pure product states
     psis = [random_mps(sites, ldim, 1, randstate=randstate) for _ in range(bdim)]
-    weights = (lambda x: x / np.sum(x))(np.random.rand(bdim))
+    weights = (lambda x: x / np.sum(x))(randstate.rand(bdim))
     rho = ft.reduce(mp.MPArray.__add__, (mpsmpo.mps_as_mpo(psi) * weight
                                          for weight, psi in zip(weights, psis)))
 
