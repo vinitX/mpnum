@@ -109,19 +109,36 @@ from mpnum._tools import matdot
 from six.moves import range
 
 
-def reductions_mpo(mpa, width, startsites=None):
-    """Take an MPA with two physical legs per site and perform partial trace
-    over the complement the sites startsites[i], ..., startsites[i] + width.
+def reductions_mpo(mpa, width=None, startsites=None, stopsites=None):
+    """Take an MPO and iterate over partial traces of the MPO.
 
-    :param mpa: MPArray with two physical legs (a Matrix Product Operator)
-    :param width: number of sites in support of the results
-    :param startsites: Iterator yielding the index of the leftmost sites of the
-        supports of the results (default all possible reductions in ascending
-        order)
-    :returns: Iterator over reduced_state_as_mpo, same order as 'startsites'
+    The support of the i-th result is :code:`range(startsites[i],
+    stopsites[i])`.
+
+    :param mpnum.mparray.MPArray mpa: An MPO
+
+    :param startsites: Defaults to :code:`range(len(mpa) - width +
+        1)`.
+
+    :param stopsites: Defaults to :code:`[ start + width for start in
+        startsites ]`. If specified, we require `startsites` to be
+        given and `width` to be None.
+
+    :param width: Number of sites in support of the results. Default
+        `None`. Must be specified if one or both of `startsites` and
+        `stopsites` are not given.
+
+    :returns: Iterator over reduced_state_as_mpo
+
     """
-    if startsites is None:
-        startsites = range(len(mpa) - width + 1)
+    if stopsites is None:
+        assert width is not None
+        if startsites is None:
+            startsites = range(len(mpa) - width + 1)
+        stopsites = (start + width for start in startsites)
+    else:
+        assert width is None
+        assert startsites is not None
 
     assert_array_equal(mpa.plegs, 2)
     rem_left = {0: np.array(1, ndmin=2)}
@@ -149,17 +166,17 @@ def reductions_mpo(mpa, width, startsites=None):
             return rem_cache[num_sites]
 
     num_sites = len(mpa)
-    for startsite in startsites:
+    for start, stop in zip(startsites, stopsites):
         # FIXME we could avoid taking copies here, but then in-place
         # multiplication would have side effects. We could make the
         # affected arrays read-only to turn unnoticed side effects into
         # errors.
         # Is there something like a "lazy copy" or "copy-on-write"-copy?
         # I believe not.
-        ltens = [lten.copy() for lten in mpa[startsite:startsite + width]]
-        rem = get_remainder(rem_left, startsite, 1)
+        ltens = [lten.copy() for lten in mpa[start:stop]]
+        rem = get_remainder(rem_left, start, 1)
         ltens[0] = matdot(rem, ltens[0])
-        rem = get_remainder(rem_right, num_sites - (startsite + width), -1)
+        rem = get_remainder(rem_right, num_sites - stop, -1)
         ltens[-1] = matdot(ltens[-1], rem)
         yield mp.MPArray(ltens)
 

@@ -13,23 +13,29 @@ import mpnum._tools as _tools
 from mparray_test import MP_TEST_PARAMETERS
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width',
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, max_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
-def test_reductions_mpo(nr_sites, local_dim, bond_dim, keep_width):
+def test_reductions_mpo(nr_sites, local_dim, bond_dim, max_width):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo.to_array_global()
 
-    startsites = range(nr_sites - keep_width + 1)
-    for site, reduced_mpo in zip(startsites,
-                                 mm.reductions_mpo(mpo, keep_width, startsites)):
-        traceout = tuple(range(site)) \
-            + tuple(range(site + keep_width, nr_sites))
+    param = tuple(
+        (start, start + width)
+        for width in range(1, max_width)
+        for start in range(nr_sites - width + 1)
+    )
+    start = tuple(start for start, _ in param)
+    stop = tuple(stop for _, stop in param)
+    red = mm.reductions_mpo(mpo, startsites=start, stopsites=stop)
+    for start, stop, reduced_mpo in zip(start, stop, red):
+        traceout = tuple(range(start)) + tuple(range(stop, nr_sites))
         red_from_op = _tools.partial_trace(op, traceout)
-        assert_array_almost_equal(reduced_mpo.to_array_global(), red_from_op,
-                                  err_msg="not equal at site {}".format(site))
+        assert_array_almost_equal(
+            reduced_mpo.to_array_global(), red_from_op,
+            err_msg="not equal at {}:{}".format(start, stop))
 
     # check default argument for startsite
-    assert len(list(mm.reductions_mpo(mpo, keep_width))) == nr_sites - keep_width + 1
+    assert len(list(mm.reductions_mpo(mpo, max_width))) == nr_sites - max_width + 1
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width',
