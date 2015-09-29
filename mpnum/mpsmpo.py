@@ -229,36 +229,31 @@ def reductions_pmps(pmps, width=None, startsites=None, stopsites=None):
         yield reduced_mps
 
 
-def reductions_mps(mps, width, startsites=None):
-    """PMPS reduced states of an MPS
+def reductions_mps(mps, width=None, startsites=None, stopsites=None):
+    """Iterate over PMPS reduced states of an MPS
 
-    Convert `mps` to a PMPS and apply :func:`reductions_pmps()`.
+    `width`, `startsites` and `stopsites`: See
+    :func:`reductions_mpo()`.
 
-    :param mps: MPS, will be converted to a PMPS with
-        :func:`mps_to_pmps()`.
-    :param width: See :func:`reductions_pmps()`
-    :param startsites: See :func:`reductions_pmps()`
-    :returns: Iterator over reduced_state_as_pmps
+    :param mps: Pure state as MPS
+    :returns: Iterator over reduced states as PMPS
 
     """
     pmps = mps_to_pmps(mps)
-    return reductions_pmps(pmps, width, startsites)
+    return reductions_pmps(pmps, width, startsites, stopsites)
 
 
-def reductions_mps_as_mpo(mps, width, startsites=None):
-    """MPO reduced states of an MPS
+def reductions_mps_as_mpo(mps, width=None, startsites=None, stopsites=None):
+    """Iterate over MPO reduced states of an MPS
 
-    Convert the output from :func:`reductions_mps` to MPOs with
-    :func:`pmps_to_mpo`.
+    `width`, `startsites` and `stopsites`: See
+    :func:`reductions_mpo()`.
 
-    :param mps: MPS, will be converted to a PMPS with
-        :func:`mps_to_pmps()`.
-    :param width: See :func:`reductions_pmps()`
-    :param startsites: See :func:`reductions_pmps()`
-    :returns: Iterator over reduced_state_as_mpo
+    :param mps: Pure state as MPS
+    :returns: Iterator over reduced states as MPO
 
     """
-    return map(pmps_to_mpo, reductions_mps(mps, width, startsites))
+    return map(pmps_to_mpo, reductions_mps(mps, width, startsites, stopsites))
 
 
 def pmps_to_mpo(pmps):
