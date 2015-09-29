@@ -284,7 +284,7 @@ def mps_to_pmps(mps):
     return mp.MPArray(ltens)
 
 
-def mps_as_mpo(mps):
+def mps_to_mpo(mps):
     """Convert a pure MPS to a mixed state MPO.
 
     :param MPArray mps: An MPA with one physical leg

@@ -80,13 +80,13 @@ def test_pmps_to_mpo(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_mps_as_mpo(nr_sites, local_dim, bond_dim):
+def test_mps_to_mpo(nr_sites, local_dim, bond_dim):
     mps = factory.random_mpa(nr_sites, local_dim, bond_dim)
-    # Instead of calling the two functions, we call mps_as_mpo(),
+    # Instead of calling the two functions, we call mps_to_mpo(),
     # which does exactly that:
     #   mps_as_puri = mp.mps_as_local_purification_mps(mps)
     #   mpo = mp.pmps_to_mpo(mps_as_puri)
-    mpo = mm.mps_as_mpo(mps)
+    mpo = mm.mps_to_mpo(mps)
     # This is also a test of mp.mps_as_local_purification_mps() in the
     # following sense: Local purifications are representations of
     # mixed states. Therefore, compare mps and mps_as_puri by
