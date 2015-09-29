@@ -121,6 +121,8 @@ def _check_reductions_args(nr_sites, width, startsites, stopsites):
         assert width is not None
         if startsites is None:
             startsites = range(nr_sites - width + 1)
+        else:
+            startsites = tuple(startsites)  # Allow iterables
         stopsites = (start + width for start in startsites)
     else:
         assert width is None
