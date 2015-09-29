@@ -32,6 +32,10 @@ def test_reductions_mpo(nr_sites, local_dim, bond_dim, max_red_width):
 
     start, stop, red = _get_reductions(mm.reductions_mpo, mpo, max_red_width)
     for start, stop, reduced_mpo in zip(start, stop, red):
+        # Check that startsites/stopsites and width produce the same result:
+        reduced_mpo2 = tuple(mm.reductions_mpo(mpo, stop - start))[start]
+        assert_array_almost_equal(reduced_mpo.to_array(),
+                                  reduced_mpo2.to_array())
         traceout = tuple(range(start)) + tuple(range(stop, nr_sites))
         red_from_op = _tools.partial_trace(op, traceout)
         assert_array_almost_equal(
@@ -51,7 +55,13 @@ def test_reductions_pmps(nr_sites, local_dim, bond_dim, max_red_width):
 
     start, stop, red = _get_reductions(mm.reductions_pmps, pmps, max_red_width)
     for start, stop, reduced_pmps in zip(start, stop, red):
+        # Check that startsites/stopsites and width produce the same result:
+        reduced_pmps2 = tuple(mm.reductions_pmps(pmps, stop - start))[start]
+        # NB: reduced_pmps and reduced_pmps2 are in general not equal,
+        # but red and red2 are.
         red = mm.pmps_to_mpo(reduced_pmps).to_array_global()
+        red2 = mm.pmps_to_mpo(reduced_pmps2).to_array_global()
+        assert_array_almost_equal(red, red2)
         traceout = tuple(range(start)) + tuple(range(stop, nr_sites))
         red_from_op = _tools.partial_trace(op, traceout)
         assert_array_almost_equal(
