@@ -3,6 +3,8 @@
 
 r"""Matrix Product State (MPS) and Operator (MPO) functions
 
+.. _mpsmpo-definitions:
+
 Definitions
 -----------
 
@@ -109,8 +111,25 @@ from mpnum._tools import matdot
 from six.moves import range
 
 
+def _check_reductions_args(nr_sites, width, startsites, stopsites):
+    """Expand the arguments of :func:`reductions_mpo()` et al.
+
+    The arguments are documented in :func:`reductions_mpo()`.
+
+    """
+    if stopsites is None:
+        assert width is not None
+        if startsites is None:
+            startsites = range(nr_sites - width + 1)
+        stopsites = (start + width for start in startsites)
+    else:
+        assert width is None
+        assert startsites is not None
+    return startsites, stopsites
+
+
 def reductions_mpo(mpa, width=None, startsites=None, stopsites=None):
-    """Take an MPO and iterate over partial traces of the MPO.
+    """Iterate over MPO partial traces of an MPO
 
     The support of the i-th result is :code:`range(startsites[i],
     stopsites[i])`.
@@ -128,17 +147,11 @@ def reductions_mpo(mpa, width=None, startsites=None, stopsites=None):
         `None`. Must be specified if one or both of `startsites` and
         `stopsites` are not given.
 
-    :returns: Iterator over reduced_state_as_mpo
+    :returns: Iterator over partial traces as MPO
 
     """
-    if stopsites is None:
-        assert width is not None
-        if startsites is None:
-            startsites = range(len(mpa) - width + 1)
-        stopsites = (start + width for start in startsites)
-    else:
-        assert width is None
-        assert startsites is not None
+    startsites, stopsites = \
+        _check_reductions_args(len(mpa), width, startsites, stopsites)
 
     assert_array_equal(mpa.plegs, 2)
     rem_left = {0: np.array(1, ndmin=2)}
@@ -181,42 +194,36 @@ def reductions_mpo(mpa, width=None, startsites=None, stopsites=None):
         yield mp.MPArray(ltens)
 
 
-def reductions_pmps(pmps, width, startsites=None):
-    """Take a local purification MPS and perform partial trace over the
-    complement the sites startsites[i], ..., startsites[i] + width.
+def reductions_pmps(pmps, width=None, startsites=None, stopsites=None):
+    """Iterate over PMPS partial traces of a PMPS
 
-    Local purification pmps of the reduced states are obtained by
-    normalizing suitably and combining the bond and ancilla indices at
-    the edge into a larger ancilla dimension.
+    `width`, `startsites` and `stopsites`: See
+    :func:`reductions_mpo()`.
 
-    :param MPArray mpa: An MPA with two physical legs (system and ancilla)
-    :param width: number of sites in support of the results
-    :param startsites: Iterator yielding the index of the leftmost sites of the
-        supports of the results (default all possible reductions in ascending
-        order)
-    :returns: Iterator over reduced_state_as_pmps, same order as 'startsites'
+    :param pmps: Mixed state in locally purified MPS representation
+        (PMPS, see :ref:`mpsmpo-definitions`)
+    :returns: Iterator over reduced states as PMPS
 
     """
-    if startsites is None:
-        startsites = range(len(pmps) - width + 1)
+    startsites, stopsites = \
+        _check_reductions_args(len(pmps), width, startsites, stopsites)
 
-    for site in startsites:
-        pmps.normalize(left=site, right=site + width)
+    for start, stop in zip(startsites, stopsites):
+        pmps.normalize(left=start, right=stop)
 
         # leftmost site
-        lten = pmps[site]
+        lten = pmps[start]
         left_bd, system, ancilla, right_bd = lten.shape
         newshape = (1, system, left_bd * ancilla, right_bd)
         ltens = [lten.swapaxes(0, 1).copy().reshape(newshape)]
 
-        # central ones
-        ltens += (lten.copy() for lten in pmps[site + 1:site + width - 1])
+        # central sites and last site
+        ltens += (lten.copy() for lten in pmps[start + 1:stop])
 
-        # rightmost site
-        lten = pmps[site + width - 1]
-        left_bd, system, ancilla, right_bd = lten.shape
+        # fix up the last site -- may be the same as the first site
+        left_bd, system, ancilla, right_bd = ltens[-1].shape
         newshape = (left_bd, system, ancilla * right_bd, 1)
-        ltens += [lten.copy().reshape(newshape)]
+        ltens[-1] = ltens[-1].reshape(newshape)
 
         reduced_mps = mp.MPArray(ltens)
         yield reduced_mps

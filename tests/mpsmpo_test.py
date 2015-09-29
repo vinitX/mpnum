@@ -13,20 +13,24 @@ import mpnum._tools as _tools
 from mparray_test import MP_TEST_PARAMETERS
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim, max_width',
+def _get_reductions(red_fun, mpa, max_red_width):
+    startstop = tuple(
+        (start, start + width)
+        for width in range(1, max_red_width)
+        for start in range(len(mpa) - max_red_width + 1)
+    )
+    start = tuple(start for start, _ in startstop)
+    stop = tuple(stop for _, stop in startstop)
+    return start, stop, red_fun(mpa, startsites=start, stopsites=stop)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, max_red_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
-def test_reductions_mpo(nr_sites, local_dim, bond_dim, max_width):
+def test_reductions_mpo(nr_sites, local_dim, bond_dim, max_red_width):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mpo.to_array_global()
 
-    param = tuple(
-        (start, start + width)
-        for width in range(1, max_width)
-        for start in range(nr_sites - width + 1)
-    )
-    start = tuple(start for start, _ in param)
-    stop = tuple(stop for _, stop in param)
-    red = mm.reductions_mpo(mpo, startsites=start, stopsites=stop)
+    start, stop, red = _get_reductions(mm.reductions_mpo, mpo, max_red_width)
     for start, stop, reduced_mpo in zip(start, stop, red):
         traceout = tuple(range(start)) + tuple(range(stop, nr_sites))
         red_from_op = _tools.partial_trace(op, traceout)
@@ -35,27 +39,28 @@ def test_reductions_mpo(nr_sites, local_dim, bond_dim, max_width):
             err_msg="not equal at {}:{}".format(start, stop))
 
     # check default argument for startsite
-    assert len(list(mm.reductions_mpo(mpo, max_width))) == nr_sites - max_width + 1
+    assert len(list(mm.reductions_mpo(mpo, max_red_width))) \
+        == nr_sites - max_red_width + 1
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width',
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, max_red_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
-def test_reductions_pmps(nr_sites, local_dim, bond_dim, keep_width):
+def test_reductions_pmps(nr_sites, local_dim, bond_dim, max_red_width):
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
     op = mm.pmps_to_mpo(pmps).to_array_global()
 
-    startsites = range(nr_sites - keep_width + 1)
-    for site, reduced_mps in zip(startsites,
-                                 mm.reductions_pmps(pmps, keep_width, startsites)):
-        reduced_mpo = mm.pmps_to_mpo(reduced_mps)
-        red = reduced_mpo.to_array_global()
-        traceout = tuple(range(site)) + tuple(range(site + keep_width, nr_sites))
+    start, stop, red = _get_reductions(mm.reductions_pmps, pmps, max_red_width)
+    for start, stop, reduced_pmps in zip(start, stop, red):
+        red = mm.pmps_to_mpo(reduced_pmps).to_array_global()
+        traceout = tuple(range(start)) + tuple(range(stop, nr_sites))
         red_from_op = _tools.partial_trace(op, traceout)
-        assert_array_almost_equal(red, red_from_op,
-                                  err_msg="not equal at site {}".format(site))
+        assert_array_almost_equal(
+            red, red_from_op,
+            err_msg="not equal at {}:{}".format(start, stop))
 
     # check default argument for startsite
-    assert len(list(mm.reductions_pmps(pmps, keep_width))) == nr_sites - keep_width + 1
+    assert len(list(mm.reductions_pmps(pmps, max_red_width))) \
+        == nr_sites - max_red_width + 1
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
