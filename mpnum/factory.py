@@ -123,11 +123,11 @@ def _generate(sites, ldim, bdim, func):
 
     """
     # If ldim is passed as scalar, make it 1-element tuple.
-    ldim = tuple(ldim) if hasattr(ldim, '__iter__') else (ldim, )
+    ldim = tuple(ldim) if hasattr(ldim, '__iter__') else (ldim,)
     # If ldim[0] is not iterable, we want the same physical legs on
     # all sites.
     if not hasattr(ldim[0], '__iter__'):
-        ldim = it.repeat(ldim, times=sites)
+        ldim = (ldim,) * sites
     # If bdim is not iterable, we want the same bond dimension
     # everywhere.
     if not hasattr(bdim, '__iter__'):
@@ -136,6 +136,8 @@ def _generate(sites, ldim, bdim, func):
         bdim = tuple(bdim)
     bdim_l = (1,) + bdim
     bdim_r = bdim + (1,)
+    assert len(ldim) == sites
+    assert len(bdim) == sites - 1
 
     ltens = (
         func((b_l,) + tuple(ld) + (b_r,))
