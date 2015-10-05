@@ -190,8 +190,9 @@ def verify_real_nonnegative(values, zero_tol=1e-6, zero_cutoff=None):
     """
     if zero_cutoff is None:
         zero_cutoff = zero_tol
-    assert all(abs(values.imag) <= zero_tol), 'non-real values found'
+    assert all(abs(values.imag) <= zero_tol), \
+        'non-real values found: {}'.format(values)
     values = values.real
-    assert all(values >= -zero_tol), 'negative values found'
+    assert all(values >= -zero_tol), 'negative values found: {}'.format(values)
     values[values <= zero_cutoff] = 0
     return values
