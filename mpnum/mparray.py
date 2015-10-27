@@ -75,6 +75,8 @@ class MPArray(object):
               contents. Therefore, special members are hidden at the
               moment, but we should show the interesting one.
 
+    .. automethod:: __init__
+
     """
 
     def __init__(self, ltens, **kwargs):
