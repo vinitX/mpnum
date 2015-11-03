@@ -63,3 +63,6 @@ target/
 /.pydevproject
 /.settings
 *~
+
+# Cython
+cython_debug
