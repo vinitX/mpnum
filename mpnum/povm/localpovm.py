@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
-"""An informationally d-level POVM that simplifies to measuring Paulis matrices in the case of qubits.
+"""An informationally d-level POVM that simplifies to measuring Paulis matrices
+in the case of qubits.
 
 """
 
