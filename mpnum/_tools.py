@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # encoding: utf-8
 """General helper functions for dealing with arrays (esp. for quantum mechanics
 """
@@ -113,11 +112,6 @@ def mkron(*args):
     return mkron(np.kron(args[0], args[1]), *args[2:])
 
 
-def norm_2(x):
-    """l2 norm of the vector x"""
-    return np.sqrt(np.vdot(x, x))
-
-
 def block_diag(summands, axes=(0, 1)):
     """Block-diagonal sum for n-dimensional arrays.
 
@@ -128,7 +122,6 @@ def block_diag(summands, axes=(0, 1)):
     :param axes: Along these axes, perform a block-diagonal sum. Can
         be negative.
 
-    >>> import numpy as np
     >>> a = np.arange(8).reshape((2, 2, 2))
     >>> b = np.arange(8, 16).reshape((2, 2, 2))
     >>> a
@@ -153,7 +146,6 @@ def block_diag(summands, axes=(0, 1)):
             [ 6,  7,  0,  0],
             [ 0,  0, 12, 13],
             [ 0,  0, 14, 15]]])
-    >>>
 
     """
     axes = np.array(axes)
@@ -179,3 +171,28 @@ def block_diag(summands, axes=(0, 1)):
     old_axes_order = np.argsort(axes_order)
     res = res.transpose(old_axes_order)
     return res
+
+
+def verify_real_nonnegative(values, zero_tol=1e-6, zero_cutoff=None):
+    """Check that values are real and non-negative.
+
+    :param numpy.ndarray values: An ndarray of complex or real values.
+
+    :param zero_tol: Replace negative real values and imaginary parts
+        with modulus smaller than or equal to `zero_tol` with zero.
+
+    :param zero_cutoff: Replace positive real values smaller than or
+       equal to zero_cutoff with zero. Default: None (`zero_tol` will
+       be used).
+
+    :returns: An ndarray of real values.
+
+    """
+    if zero_cutoff is None:
+        zero_cutoff = zero_tol
+    assert all(abs(values.imag) <= zero_tol), \
+        'non-real values found: {}'.format(values)
+    values = values.real
+    assert all(values >= -zero_tol), 'negative values found: {}'.format(values)
+    values[values <= zero_cutoff] = 0
+    return values

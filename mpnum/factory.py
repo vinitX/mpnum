@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # encoding: utf-8
 """Module to create random test instances of matrix product arrays"""
 
@@ -12,12 +11,13 @@ from scipy.linalg import qr
 
 import mpnum.mparray as mp
 import mpnum.mpsmpo as mpsmpo
-from mpnum._tools import global_to_local, norm_2, matdot
+from mpnum._tools import global_to_local, matdot
 from six.moves import range
 
 
 def _zrandn(shape, randstate=None):
-    """Shortcut for np.random.randn(*shape) + 1.j * np.random.randn(*shape)
+    """Shortcut for :code:`np.random.randn(*shape) + 1.j *
+    np.random.randn(*shape)`
 
     :param randstate: Instance of np.radom.RandomState or None (which yields
         the default np.random) (default None)
@@ -44,7 +44,7 @@ def random_vec(sites, ldim, randstate=None):
     """
     shape = (ldim, ) * sites
     psi = _zrandn(shape, randstate=randstate)
-    psi /= np.sqrt(np.vdot(psi, psi))
+    psi /= np.linalg.norm(psi)
     return psi
 
 
@@ -66,7 +66,7 @@ def random_op(sites, ldim, hermitian=False, normalized=False, randstate=None):
     if hermitian:
         op += np.transpose(op).conj()
     if normalized:
-        op /= norm_2(op)
+        op /= np.linalg.norm(op)
     return op.reshape((ldim,) * 2 * sites)
 
 
@@ -101,47 +101,65 @@ def _generate(sites, ldim, bdim, func):
     of the physical legs. The local tensors are generated using `func`
 
     :param sites: Number of sites
-    :param ldim: Depending on the type passed (checked in the following order)
-        iterable of iterable: Detailed list of physical dimensions, retured
-                              mpa will have exactly this for mpa.plegs
-        iterable of scalar: Same physical dimension for each site
-        scalar: Single physical leg for each site with given dimension
-    :param bdim: Bond dimension
-    :param func: Generator function for local tensors, should accept shape as
-        tuple in first argument and should return numpy.ndarray of given shape
+
+    :param ldim: Physical legs, depending on the type passed:
+
+        * scalar: Single physical leg for each site with given dimension
+        * iterable of scalar: Same physical legs for all sites
+        * iterable of iterable: Generated MPA will have exactly this
+          as `plegs`
+
+    :param bdim: Bond dimension, depending on the type passed:
+
+        * scalar: Same bond dimension everywhere
+        * iterable of length :code:`sites - 1`: Generated MPA will
+          have exactly this as `bdims`
+
+    :param func: Generator function for local tensors, should accept
+        shape as tuple in first argument and should return
+        numpy.ndarray of given shape
+
     :returns: randomly choosen matrix product array
 
     """
-    assert sites > 1, "Cannot generate MPA with sites {} < 2".format(sites)
-    # if ldim is passed as scalar, make it 1-element tuple
-    ldim = tuple(ldim) if hasattr(ldim, '__iter__') else (ldim, )
-    # FIXME Make more concise
+    # If ldim is passed as scalar, make it 1-element tuple.
+    ldim = tuple(ldim) if hasattr(ldim, '__iter__') else (ldim,)
+    # If ldim[0] is not iterable, we want the same physical legs on
+    # all sites.
     if not hasattr(ldim[0], '__iter__'):
-        ltens_l = func((1, ) + ldim + (bdim, ))
-        ltenss = [func((bdim, ) + ldim + (bdim, ))
-                for _ in range(sites - 2)]
-        ltens_r = func((bdim, ) + ldim + (1, ))
+        ldim = (ldim,) * sites
+    # If bdim is not iterable, we want the same bond dimension
+    # everywhere.
+    if not hasattr(bdim, '__iter__'):
+        bdim = (bdim,) * (sites - 1)
     else:
-        ldim_iter = iter(ldim)
-        ltens_l = func((1, ) + tuple(next(ldim_iter)) + (bdim, ))
-        ltenss = [func((bdim, ) + tuple(ld) + (bdim, ))
-                for _, ld in zip(range(sites - 2), ldim_iter)]
-        ltens_r = func((bdim, ) + tuple(next(ldim_iter)) + (1, ))
+        bdim = tuple(bdim)
+    bdim_l = (1,) + bdim
+    bdim_r = bdim + (1,)
+    assert len(ldim) == sites
+    assert len(bdim) == sites - 1
 
-    return mp.MPArray([ltens_l] + ltenss + [ltens_r])
+    ltens = (
+        func((b_l,) + tuple(ld) + (b_r,))
+        for b_l, ld, b_r in zip(bdim_l, ldim, bdim_r))
+    return mp.MPArray(ltens)
 
 
-def random_mpa(sites, ldim, bdim, randstate=None):
+def random_mpa(sites, ldim, bdim, randstate=None, norm1=False):
     """Returns a MPA with randomly choosen local tensors
 
     :param sites: Number of sites
     :param ldim: Depending on the type passed (checked in the following order)
-        iterable of iterable: Detailed list of physical dimensions, retured
-                              mpa will have exactly this for mpa.plegs
-        iterable of scalar: Same physical dimension for each site
-        scalar: Single physical leg for each site with given dimension
+
+        * iterable of iterable: Detailed list of physical dimensions,
+          retured mpa will have exactly this for mpa.plegs
+        * iterable of scalar: Same physical dimension for each site
+        * scalar: Single physical leg for each site with given
+          dimension
+
     :param bdim: Bond dimension
     :param randstate: numpy.random.RandomState instance or None
+    :param norm1: Resulting `mpa` has `mp.norm(mpa) == 1`
     :returns: randomly choosen matrix product array
 
     >>> mpa = random_mpa(4, 2, 10)
@@ -157,7 +175,10 @@ def random_mpa(sites, ldim, bdim, randstate=None):
     ((10, 10, 10), ((1,), (2, 3), (4, 5), (1,)))
 
     """
-    return _generate(sites, ldim, bdim, ft.partial(_zrandn, randstate=randstate))
+    mpa = _generate(sites, ldim, bdim, ft.partial(_zrandn, randstate=randstate))
+    if norm1:
+        mpa /= mp.norm(mpa.copy())
+    return mpa
 
 
 def zero(sites, ldim, bdim):
@@ -165,10 +186,13 @@ def zero(sites, ldim, bdim):
 
     :param sites: Number of sites
     :param ldim: Depending on the type passed (checked in the following order)
-        iterable of iterable: Detailed list of physical dimensions, retured
-                              mpa will have exactly this for mpa.plegs
-        iterable of scalar: Same physical dimension for each site
-        scalar: Single physical leg for each site with given dimension
+
+        * iterable of iterable: Detailed list of physical dimensions,
+          retured mpa will have exactly this for mpa.plegs
+        * iterable of scalar: Same physical dimension for each site
+        * scalar: Single physical leg for each site with given
+          dimension
+
     :param bdim: Bond dimension
     :returns: Representation of the zero-array as MPA
 
@@ -227,7 +251,7 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
 
 
 def random_mps(sites, ldim, bdim, randstate=None):
-    """Returns a randomly choosen matrix product state
+    """Returns a randomly choosen normalized matrix product state
 
     :param sites: Number of sites
     :param ldim: Local dimension
@@ -240,6 +264,8 @@ def random_mps(sites, ldim, bdim, randstate=None):
     ((10, 10, 10), ((2,), (2,), (2,), (2,)))
     >>> mps.normal_form
     (0, 4)
+    >>> round(abs(1 - mp.inner(mps, mps)), 10)
+    0.0
 
     """
     mps = random_mpa(sites, ldim, bdim, randstate=randstate)
@@ -247,14 +273,14 @@ def random_mps(sites, ldim, bdim, randstate=None):
     return mps
 
 
-def random_mpdo(sites, ldim, bdim, randstate=None):
+def random_mpdo(sites, ldim, bdim, randstate=np.random):
     """Returns a randomly choosen matrix product density operator (i.e.
     positive semidefinite matrix product operator with trace 1).
 
     :param sites: Number of sites
     :param ldim: Local dimension
     :param bdim: Bond dimension
-    :param randstate: numpy.random.RandomState instance or None
+    :param randstate: numpy.random.RandomState instance
     :returns: randomly choosen matrix product (pure) state
 
     >>> rho = random_mpdo(4, 2, 4)
@@ -266,8 +292,8 @@ def random_mpdo(sites, ldim, bdim, randstate=None):
     """
     # generate density matrix as a mixture of `bdim` pure product states
     psis = [random_mps(sites, ldim, 1, randstate=randstate) for _ in range(bdim)]
-    weights = (lambda x: x / np.sum(x))(np.random.rand(bdim))
-    rho = ft.reduce(mp.MPArray.__add__, (mpsmpo.mps_as_mpo(psi) * weight
+    weights = (lambda x: x / np.sum(x))(randstate.rand(bdim))
+    rho = ft.reduce(mp.MPArray.__add__, (mpsmpo.mps_to_mpo(psi) * weight
                                          for weight, psi in zip(weights, psis)))
 
     # Scramble the local tensors
@@ -310,7 +336,7 @@ def _gue(dim, randstate=None):
         It should take the shape of the output as numpy.random.randn does
         (default: numpy.random.randn)
     """
-    z = (_zrandn((dim, dim))) / np.sqrt(2.0)
+    z = _zrandn((dim, dim), randstate) / np.sqrt(2.0)
     q, r = qr(z)
     d = np.diagonal(r)
     ph = d / np.abs(d)

@@ -1,60 +1,94 @@
-#..!/usr/bin/env python
 # encoding: utf-8
 """Module containing routines for dealing with general matrix product arrays.
 
 References:
-    [Sch11] U. Schollwöck, The density-matrix renormalization group in the age
-        of matrix product states
+
+* .. _Sch11:
+
+  [Sch11] Schollwöck, U. (2011). “The density-matrix renormalization
+  group in the age of matrix product states”. Ann. Phys. 326(1),
+  pp. 96–192. `DOI: 10.1016/j.aop.2010.09.012`_. `arXiv: 1008.3477`_.
+
+  .. _`DOI: 10.1016/j.aop.2010.09.012`:
+     http://dx.doi.org/10.1016/j.aop.2010.09.012
+
+  .. _`arXiv: 1008.3477`: http://arxiv.org/abs/1008.3477
 
 """
+# FIXME single site MPAs -- what is left?
+# FIXME Local tensor ownership -- see MPArray class comment
 # FIXME Possible Optimization:
 #   - replace integer-for loops with iterataor (not obviously possible
-#   everwhere)
+#     everwhere)
 #   - replace internal structure as list of arrays with lazy generator of
-#   arrays (might not be possible, since we often iterate both ways!)
+#     arrays (might not be possible, since we often iterate both ways!)
 #   - more in place operations for addition, subtraction, multiplication
-# FIXME single site MPAs
 # TODO Replace all occurences of self._ltens with self[...] or similar &
 #      benchmark. This will allow easier transition to lazy evaluation of
 #      local tensors
 
 from __future__ import absolute_import, division, print_function
 
+import functools as ft
 import itertools as it
 
 import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
 
-from mpnum._tools import block_diag, matdot
+from mpnum._tools import block_diag, matdot, local_to_global, global_to_local
 from mpnum._named_ndarray import named_ndarray
-from six.moves import range, zip
+from six.moves import range, zip, zip_longest
 
 
 class MPArray(object):
-    """Efficient representation of a general N-partite array A in matrix
+    r"""Efficient representation of a general N-partite array A in matrix
     product form with open boundary conditions:
 
-            A^((i1),...,(iN)) = prod_k A^[k]_(ik)   (*)
+    .. math::
+       :label: mpa
 
-    where the A^[k] are local tensors (with N legs). The matrix products in
-    (*) are taken with respect to the left and right leg and the multi-
-    index (ik) corresponds to the physical legs. Open boundary conditions
-    imply that shape(A[0])[0] == shape(A[-1])[-1] == 1.
+       A_{i_1, \ldots, i_N} = A^{[1]}_{i_1} \ldots A^{[N]}_{i_N}
+
+    where the :math:`A^{[k]}` are local tensors (with N legs). The
+    matrix products in :eq:`mpa` are taken with respect to the left
+    and right leg and the multi-index :math:`i_k` corresponds to the
+    physical legs. Open boundary conditions imply that :math:`A^{[1]}`
+    is 1-by-something and :math:`A^{[N]}` is something-by-1.
 
     By convention, the 0th and last dimension of the local tensors are reserved
     for the auxillary legs.
+
+    .. todo:: As it is now, e.g. :func:`MPArray.__imul__()` modifies
+              items from `self._ltens`.  This requires
+              e.g. :func:`outer()` to take copies of the local
+              tensors.  The data model seems to be that an `MPArray`
+              instance owns its local tensors and everyone else,
+              including each new `MPArray` instance, must take
+              copies. Is this correct?
+
+    .. todo:: :func:`MPArray.copy()` adheres to the model from the
+              last item. Check whether this is the case everywhere.
+
+    .. todo:: If we enable all special members (e.g. `__len__`) to be
+              shown, we get things like `__dict__` with very long
+              contents. Therefore, special members are hidden at the
+              moment, but we should show the interesting one.
+
     """
 
     def __init__(self, ltens, **kwargs):
         """
-        :param list ltens: List of local tensors for the MPA. In order to be
-            valid the elements of `tens` need to be N-dimensional arrays
-            with N > 1 and need to fullfill
+        :param list ltens: List of local tensors for the MPA. In order
+            to be valid the elements of `tens` need to be
+            :code:`N`-dimensional arrays with :code:`N > 1` and need
+            to fullfill::
 
-                    shape(tens[i])[-1] == shape(tens[i])[0].
-        :param **kwargs: Additional paramters to set protected variables, not
-            for use by user
+                shape(tens[i])[-1] == shape(tens[i])[0].
+
+
+        :param `**kwargs`: Additional paramters to set protected
+            variables, not for use by user
 
         """
         self._ltens = list(ltens)
@@ -63,9 +97,9 @@ class MPArray(object):
                 raise ValueError("Shape mismatch on {}: {} != {}"
                                  .format(i, ten.shape[-1], nten.shape[0]))
 
-        # Elements _ltens[m] with m < self._lnorm are in left-cannon. form
+        # Elements _ltens[m] with m < self._lnorm are in left-canon. form
         self._lnormalized = kwargs.get('_lnormalized', None)
-        # Elements _ltens[n] with n >= self._rnorm are in right-cannon. form
+        # Elements _ltens[n] with n >= self._rnorm are in right-canon. form
         self._rnormalized = kwargs.get('_rnormalized', None)
 
     def copy(self):
@@ -102,9 +136,9 @@ class MPArray(object):
         else:
             start = index
             stop = index + 1
-        if not self._lnormalized is None:
+        if self._lnormalized is not None:
             self._lnormalized = min(self._lnormalized, start)
-        if not self._rnormalized is None:
+        if self._rnormalized is not None:
             self._rnormalized = max(self._rnormalized, stop)
         self._ltens[index] = value
 
@@ -117,6 +151,12 @@ class MPArray(object):
     def bdims(self):
         """Tuple of bond dimensions"""
         return tuple(m.shape[0] for m in self._ltens[1:])
+
+    # FIXME Rremove this function or rname to maxbdim
+    @property
+    def bdim(self):
+        """Largest bond dimension across the chain"""
+        return max(self.bdims)
 
     @property
     def pdims(self):
@@ -138,14 +178,39 @@ class MPArray(object):
         """Tensors which are currently in left/right-canonical form."""
         return self._lnormalized or 0, self._rnormalized or len(self)
 
+    #FIXME Where is this used? Does it really have to be in here?
+    @classmethod
+    def from_array_global(cls, array, plegs=None, has_bond=False):
+        """Create MPA from array in global form.
+
+        See :func:`mpnum._tools.global_to_local()` for global
+        vs. local form.
+
+        Parameters and return value: See
+        `from_array()`. `has_bond=True` is not supported yet.
+
+        """
+        assert not has_bond, 'not implemented yet'
+        plegs = plegs if plegs is not None else array.ndim
+        assert array.ndim % plegs == 0, \
+            "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
+        sites = array.ndim // plegs
+        return cls.from_array(global_to_local(array, sites), plegs, has_bond)
+
     @classmethod
     def from_array(cls, array, plegs=None, has_bond=False):
-        """Computes the (exact) representation of `array` as MPA with open
-        boundary conditions, i.e. bond dimension 1 at the boundary. This
-        is done by factoring the off the left and the "physical" legs from
-        the rest of the tensor by a QR decomposition and working its way
-        through the tensor from the left. This yields a left-canonical
-        representation of `array`. [Sch11, Sec. 4.3.1]
+        """Create MPA from array in local form.
+
+        See :func:`mpnum._tools.global_to_local()` for global
+        vs. local form.
+
+        Computes the (exact) representation of `array` as MPA with
+        open boundary conditions, i.e. bond dimension 1 at the
+        boundary. This is done by factoring the off the left and the
+        "physical" legs from the rest of the tensor by a QR
+        decomposition and working its way through the tensor from the
+        left. This yields a left-canonical representation of
+        `array`. [Sch11_, Sec. 4.3.1]
 
         The result is a chain of local tensors with `plegs` physical legs at
         each location and has array.ndim // plegs number of sites.
@@ -186,24 +251,48 @@ class MPArray(object):
         return cls(a[None, ..., None] for a in factors)
 
     def to_array(self):
-        """Returns the full array representation of the MPA
-        :returns: Full matrix A as array of shape [(i1),...,(iN)]
+        """Return MPA as array in local form.
 
-        WARNING: This can be slow for large MPAs!
+        See :func:`mpnum._tools.global_to_local()` for global
+        vs. local form.
+
+        :returns: ndarray of shape :code:`sum(self.pdims, ())`
+
+        .. note:: Full arrays can require much more memory than
+                  MPAs. (That's why you are using MPAs, right?)
+
         """
         return _ltens_to_array(iter(self))[0, ..., 0]
+
+    #FIXME Where is this used? Does it really have to be in here?
+    def to_array_global(self):
+        """Return MPA as array in global form.
+
+        See :func:`mpnum._tools.global_to_local()` for global
+        vs. local form.
+
+        :returns: ndarray of shape :code:`sum(zip(*self.pdims, ()))`
+
+        See :func:`to_array()` for more details.
+
+        """
+        return local_to_global(self.to_array(), sites=len(self))
 
     def paxis_iter(self, axes=0):
         """Returns an iterator yielding Sub-MPArrays of `self` by iterating
         over the specified physical axes.
 
-        Example
-        =======
-        If `self` represents a bipartite (i.e. length 2) array with 2
-        physical dimensions on each site A[(k,l), (m,n)], self.paxis_iter(0) is
-        equivalent to
+        **Example:** If `self` represents a bipartite (i.e. length 2)
+        array with 2 physical dimensions on each site A[(k,l), (m,n)],
+        self.paxis_iter(0) is equivalent to::
 
             (A[(k, :), (m, :)] for m in range(...) for k in range(...))
+
+        FIXME The previous code is not highlighted because
+        :code:`A[(k, :)]` is invalid syntax. Example of working
+        highlighting::
+
+            (x**2 for x in range(...))
 
         :param axes: Iterable or int specifiying the physical axes to iterate
             over (default 0 for each site)
@@ -229,13 +318,16 @@ class MPArray(object):
         return type(self)([_local_transpose(tens).conjugate()
                            for tens in self._ltens])
 
-    def C(self):
+    def conj(self):
         """Complex conjugate"""
         return type(self)(np.conjugate(self._ltens))
 
     def __add__(self, summand):
         assert len(self) == len(summand), \
             "Length is not equal: {} != {}".format(len(self), len(summand))
+        if len(self) == 1:
+            # The code below assumes at least two sites.
+            return MPArray((self[0] + summand[0],))
 
         ltens = [np.concatenate((self[0], summand[0]), axis=-1)]
         ltens += [_local_add(l, r) for l, r in zip(self[1:-1], summand[1:-1])]
@@ -266,6 +358,12 @@ class MPArray(object):
 
     def __rmul__(self, fact):
         return self.__mul__(fact)
+
+    def __neg__(self):
+        return -1 * self
+
+    def __pos__(self):
+        return self
 
     def __truediv__(self, divisor):
         if np.isscalar(divisor):
@@ -344,39 +442,98 @@ class MPArray(object):
     ################################
     #  Normalizaton & Compression  #
     ################################
-    def normalize(self, **kwargs):
-        """Brings the MPA to canonnical form in place. Note that we do not
-        support full left- or right-normalization. The right- (left- resp.)
-        most local tensor is not normalized since this can be done by
-        simply calculating its norm (instead of using SVD)
+    # FIXME TOO complicated! Necessary?
+    def normalize(self, left=None, right=None, allbutone=False):
+        """Brings the MPA to canonical form in place [Sch11_, Sec. 4.4]
 
-        [Sch11, Sec. 4.4]
+        Note that we do not support full left- or right-normalization
+        (yet?). The right- (left- resp.)  most local tensor is not
+        normalized since this can be done by simply calculating its
+        norm (instead of using SVD).
 
-        Possible combinations:
-            normalize() = normalize(left=len(self) - 1)
-                -> full left-normalization
-            normalize(left=m) for 0 <= m < len(self)
-                -> self[0],..., self[m-1] are left-normalized
-            normalize(right=n) for 0 < n <= len(self)
-                -> self[n],..., self[-1] are right-normalized
-            normalize(left=m, right=n) valid for m < n
-                -> self[0],...,self[m-1] are left normalized and
-                   self[n],...,self[-1] are right-normalized
+        If `left` and `right` are both :code:`None`, you have to set
+        `allbutone` to :code:`True` to let the function decide whether
+        to normalize to `left=-1` or to `right=1`. Apart from that,
+        the following values for `left` and `right` will be needed
+        most frequently:
+
+        +--------------+--------------+-------------+-------------------+
+        | Left-/Right- | Nothing      | All but one | All               |
+        | normalize:   |              |             |                   |
+        +==============+==============+=============+===================+
+        | `left`       | :code:`None` | :code:`-1`  | :code:`'full'`,   |
+        |              |              |             | :code:`len(self)` |
+        +--------------+--------------+-------------+-------------------+
+        | `right`      | :code:`None` | :code:`1`   | :code:`'full'`,   |
+        |              |              |             | :code:`0`         |
+        +--------------+--------------+-------------+-------------------+
+
+        Arbitrary integer values of `left` and `right` have the
+        following meaning:
+
+        - :code:`self[:left]` will be left-normalized
+
+        - :code:`self[right:]` will be right-normalized
+
+        In accordance with the last table, the special values
+        :code:`None` and :code:`full` will be replaced by the
+        following integers:
+
+        +---------+--------------+----------------+
+        |         | :code:`None` | :code:`'full'` |
+        +---------+--------------+----------------+
+        | `left`  | 0            | len(self)      |
+        +---------+--------------+----------------+
+        | `right` | len(self)    | 0              |
+        +---------+--------------+----------------+
+
+        Note that normalizing to :code:`'full'` and equivalent values
+        is not implemented yet. Also, you must provide arguments such
+        that no matrix is supposed to be both left- and right
+        normalized.
+
+        Exceptions raised:
+
+        - Integer argument too large or small: `IndexError`
+
+        - Matrix would be both left- and right-normalized: `ValueError`
+
+        - :code:`'full'` or equivalent argument: `NotImplementedError`
 
         """
         current_lnorm, current_rnorm = self.normal_form
-        if ('left' not in kwargs) and ('right' not in kwargs):
+        if left is None and right is None:
+            if not allbutone:
+                raise ValueError('Invalid combination of arguments')
             if current_lnorm < len(self) - current_rnorm:
                 self._rnormalize(1)
             else:
                 self._lnormalize(len(self) - 1)
             return
+        if allbutone:
+            raise ValueError('Invalid arguments, left={!r}, right={!r}'
+                             .format(left, right))
 
-        lnormalize = kwargs.get('left', 0)
-        rnormalize = kwargs.get('right', len(self))
+        # Fill the special values for `None` and 'full'.
+        lnormalize = {None: 0, 'full': len(self)}.get(left, left)
+        rnormalize = {None: len(self), 'full': 0}.get(right, right)
+        # Support negative indices.
+        if lnormalize < 0:
+            lnormalize += len(self)
+        if rnormalize < 0:
+            rnormalize += len(self)
+        # Perform range checks.
+        if not 0 <= lnormalize <= len(self):
+            raise IndexError('len={!r}, left={!r}'.format(len(self), left))
+        if not 0 <= rnormalize <= len(self):
+            raise IndexError('len={!r}, right={!r}'.format(len(self), right))
+        if lnormalize == len(self) or rnormalize == 0:
+            raise NotImplementedError('left={!r}, right={!r}'
+                                      .format(left, right))
 
-        assert lnormalize < rnormalize, \
-            "Normalization {}:{} invalid".format(lnormalize, rnormalize)
+        if not lnormalize < rnormalize:
+            raise ValueError("Normalization {}:{} invalid"
+                             .format(lnormalize, rnormalize))
         if current_lnorm < lnormalize:
             self._lnormalize(lnormalize)
         if current_rnorm > rnormalize:
@@ -389,8 +546,7 @@ class MPArray(object):
             performed
 
         """
-        assert to_site < len(self), "Cannot left-normalize rightmost site: {} >= {}" \
-            .format(to_site, len(self))
+        assert 0 <= to_site < len(self), 'to_site={!r}'.format(to_site)
 
         lnormal, rnormal = self.normal_form
         for site in range(lnormal, to_site):
@@ -412,8 +568,7 @@ class MPArray(object):
             performed
 
         """
-        assert to_site > 0, "Cannot right-normalize leftmost to_site: {} >= {}" \
-            .format(to_site, len(self))
+        assert 0 < to_site <= len(self), 'to_site={!r}'.format(to_site)
 
         lnormal, rnormal = self.normal_form
         for site in range(rnormal - 1, to_site - 1, -1):
@@ -428,61 +583,107 @@ class MPArray(object):
         self._lnormalized = min(to_site - 1, lnormal)
         self._rnormalized = to_site
 
-    def compress(self, method='svd', inplace=True, **kwargs):
-        """Unified interface for the compression functions
+    def compress(self, method='svd', **kwargs):
+        """Compress `self`, modifying it in-place.
 
-        :param method: Which implemention should be used for compression
-            'svd': Compression based on SVD :func:`MPArray.compress_svd`
-            'svdsweep': Compression based on SVD iteratively
-                :func:`MPArray.compress_svdsweep`
-            'var': Variational compression :func:`MPArray.compress_var`
-        :param inplace: Compress the array in place or return new copy
-        :returns: `self` if inplace is True or the compressed copy
+        :param method: 'svd', 'svdsweep' or 'var'
+
+        Parameters for 'svd':
+        =====================
+
+        :param bdim: Maximal bond dimension of the result. Default
+            `None`.
+
+        :param relerr: Maximal fraction of discarded singular values.
+            Default `0`.  If both bdim and relerr are given, the
+            smaller resulting bond dimension is used.
+
+        :param direction: `right` (sweep from left to right), `left`
+            (inverse) or `None` (choose depending on
+            normalization). Default `None`.
+
+        Parameters for 'svdsweep':
+        =====================
+
+        TODO
+
+        Parameters for 'var':
+        =====================
+
+        :param startmpa: Start vector, also fixes the bond dimension
+            of the result. Default: Random, with same norm as self.
+
+        :param bdim: Maximal bond dimension for the result. Either
+            `startmpa` or `bdim` is required.
+
+        :param randstate: `numpy.random.RandomState` instance used for
+            random start vector. Default: `numpy.random`.
+
+        :param num_sweeps: Maximum number of sweeps to do. Default 5.
+
+        :param var_sites: Number of sites to modify
+            simultaneausly. Default 1.
+
+        Increasing `var_sites` makes it less likely to get stuck in a
+        local minimum.
+
+        :returns: Overlap <M|M'> of the original M and its compr. M'
+
+        .. todo:: Check whether the return value is precisely verified
+                  in the tests.
+
+        References:
+
+        * 'svd': Singular value truncation, [Sch11_, Sec. 4.5.1]
+        * 'var': Variational compression, [Sch11_, Sec. 4.5.2]
 
         """
         if method == 'svd':
-            target = self if inplace else self.copy()
-            target.compress_svd(**kwargs)
-            return target
-
-        elif method == 'svdsweep':
-            target = self if inplace else self.copy()
-            target.compress_svdsweep(**kwargs)
-            return target
-
+            return self._compress_svd(**kwargs)
+        elif method == 'swdsweep':
         elif method == 'var':
-            compr = self.compress_var(**kwargs)
-            if inplace:
-                self._ltens = compr[:]  # no copy necessary, compr is local
-                return self
-            else:
-                return compr
+            compr, overlap = self._compression_var(**kwargs)
+            self._lnormalized = compr._lnormalized
+            self._rnormalized = compr._rnormalized
+            self._ltens = compr[:]
+            return overlap
         else:
-            raise ValueError("{} is not a valid method.".format(method))
+            raise ValueError('{!r} is not a valid method'.format(method))
 
-    def compress_svd(self, bdim=None, relerr=0.0, direction=None):
-        """Compresses the MPA inplace using SVD [Sch11, Sec. 4.5.1]
+    def compression(self, method='svd', **kwargs):
+        """Return a compression of `self`. Does not modify `self`.
 
-        :param bdim: Maximal bond dimension for the compressed MPA (default
-            max of current bond dimensions, i.e. no compression)
-        :param relerr: Maximal allowed error for each truncation step, that is
-            the fraction of truncated singular values over their sum (default
-            0.0, i.e. no compression)
+        Parameters: See :func:`MPArray.compress()`.
 
-        If both bdim and relerr is passed, the smaller resulting bond
-        dimension is used.
+        :returns: `(compressed_mpa, overlap)`, for `overlap` see
+            :func:`MPArray.compress()`.
 
-        :param direction: In which direction the compression should operate.
-            (default: depending on the current normalization, such that the
-             number of sites that need to be normalized is smaller)
-            'right': Starting on the leftmost site, the compression sweeps
-                     to the right yielding a completely left-cannonical MPA
-            'left': Starting on rightmost site, the compression sweeps
-                    to the left yielding a completely right-cannoncial MPA
-        :returns: Overlap <M|M'> of the original M and its compr. M'
-            inplace=false: Compressed MPA, Overlap <M|M'> of the original M and
-                           its compr. M',
+        Note that this function does not modify `self`, but it may
+        change the normalization of `self`. (Call to :func:`norm` in
+        :func:`_compression_var`.)
+
         """
+        if method == 'svd':
+            target = self.copy()
+            overlap = target._compress_svd(**kwargs)
+            return target, overlap
+        elif method == 'var':
+            return self._compression_var(**kwargs)
+        else:
+            raise ValueError('{!r} is not a valid method'.format(method))
+
+
+
+    def _compress_svd(self, bdim=None, relerr=0.0, direction=None):
+        """Compress `self` using SVD [Sch11_, Sec. 4.5.1]
+
+        Parameters: See :func:`MPArray.compress()`.
+
+        """
+        if len(self) == 1:
+            # Cannot do anything. Return perfect overlap.
+            return norm(self)**2
+
         ln, rn = self.normal_form
         default_direction = 'left' if len(self) - rn > ln else 'right'
         direction = default_direction if direction is None else direction
@@ -497,7 +698,7 @@ class MPArray(object):
 
         raise ValueError('{} is not a valid direction'.format(direction))
 
-    def compress_svdsweep(self, stages=None, bdim=None, relerr=0.0,
+    def _compress_svdsweep(self, stages=None, bdim=None, relerr=0.0,
                           num_sweeps=1):
         """Compresses the MPA by sweeping & iterative SVD compression
 
@@ -518,47 +719,56 @@ class MPArray(object):
             stages = [(bd, relerr / num_sweeps) for bd in bdims]
         stages = reversed(sorted(stages))
         for bdim, relerr in stages:
-            self.compress_svd(bdim, relerr)
+            self._compress_svd(bdim, relerr)
 
-    def compress_var(self, initmpa=None, bdim=None, randstate=np.random,
-                     num_sweeps=5, sweep_sites=1):
-        """Compresses the MPA using variational compression [Sch11, Sec. 4.5.2]
+    def _compression_var(self, startmpa=None, bdim=None, randstate=np.random,
+                         num_sweeps=5, var_sites=1):
+        """Return a compression from variational compression [Sch11_,
+        Sec. 4.5.2]
 
-        Does not change the current instance.
-
-        :param initmpa: Initial MPA for the interative optimization, should
-            have same physical shape as `self` (default random start vector
-            with same norm as self)
-        :param bdim: Maximal bond dimension for the random start vector
-            (default max of current bond dimensions, i.e. no compression)
-        :param randstate: numpy.random.RandomState instance or something
-            suitable for :func:`factory.zrandn` (default numpy.random)
-        :param num_sweeps: Maximum number of sweeps to do
-        :param sweep_sites: Number of neighboaring sites minimized over
-            simultaniously; for too small value the algorithm may get stuck
-            in local minima (default 1)
-        :returns: Compressed MPArray
+        Parameters and return value: See
+        :func:`MPArray.compression()`.
 
         """
-        if initmpa is None:
+        if len(self) == 1:
+            # Cannot do anything. We make a copy, see below.
+            copy = self.copy()
+            return copy, norm(copy)**2
+
+        if startmpa is not None:
+            bdim = startmpa.bdim
+        elif bdim is None:
+            raise ValueError('You must provide startmpa or bdim')
+        if bdim > self.bdim:
+            # The caller expects that the result is indpendent from
+            # `self`. Take a copy. If we are called from .compress()
+            # instead of .compression(), we could avoid the copy just
+            # return self.
+            copy = self.copy()
+            return copy, norm(copy)**2
+
+        if startmpa is None:
             from mpnum.factory import random_mpa
-            bdim = max(self.bdims) if bdim is None else bdim
             compr = random_mpa(len(self), self.pdims, bdim, randstate=randstate)
             compr *= norm(self) / norm(compr)
         else:
-            compr = initmpa.copy()
+            compr = startmpa.copy()
             assert all(d1 == d2 for d1, d2 in zip(self.pdims, compr.pdims))
 
         # flatten the array since MPS is expected & bring back
         shape = self.pdims
         compr = compr.ravel()
-        compr._adapt_to(self.ravel(), num_sweeps, sweep_sites)
+        compr._adapt_to(self.ravel(), num_sweeps, var_sites)
         compr = compr.reshape(shape)
-        return compr
+        # FIXME Compute overlap from the norms of `self` and `target`,
+        # FIXME Dont return if not asked to...
+        # which are faster to obtain because they are normalized.
+        overlap = inner(self, compr)
+        return compr, overlap
 
     def _compress_svd_r(self, bdim, relerr):
         """Compresses the MPA in place from left to right using SVD;
-        yields a left-cannonical state
+        yields a left-canonical state
 
         See :func:`MPArray.compress` for parameters
         """
@@ -586,7 +796,7 @@ class MPArray(object):
 
     def _compress_svd_l(self, bdim, relerr):
         """Compresses the MPA in place from right to left using SVD;
-        yields a right-cannonical state
+        yields a right-canonical state
 
         See :func:`MPArray.compress` for parameters
 
@@ -616,60 +826,70 @@ class MPArray(object):
 
     #  Possible TODOs:
     #
+    #  - Can we refactor this function into several shorter functions?
     #  - implement calculating the overlap between 'compr' and 'target' from
     #  the norm of 'compr', given that 'target' is normalized
     #  - track overlap between 'compr' and 'target' and stop sweeping if it
     #  is small
     #  - maybe increase bond dimension of given error cannot be reached
     #  - Shall we track the error in the SVD truncation for multi-site
-    #  updates? [Sch11] says it turns out to be useful in actual DMRG.
+    #  updates? [Sch11_] says it turns out to be useful in actual DMRG.
     #  - return these details for tracking errors in larger computations
-    # TODO Refactor. Way too involved!
-    # FIXME Does this play nice with different bdims?
-    def _adapt_to(self, target, num_sweeps, sweep_sites):
-        """Iteratively minimize the l2 distance between `self` and `target.`
+    def _adapt_to(self, target, num_sweeps, var_sites):
+        """Iteratively minimize the l2 distance between `self` and `target`.
         This is especially important for variational compression, where `self`
         is the initial guess and target the MPA to be compressed.
 
-        :param target: MPS to compress; i.e. MPA with only one physical leg per
-            site
-        :param num_sweeps: Maximum number of sweeps to do
-        :param sweep_sites: Number of neighboaring sites minimized over
-            simultaniously; for too small value the algorithm may get stuck
-            in local minima (default 1)
+        :param target: MPS to compress; i.e. MPA with only one
+            physical leg per site
+
+        Other parameters and references: See
+        :func:`MPArray.compress()`.
+
         """
         # For
         #
-        #   pos in range(nr_sites - sweep_sites),
+        #   pos in range(nr_sites - var_sites),
         #
-        # we find the ground state of an operator supported on
+        # we increase the overlap between `self` and `target` by
+        # varying the local tensors of `self` on sites
         #
-        #   range(pos, pos_end),  pos_end = pos + minimize_sites
+        #   range(pos, pos_end),  pos_end = pos + var_sites
         #
-        # lvecs[pos] and rvecs[pos] contain the vectors needed to construct that
-        # operator for that. Therefore, lvecs[pos] is constructed from matrices on
+        # lvecs[pos] and rvecs[pos] contain the vectors needed to
+        # obtain the new local tensors. Therefore, lvecs[pos] is
+        # constructed from matrices on
         #
         #   range(0, pos - 1)
         #
         # and rvecs[pos] is constructed from matrices on
         #
-        #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
+        #   range(pos_end, nr_sites),  pos_end = pos + var_sites
         assert_array_equal(self.plegs, 1, "Self is not a MPS")
         assert_array_equal(target.plegs, 1, "Target is not a MPS")
 
         nr_sites = len(target)
-        lvecs = [np.array(1, ndmin=2)] + [None] * (nr_sites - sweep_sites)
-        rvecs = [None] * (nr_sites - sweep_sites) + [np.array(1, ndmin=2)]
+        lvecs = [np.array(1, ndmin=2)] + [None] * (nr_sites - var_sites)
+        rvecs = [None] * (nr_sites - var_sites) + [np.array(1, ndmin=2)]
         self.normalize(right=1)
-        for pos in reversed(range(nr_sites - sweep_sites)):
-            pos_end = pos + sweep_sites
+        for pos in reversed(range(nr_sites - var_sites)):
+            pos_end = pos + var_sites
             rvecs[pos] = _adapt_to_add_r(rvecs[pos + 1], self[pos_end],
                                          target[pos_end])
 
-        max_bonddim = max(self.bdims)
+        # Example: For `num_sweeps = 3`, `nr_sites = 3` and `var_sites
+        # = 1`, we want the following sequence for `pos`:
+        #
+        #    0    1    2    1    0    1    2    1    0    1    2    1    0
+        #    \_________/    \____/    \____/    \____/    \____/    \____/
+        #        LTR         RTL       LTR       RTL       LTR       RTL
+        #    \___________________/    \______________/    \______________/
+        #     num_sweep = 0            num_sweep = 1       num_sweep = 1
+
+        max_bonddim = self.bdim
         for num_sweep in range(num_sweeps):
-            # Sweep from left to right
-            for pos in range(nr_sites - sweep_sites + 1):
+            # Sweep from left to right (LTR)
+            for pos in range(nr_sites - var_sites + 1):
                 if pos == 0 and num_sweep > 0:
                     # Don't do first site again if we are not in the first sweep.
                     continue
@@ -678,16 +898,16 @@ class MPArray(object):
                     rvecs[pos - 1] = None
                     lvecs[pos] = _adapt_to_add_l(lvecs[pos - 1], self[pos - 1],
                                                  target[pos - 1])
-                pos_end = pos + sweep_sites
+                pos_end = pos + var_sites
                 self[pos:pos_end] = _adapt_to_new_lten(lvecs[pos],
                                                        target[pos:pos_end],
                                                        rvecs[pos], max_bonddim)
 
-            # NOTE Why no num_sweep > 0 here???
-            # Sweep from right to left (don't do last site again)
-            for pos in reversed(range(nr_sites - sweep_sites)):
-                pos_end = pos + sweep_sites
-                if pos < nr_sites - sweep_sites:
+            # Sweep from right to left (RTL; don't do `pos = nr_sites
+            # - var_sites` again)
+            for pos in reversed(range(nr_sites - var_sites)):
+                pos_end = pos + var_sites
+                if pos < nr_sites - var_sites:
                     # We always do this, because we don't do the last site again.
                     self.normalize(right=pos_end)
                     lvecs[pos + 1] = None
@@ -706,7 +926,7 @@ class MPArray(object):
 #############################################
 def dot(mpa1, mpa2, axes=(-1, 0)):
     """Compute the matrix product representation of a.b over the given
-    (physical) axes. [Sch11, Sec. 4.2]
+    (physical) axes. [Sch11_, Sec. 4.2]
 
     :param mpa1, mpa2: Factors as MPArrays
     :param axes: 2-tuple of axes to sum over. Note the difference in
@@ -728,13 +948,52 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
     return MPArray(ltens)
 
 
+def partialdot(mpa1, mpa2, start_at, axes=(-1, 0)):
+    """Partial dot product of two MPAs of inequal length.
+
+    The shorter MPA will start on site 'start_at'. Local dot products
+    will be carried out on all sites of the shorter MPA. Other sites
+    will remain unmodified.
+
+    mpa1 and mpa2 can also have equal length with start_at = 0. Then
+    we do the same as dot(), with the axes argument being more
+    flexible.
+
+    :param mpa1, mpa2: Factors as MPArrays, length must be inequal.
+    :param start_at: The shorter MPA will start on this site.
+    :param axes: 2-tuple of axes to sum over. Note the difference in
+        convention compared to np.tensordot(default: last axis of `mpa1`
+        and first axis of `mpa2`)
+    :returns: MPA with length of the longer MPA.
+
+    """
+    # adapt the axes from physical to true legs
+    axes = tuple(ax + 1 if ax >= 0 else ax - 1 for ax in axes)
+
+    # Make the MPAs equal length (in fact, the shorter one will be
+    # infinite length, but that's fine because we use zip()).
+    shorter = mpa1 if len(mpa1) < len(mpa2) else mpa2
+    shorter = it.chain(
+        it.repeat(None, times=start_at), shorter, it.repeat(None))
+    if len(mpa1) < len(mpa2):
+        mpa1 = shorter
+    else:
+        mpa2 = shorter
+
+    ltens_new = (
+        l if r is None else (r if l is None else _local_dot(l, r, axes))
+        for l, r in zip(mpa1, mpa2)
+        )
+    return MPArray(ltens_new)
+
+
 # NOTE: I think this is a nice example how we could use Python's generator
 #       expression to implement lazy evaluation of the matrix product structure
 #       which is the whole point of doing this in the first place
 def inner(mpa1, mpa2):
     """Compute the inner product <mpa1|mpa2>. Both have to have the same
     physical dimensions. If these represent a MPS, inner(...) corresponds to
-    the cannoncial Hilbert space scalar product, if these represent a MPO,
+    the canoncial Hilbert space scalar product, if these represent a MPO,
     inner(...) corresponds to the Frobenius scalar product (with Hermitian
     conjugation in the first argument)
 
@@ -751,7 +1010,7 @@ def inner(mpa1, mpa2):
 
 
 def outer(mpas):
-    """Performs the tensor product of MPAs given in *args
+    """Performs the tensor product of MPAs given in `*args`
 
     :param mpas: Iterable of MPAs same order as they should appear in the chain
     :returns: MPA of length len(args[0]) + ... + len(args[-1])
@@ -760,6 +1019,36 @@ def outer(mpas):
     # TODO Make this normalization aware
     # FIXME Is copying here a good idea?
     return MPArray(sum(([ltens.copy() for ltens in mpa] for mpa in mpas), []))
+
+
+#FXIME Why is outer not a special case of this?
+def inject(mpa, pos, num, inject_ten=None):
+    """Like outer(), but place second factor somewhere inside mpa.
+
+    Return the outer product between mpa and 'num' copies of the local
+    tensor 'inject_ten', but place the copies of 'inject_ten' before
+    site 'pos' inside 'mpa'. Placing at the edges of 'mpa' is not
+    supported (use outer() for that).
+
+    If 'inject_ten' is omitted, use a square identity matrix of size
+    mpa.pdims[pos][0].
+
+    :param mpa: An MPA.
+    :param pos: Inject sites into the MPA before site 'pos'.
+    :param num: Inject 'num' copies.
+    :param inject_ten: Inject this physical tensor (if None use
+       np.eye(mpa.pdims[pos][0]))
+    :returns: An MPA of length len(mpa) + num
+
+    """
+    if inject_ten is None:
+        inject_ten = np.eye(mpa.pdims[pos][0])
+    bdim = mpa.bdims[pos - 1]
+    inject_lten = np.tensordot(np.eye(bdim), inject_ten, axes=((), ()))
+    inject_lten = np.rollaxis(inject_lten, 1, inject_lten.ndim)
+    ltens = it.chain(
+        mpa[:pos], it.repeat(inject_lten, times=num), mpa[pos:])
+    return MPArray(ltens)
 
 
 def norm(mpa):
@@ -773,13 +1062,13 @@ def norm(mpa):
     :returns: l2-norm of that array
 
     """
-    mpa.normalize()
+    mpa.normalize(allbutone=True)
     current_lnorm, current_rnorm = mpa.normal_form
 
     if current_rnorm == 1:
-        return np.sqrt(np.vdot(mpa[0], mpa[0]))
+        return np.linalg.norm(mpa[0])
     elif current_lnorm == len(mpa) - 1:
-        return np.sqrt(np.vdot(mpa[-1], mpa[-1]))
+        return np.linalg.norm(mpa[-1])
     else:
         raise ValueError("Normalization error in MPArray.norm")
 
@@ -793,75 +1082,280 @@ def normdist(mpa1, mpa2):
 
     """
     return norm(mpa1 - mpa2)
-    #  return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
+    # This implementation doesn't produce an MPA with double bond dimension:
+    #
+    # return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
+    #
+    # However, there are precision issues which show up e.g. in
+    # test_project_fused_clusters(). Due to rounding errors, the term
+    # inside np.sqrt() can be slightly negative and np.sqrt() will
+    # return nan. Even if we replace slightly negative terms by zero,
+    # the slightly-positive-instead-of-zero rounding errors are
+    # amplified by np.sqrt().
+    #
+    # On the other hand, the test which fails checks the result to 7
+    # decimals. Given that np.sqrt() amplifies errors in small values,
+    # this is too strict.
 
 
-def trace(mpa):
-    """Computes the trace of a MPA with 2 physical legs per sites.
+#TODO Convert to iterator
+def _prune_ltens(mpa):
+    """Contract local tensors with no physical legs.
 
-    :param mpa: MPArray
-    :returns: Trace of mpa
+    By default, contract to the left. At the start of the chain,
+    contract to the right.
+
+    If there are no physical legs at all, yield a single scalar.
+
+    :param mpa: MPA to take local tensors from.
+    :returns: An iterator over local tensors.
 
     """
-    # TODO A lot to be done here:
-    #   - partial trace over different sites -> returns MPArray with ltens
-    #     traced over, but same length -> prune method to get rid of sites
-    #     with plegs == 0
-    #   - specify axes for plegs > 2
-    #   => seperate in contract & trace method
-    assert_array_equal(mpa.plegs, 2)
-    ltens = (np.trace(lten, axis1=1, axis2=2) for lten in mpa)
-    return _ltens_to_array(ltens)[0, 0]
+    mpa_iter = iter(mpa)
+    last_lten = next(mpa_iter)
+    last_lten_plegs = last_lten.ndim - 2
+    for lten in mpa_iter:
+        num_plegs = lten.ndim - 2
+        if num_plegs == 0 or last_lten_plegs == 0:
+            last_lten = matdot(last_lten, lten)
+            last_lten_plegs = last_lten.ndim - 2
+        else:
+            # num_plegs > 0 and last_lten_plegs > 0
+            yield last_lten
+            last_lten = lten
+            last_lten_plegs = num_plegs
+    # If there are no physical legs at all, we will yield one scalar
+    # here.
+    yield last_lten
 
 
-def trace(mpa):
-    """Computes the trace of a MPA with 2 physical legs per sites.
+def prune(mpa):
+    """Contract sites with zero physical legs.
 
-    :param mpa: MPArray
-    :returns: Trace of mpa
+    :param mpa: MPA or iterator over local tensors
+    :returns: An MPA of smaller length
 
     """
-    # TODO A lot to be done here:
-    #   - partial trace over different sites -> returns MPArray with ltens
-    #     traced over, but same length -> prune method to get rid of sites
-    #     with plegs == 0
-    #   - specify axes for plegs > 2
-    #   => seperate in contract & trace method
-    assert_array_equal(mpa.plegs, 2)
-    ltens = (np.trace(lten, axis1=1, axis2=2) for lten in mpa)
-    return _ltens_to_array(ltens)[0, 0]
+    return MPArray(_prune_ltens(mpa))
 
 
-def local_sum(mpas, embed_tensor=None):
+def partialtrace(mpa, axes=(0, 1)):
+    """Computes the trace or partial trace of an MPA.
+
+    By default (axes=(0, 1)) compute the trace and return the value as
+    length-one MPA with zero physical legs.
+
+    For axes=(m, n) with integer m, trace over the given axes at all
+    sites and return a length-one MPA with zero physical legs. (Use
+    trace() to get the value directly.)
+
+    For axes=(axes1, axes2, ...) trace over axesN at site N, with
+    axesN=(axisN_1, axisN_2) tracing the given physical legs and
+    axesN=None leaving the site invariant. Afterwards, prune() is
+    called to remove sites with zero physical legs from the result.
+
+    If you need the reduced state of an MPO on all blocks of k
+    consecutive sites, see mpnum.mpsmpa.partialtrace_mpo() for a more
+    convenient and faster function.
+
+    :param mpa: MPArray
+    :param axes: Axes for trace, (axis1, axis2) or (axes1, axes2, ...)
+        with axesN=(axisN_1, axisN_2) or axesN=None.
+    :returns: An MPArray (possibly one site with zero physical legs)
+
+    """
+    if axes[0] is not None and not hasattr(axes[0], '__iter__'):
+        axes = it.repeat(axes)
+    axes = (None if axesitem is None else tuple(ax + 1 if ax >= 0 else ax - 1
+                                                for ax in axesitem)
+            for axesitem in axes)
+    ltens = (
+        lten if ax is None else np.trace(lten, axis1=ax[0], axis2=ax[1])
+        for lten, ax in zip(mpa, axes))
+    return prune(ltens)
+
+
+def trace(mpa, axes=(0, 1)):
+    """Compute the trace of the given MPA.
+
+    By default, just compute the trace.
+
+    If you specify axes (see partialtrace() for details), you must
+    ensure that the result has no physical legs anywhere.
+
+    :param mpa: MParray
+    :param axes: Axes for trace, (axis1, axis2) or (axes1, axes2, ...)
+        with axesN=(axisN_1, axisN_2) or axesN=None.
+    :returns: A single scalar (int/float/complex, depending on mpa)
+
+    """
+    out = partialtrace(mpa, axes)
+    out = out.to_array()
+    assert out.size == 1, 'trace must return a single scalar'
+    return out[None][0]
+
+
+def regular_slices(length, width, offset):
+    """Iterate over regular slices on a linear chain.
+
+    Put slices on a linear chain as follows:
+
+    >>> n = 5
+    >>> [tuple(range(*s.indices(n))) for s in regular_slices(n, 3, 2)]
+    [(0, 1, 2), (2, 3, 4)]
+    >>> n = 7
+    >>> [tuple(range(*s.indices(n))) for s in regular_slices(n, 3, 2)]
+    [(0, 1, 2), (2, 3, 4), (4, 5, 6)]
+
+    The scheme is illustrated by the following figure:
+
+    .. tabularcolumns:: |c|c|c|
+
+    +------------------+--------+
+    | #### width ##### |        |
+    +--------+---------+--------+
+    | offset | overlap | offset |
+    +--------+---------+--------+
+    |        | ##### width #### |
+    +--------+------------------+
+
+    .. todo:: This table needs cell borders in the HTML output (->
+              CSS) and the tabularcolumns command doesn't work.
+
+    Note that the overlap may be larger than, equal to or smaller than
+    zero.
+
+    We enforce that the last slice coincides with the end of the
+    chain, i.e. :code:`(length - width) / offset` must be integer.  We
+    produce :code:`(length - width) / offset + 1` slices and the i-th
+    slice is :code:`slice(offset * i, offset * i + width)`, with
+    :code:`i` starting at zero.
+
+    :param int length: The length of the chain.
+    :param int width: The width of each slice.
+    :param int offset: Difference between starting positions of
+        successive slices. First slice starts at 0.
+    :returns: Iterator over slices.
+
+    """
+    assert ((length - width) % offset) == 0, \
+        'length {}, width {}, offset {}'.format(length, width, offset)
+    num_slices = (length - width) // offset + 1
+
+    for i in range(num_slices):
+        yield slice(offset * i, offset * i + width)
+
+
+# FIXME What is this doing here?
+def default_embed_ltens(mpa, embed_tensor):
+    """Embed with identity matrices by default.
+
+    :param embed_tensor: If the MPAs do not have two physical legs or
+        have non-square physical dimensions, you must provide an
+        embedding tensor. The default is to use the square identity
+        matrix, assuming that the size of the two physical legs is the
+        same at each site.
+    :returns: `embed_tensor` with one size-one bond leg added at each
+        end.
+
+    """
+    if embed_tensor is None:
+        pdims = mpa.pdims[0]
+        assert len(pdims) == 2 and pdims[0] == pdims[1], (
+            "For plegs != 2 or non-square pdims, you must supply a tensor"
+            "for embedding")
+        embed_tensor = np.eye(pdims[0])
+    embed_ltens = embed_tensor[None, ..., None]
+    return embed_ltens
+
+
+def embed_slice(length, slice_, mpa, embed_tensor=None):
+    """Embed a local MPA on a linear chain.
+
+    :param int length: Length of the resulting MPA.
+    :param slice slice_: Specifies the position of `mpa` in the
+        result.
+    :param MPArray mpa: MPA of length :code:`slice_.stop -
+        slice_.start`.
+    :param embed_tensor: Defaults to square identity matrix (see
+        :func:`default_embed_ltens` for details)
+    :returns: MPA of length `length`
+
+    """
+    start, stop, step = slice_.indices(length)
+    assert step == 1
+    assert len(mpa) == stop - start
+    embed_ltens = default_embed_ltens(mpa, embed_tensor)
+    left = it.repeat(embed_ltens, times=start)
+    right = it.repeat(embed_ltens, times=length - stop)
+    return MPArray(it.chain(left, mpa, right))
+
+
+def local_sum(mpas, embed_tensor=None, length=None, slices=None):
     """Embed local MPAs on a linear chain and sum as MPA.
 
-    The resulting MPA has smaller bond dimension than naive
-    embed+MPA-sum.
+    We return the sum over :func:`embed_slice(length, slices[i],
+    mpas[i], embed_tensor) <embed_slice>` as MPA.
+
+    If `slices` is omitted, we use :func:`regular_slices(length,
+    width, offset) <regular_slices>` with :code:`offset = 1`,
+    :code:`width = len(mpas[0])` and :code:`length = len(mpas) + width
+    - offset`.
+
+    If `slices` is omitted or if the slices just described are given,
+    we call :func:`local_sum_simple()`, which gives a smaller bond
+    dimension than naive embedding and summing.
+
+    :param mpas: List of local MPAs.
+    :param embed_tensor: Defaults to square identity matrix (see
+        :func:`default_embed_ltens` for details)
+    :param length: Length of the resulting chain, ignored unless
+        slices is given.
+    :param slices: slice[i] specifies the position of mpas[i],
+        optional.
+    :returns: An MPA.
+
+    If `slices` is omitted, assume
+
+    """
+    if slices is not None:
+        assert length is not None
+        slices = tuple(slices)
+        reg = regular_slices(length, slices[0].stop - slices[0].start, offset=1)
+        if all(s == t for s, t in zip_longest(slices, reg)):
+            slices = None
+    if slices is None:
+        return local_sum_simple(tuple(mpas), embed_tensor)
+    mpas = (embed_slice(length, slice_, mpa, embed_tensor)
+            for mpa, slice_ in zip(mpas, slices))
+    return ft.reduce(MPArray.__add__, mpas)
+
+
+def local_sum_simple(mpas, embed_tensor=None):
+    """Implement a special case of :func:`local_sum`.
+
+    See :func:`local_sum` for a description.  We return an MPA with
+    smaller bond dimension than naive embed+MPA-sum.
 
     mpas is a list of MPAs. The width 'width' of all the mpas[i] must
     be the same. mpas[i] is embedded onto a linear chain on sites i,
-    ..., i + width - 1. Let D the bond dimension of the mpas[i]. Then
-    the MPA we return has bond dimension width * D + 1 instead of
-    width * D + len(mpas).
+    ..., i + width - 1.
+
+    Let D the bond dimension of the mpas[i]. Then the MPA we return
+    has bond dimension width * D + 1 instead of width * D + len(mpas).
 
     The basic idea behind the construction we use is similar to
-    [Sch11, Sec. 6.1].
+    [Sch11_, Sec. 6.1].
 
     :param mpas: A list of MPArrays with the same length.
-    :param embed_tensor: If the MPAs do not have two physical legs or
-        have non-square physical dimensions, you must provide an
-        embedding tensor instead of the identity matrix.
+    :param embed_tensor: Defaults to square identity matrix (see
+        :func:`default_embed_ltens` for details)
 
     """
     width = len(mpas[0])
     nr_sites = len(mpas) + width - 1
     ltens = []
-    if embed_tensor is None:
-        pdims = mpas[0].pdims[0]
-        assert len(pdims) == 2 and pdims[0] == pdims[1], \
-            "For plegs != 2 or non-square pdims, you must supply a tensor for embedding"
-        embed_tensor = np.eye(pdims[0])
-    embed_ltens = embed_tensor[None, ..., None]
+    embed_ltens = default_embed_ltens(mpas[0], embed_tensor)
 
     for pos in range(nr_sites):
         # At this position, we local summands mpas[i] starting at the
@@ -965,9 +1459,11 @@ def _local_add(ltens_l, ltens_r):
 def _local_ravel(ltens):
     """Flattens the physical legs of ltens, the bond-legs remain untouched
 
-    :param ltens: numpy.ndarray with ndim > 1
-    :returns: Reshaped ltens with shape (ltens.shape[0], *, ltens.shape[-1]),
-        where * is determined from the size of ltens
+    :param ltens: :func:`numpy.ndarray` with :code:`ndim > 1`
+
+    :returns: Reshaped `ltens` with shape :code:`(ltens.shape[0], ...,
+        ltens.shape[-1])`, where :code`...` is determined from the
+        size of ltens
 
     """
     return _local_reshape(ltens, (-1, ))
@@ -1022,7 +1518,7 @@ def _adapt_to_add_l(leftvec, compr_lten, tgt_lten):
     :param compr_lten: Local tensor of the compressed MPS
     :param tgt_lten: Local tensor of the target MPS
 
-    Construct L from [Sch11, Fig. 27, p. 48]. We have compr_lten in
+    Construct L from [Sch11_, Fig. 27, p. 48]. We have compr_lten in
     the top row of the figure without complex conjugation and tgt_lten
     in the bottom row with complex conjugation.
 
@@ -1058,7 +1554,7 @@ def _adapt_to_add_r(rightvec, compr_lten, tgt_lten):
     :param compr_lten: Local tensor of the compressed MPS
     :param tgt_lten: Local tensor of the target MPS
 
-    Construct R from [Sch11, Fig. 27, p. 48]. See comments in
+    Construct R from [Sch11_, Fig. 27, p. 48]. See comments in
     _variational_compression_leftvec_add() for further details.
 
     """
@@ -1095,12 +1591,12 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
         It has two indices: compr_mps_bond and tgt_mps_bond
     :param int max_bonddim: Maximal bond dimension of the result
 
-    Compute the right-hand side of [Sch11, Fig. 27, p. 48]. We have
+    Compute the right-hand side of [Sch11_, Fig. 27, p. 48]. We have
     compr_lten in the top row of the figure without complex
     conjugation and tgt_lten in the bottom row with complex
     conjugation.
 
-    For len(tgt_ltens) > 1, compute the right-hand side of [Sch11,
+    For len(tgt_ltens) > 1, compute the right-hand side of [Sch11_,
     Fig. 29, p. 49].
 
     """
@@ -1132,9 +1628,9 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
     if len(tgt_ltens) == 1:
         compr_ltens = (compr_lten,)
     else:
-        # [Sch11, p. 49] says that we can go with QR instead of SVD
-        # here. However, will generally increase the bond dimension of
+        # [Sch11_, p. 49] says that we can go with QR instead of SVD
+        # here. However, this will generally increase the bond dimension of
         # our compressed MPS, which we do not want.
         compr_ltens = MPArray.from_array(compr_lten, plegs=1, has_bond=True)
-        compr_ltens.compress_svd(bdim=max_bonddim)
+        compr_ltens.compress('svd', bdim=max_bonddim)
     return compr_ltens

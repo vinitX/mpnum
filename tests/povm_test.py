@@ -1,8 +1,5 @@
-#!/usr/bin/env python
 # encoding: utf-8
-# FIXME Is there a better metric to compare two arrays/scalars than
-#       assert_(array)_almost_equal? Something that takes magnitude into
-#       account?
+
 
 from __future__ import division, print_function
 
@@ -11,16 +8,13 @@ from inspect import isfunction
 
 import numpy as np
 import pytest as pt
-from numpy.testing import assert_array_almost_equal, assert_almost_equal, \
-    assert_array_equal
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 
 import mpnum.mparray as mp
 import mpnum.povm as povm
 import mpnum.povm.mppovm as mppovm
 import mpnum.factory as factory
 import mpnum.mpsmpo as mpsmpo
-
-from mparray_test import mpo_to_global
 
 ALL_POVMS = {name: constructor for name, constructor in povm.__dict__.items()
              if name.endswith('_povm') and isfunction(constructor)}
@@ -46,9 +40,9 @@ def test_povm_normalization_ic(dim):
         linear_inversion_recons = np.dot(current_povm.linear_inversion_map,
                                          current_povm.probability_map)
         if current_povm.informationally_complete:
-            assert_array_almost_equal(linear_inversion_recons,
-                                      np.eye(dim**2),
-                                      err_msg='POVM {} is not informationally complete'.format(name))
+            assert_array_almost_equal(
+                linear_inversion_recons, np.eye(dim**2),
+                err_msg='POVM {} is not informationally complete'.format(name))
         else:
             assert np.abs(linear_inversion_recons - np.eye(dim**2)).max() > 0.1, \
                 'POVM {} is informationally complete'.format(name)

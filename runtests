@@ -1,14 +1,14 @@
 #!/bin/bash
 
-DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "${DIR}"
 
-if which py.test > /dev/null; then
-  py.test mpnum --doctest-modules
-  py.test tests
+export MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+
+if python2 -c "import pytest" &> /dev/null; then
+    python2 runtests.py
 fi
-if which py.test-3 > /dev/null; then
-  py.test-3 mpnum --doctest-modules
-  py.test-3 tests
+if python3 -c "import pytest" &> /dev/null; then
+    python3 runtests.py
 fi
 

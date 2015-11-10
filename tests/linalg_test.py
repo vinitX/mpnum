@@ -1,8 +1,5 @@
-#!/usr/bin/env python
 # encoding: utf-8
-# FIXME Is there a better metric to compare two arrays/scalars than
-#       assert_(array)_almost_equal? Something that takes magnitude into
-#       account?
+
 
 from __future__ import absolute_import, division, print_function
 
@@ -13,19 +10,22 @@ from numpy.testing import assert_almost_equal
 import mpnum.linalg
 import mpnum.factory as factory
 
-from mparray_test import mpo_to_global, MP_TEST_PARAMETERS
+from mparray_test import MP_TEST_PARAMETERS
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mineig(nr_sites, local_dim, bond_dim):
+    # Need at least two sites
+    if nr_sites < 2:
+        return
     # With startvec_bonddim = 2 * bonddim and this seed, mineig() gets
     # stuck in a local minimum. With startvec_bonddim = 3 * bonddim,
     # it does not.
     randstate = np.random.RandomState(seed=46)
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=randstate,
                              hermitian=True, normalized=True)
-    mpo.normalize()
-    op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
+    mpo.normalize(allbutone=True)
+    op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
     eigvals, eigvec = np.linalg.eig(op)
 
     # Eigenvals should be real for a hermitian matrix
@@ -44,14 +44,17 @@ def test_mineig(nr_sites, local_dim, bond_dim):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim):
+    # Need at least three sites for minimize_sites = 2
+    if nr_sites < 3:
+        return
     # With startvec_bonddim = 2 * bonddim and minimize_sites=1,
     # mineig() gets stuck in a local minimum. With minimize_sites=2,
     # it does not.
     randstate = np.random.RandomState(seed=46)
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=randstate,
                              hermitian=True, normalized=True)
-    mpo.normalize()
-    op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
+    mpo.normalize(allbutone=True)
+    op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
     eigvals, eigvec = np.linalg.eig(op)
 
     # Eigenvals should be real for a hermitian matrix
