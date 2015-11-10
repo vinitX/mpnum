@@ -641,6 +641,7 @@ class MPArray(object):
         if method == 'svd':
             return self._compress_svd(**kwargs)
         elif method == 'swdsweep':
+            pass
         elif method == 'var':
             compr, overlap = self._compression_var(**kwargs)
             self._lnormalized = compr._lnormalized
