@@ -19,25 +19,18 @@ from mpnum._tools import global_to_local
 from mpnum.testing import params_product, tuplize, assert_mpa_almost_equal, \
     assert_mpa_identical, mpo_to_global
 
-# FIXME Get rid of this -- not necessary for two dics
-try:
-    from collections import ChainMap
-except ImportError:
-    # Python 2 :(
-    # We could do:  from ConfigParser import _Chainmap as ChainMap
-    # Or we make up a cheap replacement:
-    def ChainMap(*dicts):
-        res = {}
-        for d in reversed(dicts):
-            res.update(d)
-        return res
-
 
 # nr_sites, local_dim, bond_dim
 MP_TEST_PARAMETERS = [(1, 7, np.nan), (2, 3, 3), (3, 2, 4), (6, 2, 4),
                       (4, 3, 5), (5, 2, 1)]
 # nr_sites, local_dim, bond_dim, sites_per_group
 MP_TEST_PARAMETERS_GROUPS = [(6, 2, 4, 3), (6, 2, 4, 2), (4, 3, 5, 2)]
+
+
+def update_copy_of(target, newvals):
+    new = target.copy()
+    new.update(newvals)
+    return new
 
 
 ###############################################################################
@@ -672,9 +665,9 @@ def call_compression(mpa, comparg, bonddim, call_compress=False):
         pass
     elif comparg.get('startmpa') == 'fillbelow':
         startmpa = factory.random_mpa(len(mpa), mpa.pdims[0], bonddim, norm1=True)
-        comparg = ChainMap({'startmpa': startmpa}, comparg)
+        comparg = update_copy_of(comparg, {'startmpa': startmpa})
     else:
-        comparg = ChainMap({'bdim': bonddim}, comparg)
+        comparg = update_copy_of(comparg, {'bdim': bonddim})
     if call_compress:
         return mpa.compress(**comparg)
     else:
@@ -726,7 +719,7 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
     if comparg['method'] == 'var' and comparg['num_sweeps'] == 3:
         # Do a large number of sweeps and use a fixed seed to compare
         # with SVD compression below.
-        comparg = ChainMap({'num_sweeps': 20 // comparg['var_sites']}, comparg)
+        comparg = update_copy_of(comparg, {'num_sweeps': 20 // comparg['var_sites']})
         st = np.random.RandomState(seed=42)
 
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2, st, norm1=True)
