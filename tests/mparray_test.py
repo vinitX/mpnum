@@ -286,7 +286,7 @@ def test_outer(nr_sites, local_dim, bond_dim):
 
     # Test 3-factors iteratively (since full form would be too large!!
     diff = mp.outer((mpo, mpo, mpo)) - mp.outer((mpo, mp.outer((mpo, mpo))))
-    diff.normalize(allbutone=True)
+    diff.normalize()
     assert len(diff) == 3 * len(mpo)
     assert mp.norm(diff) < 1e-6
 
@@ -535,7 +535,7 @@ def test_normalization_default_args(nr_sites, local_dim, bond_dim):
     assert_correct_normalization(mpo, 0, nr_sites)
 
     mpo.normalize(left=1)
-    mpo.normalize(allbutone=True)
+    mpo.normalize()
     assert_correct_normalization(mpo, nr_sites - 1, nr_sites)
 
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
@@ -547,7 +547,7 @@ def test_normalization_default_args(nr_sites, local_dim, bond_dim):
 
     mpo.normalize(left=1)
     mpo.normalize(right=nr_sites - 2)
-    mpo.normalize(allbutone=True)
+    mpo.normalize()
     assert_correct_normalization(mpo, 0, 1)
 
 
@@ -626,7 +626,7 @@ COMPR_SETTINGS = tuplize((
 ))
 
 COMPR_NORM = tuplize((
-    None, dict(allbutone=True),
+    None, dict(),
     dict(left=1), dict(left=-1), dict(right=1), dict(right=-1),
     dict(left=1, right=2), dict(left=-2, right=-1), dict(left=1, right=-1),
 ))

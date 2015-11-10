@@ -428,31 +428,26 @@ class MPArray(object):
     ################################
     #  Normalizaton & Compression  #
     ################################
-    # FIXME TOO complicated! Necessary?
-    def normalize(self, left=None, right=None, allbutone=False):
+    def normalize(self, left=None, right=None):
         """Brings the MPA to canonical form in place [Sch11_, Sec. 4.4]
 
-        Note that we do not support full left- or right-normalization
-        (yet?). The right- (left- resp.)  most local tensor is not
-        normalized since this can be done by simply calculating its
-        norm (instead of using SVD).
+        Note that we do not support full left- or right-normalization. The
+        right- (left- resp.)  most local tensor is not normalized since this
+        can be done by simply calculating its norm (instead of using SVD).
 
-        If `left` and `right` are both :code:`None`, you have to set
-        `allbutone` to :code:`True` to let the function decide whether
-        to normalize to `left=-1` or to `right=1`. Apart from that,
-        the following values for `left` and `right` will be needed
+        The following values for `left` and `right` will be needed
         most frequently:
 
-        +--------------+--------------+-------------+-------------------+
-        | Left-/Right- | Nothing      | All but one | All               |
-        | normalize:   |              |             |                   |
-        +==============+==============+=============+===================+
-        | `left`       | :code:`None` | :code:`-1`  | :code:`'full'`,   |
-        |              |              |             | :code:`len(self)` |
-        +--------------+--------------+-------------+-------------------+
-        | `right`      | :code:`None` | :code:`1`   | :code:`'full'`,   |
-        |              |              |             | :code:`0`         |
-        +--------------+--------------+-------------+-------------------+
+        +--------------+--------------+-----------------------+
+        | Left-/Right- | Do Nothing   | To normalize          |
+        | normalize:   |              | maximally             |
+        +==============+==============+=======================+
+        | `left`       | :code:`None` | :code:`'full'`,       |
+        |              |              | :code:`len(self) - 1` |
+        +--------------+--------------+-----------------------+
+        | `right`      | :code:`None` | :code:`'full'`,       |
+        |              |              | :code:`1`             |
+        +--------------+--------------+-----------------------+
 
         Arbitrary integer values of `left` and `right` have the
         following meaning:
@@ -468,15 +463,10 @@ class MPArray(object):
         +---------+--------------+----------------+
         |         | :code:`None` | :code:`'full'` |
         +---------+--------------+----------------+
-        | `left`  | 0            | len(self)      |
+        | `left`  | 0            | len(self) - 1  |
         +---------+--------------+----------------+
-        | `right` | len(self)    | 0              |
+        | `right` | len(self)    | 1              |
         +---------+--------------+----------------+
-
-        Note that normalizing to :code:`'full'` and equivalent values
-        is not implemented yet. Also, you must provide arguments such
-        that no matrix is supposed to be both left- and right
-        normalized.
 
         Exceptions raised:
 
@@ -484,25 +474,18 @@ class MPArray(object):
 
         - Matrix would be both left- and right-normalized: `ValueError`
 
-        - :code:`'full'` or equivalent argument: `NotImplementedError`
-
         """
         current_lnorm, current_rnorm = self.normal_form
         if left is None and right is None:
-            if not allbutone:
-                raise ValueError('Invalid combination of arguments')
             if current_lnorm < len(self) - current_rnorm:
                 self._rnormalize(1)
             else:
                 self._lnormalize(len(self) - 1)
             return
-        if allbutone:
-            raise ValueError('Invalid arguments, left={!r}, right={!r}'
-                             .format(left, right))
 
         # Fill the special values for `None` and 'full'.
-        lnormalize = {None: 0, 'full': len(self)}.get(left, left)
-        rnormalize = {None: len(self), 'full': 0}.get(right, right)
+        lnormalize = {None: 0, 'full': len(self) - 1}.get(left, left)
+        rnormalize = {None: len(self), 'full': 1}.get(right, right)
         # Support negative indices.
         if lnormalize < 0:
             lnormalize += len(self)
@@ -513,9 +496,6 @@ class MPArray(object):
             raise IndexError('len={!r}, left={!r}'.format(len(self), left))
         if not 0 <= rnormalize <= len(self):
             raise IndexError('len={!r}, right={!r}'.format(len(self), right))
-        if lnormalize == len(self) or rnormalize == 0:
-            raise NotImplementedError('left={!r}, right={!r}'
-                                      .format(left, right))
 
         if not lnormalize < rnormalize:
             raise ValueError("Normalization {}:{} invalid"
@@ -1049,7 +1029,7 @@ def norm(mpa):
     :returns: l2-norm of that array
 
     """
-    mpa.normalize(allbutone=True)
+    mpa.normalize()
     current_lnorm, current_rnorm = mpa.normal_form
 
     if current_rnorm == 1:
