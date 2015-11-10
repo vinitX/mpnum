@@ -15,9 +15,9 @@ from six.moves import range, zip
 import mpnum.factory as factory
 import mpnum.mparray as mp
 from mpnum import _tools
-from mpnum._tools import global_to_local, local_to_global
+from mpnum._tools import global_to_local
 from mpnum.testing import params_product, tuplize, assert_mpa_almost_equal, \
-    assert_mpa_identical
+    assert_mpa_identical, mpo_to_global
 
 # FIXME Get rid of this -- not necessary for two dics
 try:
@@ -38,13 +38,6 @@ MP_TEST_PARAMETERS = [(1, 7, np.nan), (2, 3, 3), (3, 2, 4), (6, 2, 4),
                       (4, 3, 5), (5, 2, 1)]
 # nr_sites, local_dim, bond_dim, sites_per_group
 MP_TEST_PARAMETERS_GROUPS = [(6, 2, 4, 3), (6, 2, 4, 2), (4, 3, 5, 2)]
-
-
-# We choose to use a global reperentation of multipartite arrays for most of
-# our tests to be consistent and a few operations (i.e. matrix multiplication)
-# are easier to express
-def mpo_to_global(mpo):
-    return local_to_global(mpo.to_array(), len(mpo))
 
 
 ###############################################################################
