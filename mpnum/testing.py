@@ -6,7 +6,7 @@
 
 import itertools as it
 from numpy.testing import assert_array_equal, assert_array_almost_equal
-from _tools import local_to_global
+from ._tools import local_to_global
 
 
 def params_product(*iterables):
