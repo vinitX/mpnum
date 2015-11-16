@@ -36,7 +36,7 @@ import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
 
-from mpnum._tools import block_diag, matdot, global_to_local
+from mpnum._tools import block_diag, matdot, local_to_global, global_to_local
 from mpnum._named_ndarray import named_ndarray
 from six.moves import range, zip, zip_longest
 
@@ -263,6 +263,20 @@ class MPArray(object):
 
         """
         return _ltens_to_array(iter(self))[0, ..., 0]
+
+    #FIXME Where is this used? Does it really have to be in here?
+    def to_array_global(self):
+        """Return MPA as array in global form.
+
+        See :func:`mpnum._tools.global_to_local()` for global
+        vs. local form.
+
+        :returns: ndarray of shape :code:`sum(zip(*self.pdims, ()))`
+
+        See :func:`to_array()` for more details.
+
+        """
+        return local_to_global(self.to_array(), sites=len(self))
 
     def paxis_iter(self, axes=0):
         """Returns an iterator yielding Sub-MPArrays of `self` by iterating

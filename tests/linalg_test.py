@@ -9,7 +9,6 @@ from numpy.testing import assert_almost_equal
 
 import mpnum.linalg
 import mpnum.factory as factory
-from mpnum.testing import mpo_to_global
 
 from mparray_test import MP_TEST_PARAMETERS
 
@@ -26,7 +25,7 @@ def test_mineig(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=randstate,
                              hermitian=True, normalized=True)
     mpo.normalize()
-    op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
+    op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
     eigvals, eigvec = np.linalg.eig(op)
 
     # Eigenvals should be real for a hermitian matrix
@@ -55,7 +54,7 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=randstate,
                              hermitian=True, normalized=True)
     mpo.normalize()
-    op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
+    op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
     eigvals, eigvec = np.linalg.eig(op)
 
     # Eigenvals should be real for a hermitian matrix
