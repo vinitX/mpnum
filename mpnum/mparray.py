@@ -456,12 +456,15 @@ class MPArray(object):
         | Left-/Right- | Do Nothing   | To normalize          |
         | normalize:   |              | maximally             |
         +==============+==============+=======================+
-        | `left`       | :code:`None` | :code:`'full'`,       |
+        | `left`       | :code:`None` | :code:`'afull'`,      |
         |              |              | :code:`len(self) - 1` |
         +--------------+--------------+-----------------------+
-        | `right`      | :code:`None` | :code:`'full'`,       |
+        | `right`      | :code:`None` | :code:`'afull'`,      |
         |              |              | :code:`1`             |
         +--------------+--------------+-----------------------+
+
+        :code:`afull` is short for "almost full" (we do not support
+        normalizing the outermost sites).
 
         Arbitrary integer values of `left` and `right` have the
         following meaning:
@@ -471,16 +474,16 @@ class MPArray(object):
         - :code:`self[right:]` will be right-normalized
 
         In accordance with the last table, the special values
-        :code:`None` and :code:`full` will be replaced by the
+        :code:`None` and :code:`afull` will be replaced by the
         following integers:
 
-        +---------+--------------+----------------+
-        |         | :code:`None` | :code:`'full'` |
-        +---------+--------------+----------------+
-        | `left`  | 0            | len(self) - 1  |
-        +---------+--------------+----------------+
-        | `right` | len(self)    | 1              |
-        +---------+--------------+----------------+
+        +---------+--------------+-----------------+
+        |         | :code:`None` | :code:`'afull'` |
+        +---------+--------------+-----------------+
+        | `left`  | 0            | len(self) - 1   |
+        +---------+--------------+-----------------+
+        | `right` | len(self)    | 1               |
+        +---------+--------------+-----------------+
 
         Exceptions raised:
 
@@ -497,9 +500,9 @@ class MPArray(object):
                 self._lnormalize(len(self) - 1)
             return
 
-        # Fill the special values for `None` and 'full'.
-        lnormalize = {None: 0, 'full': len(self) - 1}.get(left, left)
-        rnormalize = {None: len(self), 'full': 1}.get(right, right)
+        # Fill the special values for `None` and 'afull'.
+        lnormalize = {None: 0, 'afull': len(self) - 1}.get(left, left)
+        rnormalize = {None: len(self), 'afull': 1}.get(right, right)
         # Support negative indices.
         if lnormalize < 0:
             lnormalize += len(self)
