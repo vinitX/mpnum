@@ -6,6 +6,7 @@
 
 import itertools as it
 from numpy.testing import assert_array_equal, assert_array_almost_equal
+from ._tools import local_to_global
 
 
 def params_product(*iterables):
@@ -56,3 +57,10 @@ def assert_mpa_identical(mpa1, mpa2):
     assert mpa1.normal_form == mpa2.normal_form
     # TODO: We should make a comprehensive comparison between `mpa1`
     # and `mpa2`.  Are we missing other things?
+
+
+def mpo_to_global(mpo):
+    """Convert mpo to dense global array
+    """
+    return local_to_global(mpo.to_array(), len(mpo))
+

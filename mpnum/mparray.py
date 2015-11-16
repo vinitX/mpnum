@@ -123,7 +123,6 @@ class MPArray(object):
     def __getitem__(self, index):
         """Use only for read-only access! Do not change arrays in place!"""
         if type(index) == tuple:
-            # FIXME Right now, this code is unused.
             assert len(index) == len(self)
             return MPArray(ltens[:, i, ..., :]
                            for i, ltens in zip(index, self._ltens))
@@ -155,6 +154,7 @@ class MPArray(object):
         """Tuple of bond dimensions"""
         return tuple(m.shape[0] for m in self._ltens[1:])
 
+    # FIXME Rremove this function or rname to maxbdim
     @property
     def bdim(self):
         """Largest bond dimension across the chain"""
@@ -180,6 +180,7 @@ class MPArray(object):
         """Tensors which are currently in left/right-canonical form."""
         return self._lnormalized or 0, self._rnormalized or len(self)
 
+    #FIXME Where is this used? Does it really have to be in here?
     @classmethod
     def from_array_global(cls, array, plegs=None, has_bond=False):
         """Create MPA from array in global form.
@@ -265,6 +266,7 @@ class MPArray(object):
         """
         return _ltens_to_array(iter(self))[0, ..., 0]
 
+    #FIXME Where is this used? Does it really have to be in here?
     def to_array_global(self):
         """Return MPA as array in global form.
 
@@ -442,30 +444,29 @@ class MPArray(object):
     ################################
     #  Normalizaton & Compression  #
     ################################
-    def normalize(self, left=None, right=None, allbutone=False):
+    def normalize(self, left=None, right=None):
         """Brings the MPA to canonical form in place [Sch11_, Sec. 4.4]
 
-        Note that we do not support full left- or right-normalization
-        (yet?). The right- (left- resp.)  most local tensor is not
-        normalized since this can be done by simply calculating its
-        norm (instead of using SVD).
+        Note that we do not support full left- or right-normalization. The
+        right- (left- resp.)  most local tensor is not normalized since this
+        can be done by simply calculating its norm (instead of using SVD).
 
-        If `left` and `right` are both :code:`None`, you have to set
-        `allbutone` to :code:`True` to let the function decide whether
-        to normalize to `left=-1` or to `right=1`. Apart from that,
-        the following values for `left` and `right` will be needed
+        The following values for `left` and `right` will be needed
         most frequently:
 
-        +--------------+--------------+-------------+-------------------+
-        | Left-/Right- | Nothing      | All but one | All               |
-        | normalize:   |              |             |                   |
-        +==============+==============+=============+===================+
-        | `left`       | :code:`None` | :code:`-1`  | :code:`'full'`,   |
-        |              |              |             | :code:`len(self)` |
-        +--------------+--------------+-------------+-------------------+
-        | `right`      | :code:`None` | :code:`1`   | :code:`'full'`,   |
-        |              |              |             | :code:`0`         |
-        +--------------+--------------+-------------+-------------------+
+        +--------------+--------------+-----------------------+
+        | Left-/Right- | Do Nothing   | To normalize          |
+        | normalize:   |              | maximally             |
+        +==============+==============+=======================+
+        | `left`       | :code:`None` | :code:`'afull'`,      |
+        |              |              | :code:`len(self) - 1` |
+        +--------------+--------------+-----------------------+
+        | `right`      | :code:`None` | :code:`'afull'`,      |
+        |              |              | :code:`1`             |
+        +--------------+--------------+-----------------------+
+
+        :code:`'afull'` is short for "almost full" (we do not support
+        normalizing the outermost sites).
 
         Arbitrary integer values of `left` and `right` have the
         following meaning:
@@ -475,21 +476,16 @@ class MPArray(object):
         - :code:`self[right:]` will be right-normalized
 
         In accordance with the last table, the special values
-        :code:`None` and :code:`full` will be replaced by the
+        :code:`None` and :code:`'afull'` will be replaced by the
         following integers:
 
-        +---------+--------------+----------------+
-        |         | :code:`None` | :code:`'full'` |
-        +---------+--------------+----------------+
-        | `left`  | 0            | len(self)      |
-        +---------+--------------+----------------+
-        | `right` | len(self)    | 0              |
-        +---------+--------------+----------------+
-
-        Note that normalizing to :code:`'full'` and equivalent values
-        is not implemented yet. Also, you must provide arguments such
-        that no matrix is supposed to be both left- and right
-        normalized.
+        +---------+-------------------+-----------------------+
+        |         | :code:`None`      | :code:`'afull'`       |
+        +---------+-------------------+-----------------------+
+        | `left`  | :code:`0`         | :code:`len(self) - 1` |
+        +---------+-------------------+-----------------------+
+        | `right` | :code:`len(self)` | :code:`1`             |
+        +---------+-------------------+-----------------------+
 
         Exceptions raised:
 
@@ -497,25 +493,18 @@ class MPArray(object):
 
         - Matrix would be both left- and right-normalized: `ValueError`
 
-        - :code:`'full'` or equivalent argument: `NotImplementedError`
-
         """
         current_lnorm, current_rnorm = self.normal_form
         if left is None and right is None:
-            if not allbutone:
-                raise ValueError('Invalid combination of arguments')
             if current_lnorm < len(self) - current_rnorm:
                 self._rnormalize(1)
             else:
                 self._lnormalize(len(self) - 1)
             return
-        if allbutone:
-            raise ValueError('Invalid arguments, left={!r}, right={!r}'
-                             .format(left, right))
 
-        # Fill the special values for `None` and 'full'.
-        lnormalize = {None: 0, 'full': len(self)}.get(left, left)
-        rnormalize = {None: len(self), 'full': 0}.get(right, right)
+        # Fill the special values for `None` and 'afull'.
+        lnormalize = {None: 0, 'afull': len(self) - 1}.get(left, left)
+        rnormalize = {None: len(self), 'afull': 1}.get(right, right)
         # Support negative indices.
         if lnormalize < 0:
             lnormalize += len(self)
@@ -526,9 +515,6 @@ class MPArray(object):
             raise IndexError('len={!r}, left={!r}'.format(len(self), left))
         if not 0 <= rnormalize <= len(self):
             raise IndexError('len={!r}, right={!r}'.format(len(self), right))
-        if lnormalize == len(self) or rnormalize == 0:
-            raise NotImplementedError('left={!r}, right={!r}'
-                                      .format(left, right))
 
         if not lnormalize < rnormalize:
             raise ValueError("Normalization {}:{} invalid"
@@ -585,9 +571,10 @@ class MPArray(object):
     def compress(self, method='svd', **kwargs):
         """Compress `self`, modifying it in-place.
 
-        :param method: 'svd' or 'var'
+        :param method: 'svd', 'svdsweep' or 'var'
 
         Parameters for 'svd':
+        =====================
 
         :param bdim: Maximal bond dimension of the result. Default
             `None`.
@@ -600,7 +587,13 @@ class MPArray(object):
             (inverse) or `None` (choose depending on
             normalization). Default `None`.
 
+        Parameters for 'svdsweep':
+        =====================
+
+        TODO
+
         Parameters for 'var':
+        =====================
 
         :param startmpa: Start vector, also fixes the bond dimension
             of the result. Default: Random, with same norm as self.
@@ -632,6 +625,8 @@ class MPArray(object):
         """
         if method == 'svd':
             return self._compress_svd(**kwargs)
+        elif method == 'swdsweep':
+            pass
         elif method == 'var':
             compr, overlap = self._compression_var(**kwargs)
             self._lnormalized = compr._lnormalized
@@ -663,6 +658,8 @@ class MPArray(object):
         else:
             raise ValueError('{!r} is not a valid method'.format(method))
 
+
+
     def _compress_svd(self, bdim=None, relerr=0.0, direction=None):
         """Compress `self` using SVD [Sch11_, Sec. 4.5.1]
 
@@ -686,6 +683,29 @@ class MPArray(object):
             return self._compress_svd_l(bdim, relerr)
 
         raise ValueError('{} is not a valid direction'.format(direction))
+
+    def _compress_svdsweep(self, stages=None, bdim=None, relerr=0.0,
+                          num_sweeps=1):
+        """Compresses the MPA by sweeping & iterative SVD compression
+
+        :param stages: Iterator of (bdim, relerr) for iterative compression;
+            if None is passed, it is created from the following parameters
+        :param bdim: Maximal final bond dimension for the compressed MPA
+            (default max of current bond dimensions, i.e. no compression)
+        :param relerr: Maximal allowed final error for each truncation step,
+            that is the fraction of truncated singular values over their sum
+            (default 0.0, i.e. no compression)
+        :param num_sweeps: Number of distinct stages
+
+        """
+        if stages is None:
+            bdim = max(self.bdims) if bdim is None else bdim
+            bdims = np.linspace(bdim, max(self.bdims), num_sweeps,
+                                endpoint=False, dtype=int)
+            stages = [(bd, relerr / num_sweeps) for bd in bdims]
+        stages = reversed(sorted(stages))
+        for bdim, relerr in stages:
+            self._compress_svd(bdim, relerr)
 
     def _compression_var(self, startmpa=None, bdim=None, randstate=np.random,
                          num_sweeps=5, var_sites=1):
@@ -727,6 +747,7 @@ class MPArray(object):
         compr._adapt_to(self.ravel(), num_sweeps, var_sites)
         compr = compr.reshape(shape)
         # FIXME Compute overlap from the norms of `self` and `target`,
+        # FIXME Dont return if not asked to...
         # which are faster to obtain because they are normalized.
         overlap = inner(self, compr)
         return compr, overlap
@@ -986,6 +1007,7 @@ def outer(mpas):
     return MPArray(sum(([ltens.copy() for ltens in mpa] for mpa in mpas), []))
 
 
+#FXIME Why is outer not a special case of this?
 def inject(mpa, pos, num, inject_ten=None):
     """Like outer(), but place second factor somewhere inside mpa.
 
@@ -1026,7 +1048,7 @@ def norm(mpa):
     :returns: l2-norm of that array
 
     """
-    mpa.normalize(allbutone=True)
+    mpa.normalize()
     current_lnorm, current_rnorm = mpa.normal_form
 
     if current_rnorm == 1:
@@ -1062,6 +1084,7 @@ def normdist(mpa1, mpa2):
     # this is too strict.
 
 
+#TODO Convert to iterator
 def _prune_ltens(mpa):
     """Contract local tensors with no physical legs.
 
@@ -1209,6 +1232,7 @@ def regular_slices(length, width, offset):
         yield slice(offset * i, offset * i + width)
 
 
+# FIXME What is this doing here?
 def default_embed_ltens(mpa, embed_tensor):
     """Embed with identity matrices by default.
 

@@ -17,19 +17,7 @@ import mpnum.mparray as mp
 from mpnum import _tools
 from mpnum._tools import global_to_local
 from mpnum.testing import params_product, tuplize, assert_mpa_almost_equal, \
-    assert_mpa_identical
-
-try:
-    from collections import ChainMap
-except ImportError:
-    # Python 2 :(
-    # We could do:  from ConfigParser import _Chainmap as ChainMap
-    # Or we make up a cheap replacement:
-    def ChainMap(*dicts):
-        res = {}
-        for d in reversed(dicts):
-            res.update(d)
-        return res
+    assert_mpa_identical, mpo_to_global
 
 
 # nr_sites, local_dim, bond_dim
@@ -39,10 +27,10 @@ MP_TEST_PARAMETERS = [(1, 7, np.nan), (2, 3, 3), (3, 2, 4), (6, 2, 4),
 MP_TEST_PARAMETERS_GROUPS = [(6, 2, 4, 3), (6, 2, 4, 2), (4, 3, 5, 2)]
 
 
-# We choose to use mostly a global reperentation of multipartite
-# arrays throughout our tests. A few operations (i.e. matrix
-# multiplication) are easier to express. Sometimes, local
-# representation will be used as well.
+def update_copy_of(target, newvals):
+    new = target.copy()
+    new.update(newvals)
+    return new
 
 
 ###############################################################################
@@ -66,7 +54,7 @@ def test_from_kron(nr_sites, local_dim, bond_dim):
     op = _tools.mkron(*factors)
     op.shape = [local_dim] * (plegs * nr_sites)
     mpo = mp.MPArray.from_kron(factors)
-    assert_array_almost_equal(op, mpo.to_array_global())
+    assert_array_almost_equal(op, mpo_to_global(mpo))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
@@ -83,7 +71,7 @@ def test_transposition(nr_sites, local_dim, _):
 
     opT = op.reshape((local_dim**nr_sites,) * 2).T \
         .reshape((local_dim,) * 2 * nr_sites)
-    assert_array_almost_equal(opT, mpo.T().to_array_global())
+    assert_array_almost_equal(opT, mpo_to_global(mpo.T()))
 
 
 ###############################################################################
@@ -92,19 +80,19 @@ def test_transposition(nr_sites, local_dim, _):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_dot(nr_sites, local_dim, bond_dim):
     mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op1 = mpo1.to_array_global()
+    op1 = mpo_to_global(mpo1)
     mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op2 = mpo2.to_array_global()
+    op2 = mpo_to_global(mpo2)
 
     # Dotproduct of all 1st physical with 0th physical legs = np.dot
     dot_np = np.tensordot(op1.reshape((local_dim**nr_sites, ) * 2),
                           op2.reshape((local_dim**nr_sites, ) * 2),
                           axes=([1], [0]))
     dot_np = dot_np.reshape(op1.shape)
-    dot_mp = mp.dot(mpo1, mpo2, axes=(1, 0)).to_array_global()
+    dot_mp = mpo_to_global(mp.dot(mpo1, mpo2, axes=(1, 0)))
     assert_array_almost_equal(dot_np, dot_mp)
     # this should also be the default axes
-    dot_mp = mp.dot(mpo1, mpo2).to_array_global()
+    dot_mp = mpo_to_global(mp.dot(mpo1, mpo2))
     assert_array_almost_equal(dot_np, dot_mp)
 
     # Dotproduct of all 0th physical with 1st physical legs = np.dot
@@ -112,10 +100,10 @@ def test_dot(nr_sites, local_dim, bond_dim):
                           op2.reshape((local_dim**nr_sites, ) * 2),
                           axes=([0], [1]))
     dot_np = dot_np.reshape(op1.shape)
-    dot_mp = mp.dot(mpo1, mpo2, axes=(0, 1)).to_array_global()
+    dot_mp = mpo_to_global(mp.dot(mpo1, mpo2, axes=(0, 1)))
     assert_array_almost_equal(dot_np, dot_mp)
     # this should also be the default axes
-    dot_mp = mp.dot(mpo1, mpo2, axes=(-2, -1)).to_array_global()
+    dot_mp = mpo_to_global(mp.dot(mpo1, mpo2, axes=(-2, -1)))
     assert_array_almost_equal(dot_np, dot_mp)
 
 
@@ -129,9 +117,9 @@ def test_partialdot(nr_sites, local_dim, bond_dim):
     start_at = min(2, nr_sites // 2)
 
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
+    op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
     mpo_part = factory.random_mpa(part_sites, (local_dim, local_dim), bond_dim)
-    op_part = mpo_part.to_array_global().reshape((local_dim**part_sites,) * 2)
+    op_part = mpo_to_global(mpo_part).reshape((local_dim**part_sites,) * 2)
     op_part_embedded = np.kron(
         np.kron(np.eye(local_dim**start_at), op_part),
         np.eye(local_dim**(nr_sites - part_sites - start_at)))
@@ -140,8 +128,8 @@ def test_partialdot(nr_sites, local_dim, bond_dim):
     prod2 = np.dot(op_part_embedded, op)
     prod1_mpo = mp.partialdot(mpo, mpo_part, start_at=start_at)
     prod2_mpo = mp.partialdot(mpo_part, mpo, start_at=start_at)
-    prod1_mpo = prod1_mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
-    prod2_mpo = prod2_mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
+    prod1_mpo = mpo_to_global(prod1_mpo).reshape((local_dim**nr_sites,) * 2)
+    prod2_mpo = mpo_to_global(prod2_mpo).reshape((local_dim**nr_sites,) * 2)
 
     assert_array_almost_equal(prod1, prod1_mpo)
     assert_array_almost_equal(prod2, prod2_mpo)
@@ -162,9 +150,9 @@ def test_inner_vec(nr_sites, local_dim, bond_dim):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_inner_mat(nr_sites, local_dim, bond_dim):
     mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op1 = mpo1.to_array_global().reshape((local_dim**nr_sites, ) * 2)
+    op1 = mpo_to_global(mpo1).reshape((local_dim**nr_sites, ) * 2)
     mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op2 = mpo2.to_array_global().reshape((local_dim**nr_sites, ) * 2)
+    op2 = mpo_to_global(mpo2).reshape((local_dim**nr_sites, ) * 2)
 
     inner_np = np.trace(np.dot(op1.conj().transpose(), op2))
     inner_mp = mp.inner(mpo1, mpo2)
@@ -192,7 +180,7 @@ def test_normdist(nr_sites, local_dim, bond_dim):
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_partialtrace(nr_sites, local_dim, bond_dim, keep_width):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op = mpo.to_array_global()
+    op = mpo_to_global(mpo)
 
     for site in range(nr_sites - keep_width + 1):
         traceout = tuple(range(site)) \
@@ -200,14 +188,14 @@ def test_partialtrace(nr_sites, local_dim, bond_dim, keep_width):
         axes = [(0, 1) if site in traceout else None for site in range(nr_sites)]
         red_mpo = mp.partialtrace(mpo, axes=axes)
         red_from_op = _tools.partial_trace(op, traceout)
-        assert_array_almost_equal(red_mpo.to_array_global(), red_from_op,
+        assert_array_almost_equal(mpo_to_global(red_mpo), red_from_op,
                                   err_msg="not equal at site {}".format(site))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_trace(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
+    op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
 
     assert_almost_equal(np.trace(op), mp.trace(mpo))
 
@@ -215,15 +203,15 @@ def test_trace(nr_sites, local_dim, bond_dim):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_add_and_subtr(nr_sites, local_dim, bond_dim):
     mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op1 = mpo1.to_array_global()
+    op1 = mpo_to_global(mpo1)
     mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op2 = mpo2.to_array_global()
+    op2 = mpo_to_global(mpo2)
 
-    assert_array_almost_equal(op1 + op2, (mpo1 + mpo2).to_array_global())
-    assert_array_almost_equal(op1 - op2, (mpo1 - mpo2).to_array_global())
+    assert_array_almost_equal(op1 + op2, mpo_to_global(mpo1 + mpo2))
+    assert_array_almost_equal(op1 - op2, mpo_to_global(mpo1 - mpo2))
 
     mpo1 += mpo2
-    assert_array_almost_equal(op1 + op2, mpo1.to_array_global())
+    assert_array_almost_equal(op1 + op2, mpo_to_global(mpo1))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', [(3, 2, 2)])
@@ -251,29 +239,31 @@ def test_operations_typesafety(nr_sites, local_dim, bond_dim):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    # FIXME Change behavior of to_array
     # For nr_sites == 1, changing `mpo` below will change `op` as
     # well, unless we call .copy().
-    op = mpo.to_array_global().copy()
+    op = mpo_to_global(mpo).copy()
     scalar = np.random.randn()
 
-    assert_array_almost_equal(scalar * op, (scalar * mpo).to_array_global())
+    assert_array_almost_equal(scalar * op, mpo_to_global(scalar * mpo))
 
     mpo *= scalar
-    assert_array_almost_equal(scalar * op, mpo.to_array_global())
+    assert_array_almost_equal(scalar * op, mpo_to_global(mpo))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_div_mpo_scalar(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    # FIXME Change behavior of to_array
     # For nr_sites == 1, changing `mpo` below will change `op` as
     # well, unless we call .copy().
-    op = mpo.to_array_global().copy()
+    op =mpo_to_global(mpo).copy()
     scalar = np.random.randn()
 
-    assert_array_almost_equal(op / scalar, (mpo / scalar).to_array_global())
+    assert_array_almost_equal(op / scalar, mpo_to_global(mpo / scalar))
 
     mpo /= scalar
-    assert_array_almost_equal(op / scalar, mpo.to_array_global())
+    assert_array_almost_equal(op / scalar, mpo_to_global(mpo))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
@@ -296,7 +286,7 @@ def test_outer(nr_sites, local_dim, bond_dim):
 
     # Test 3-factors iteratively (since full form would be too large!!
     diff = mp.outer((mpo, mpo, mpo)) - mp.outer((mpo, mp.outer((mpo, mpo))))
-    diff.normalize(allbutone=True)
+    diff.normalize()
     assert len(diff) == 3 * len(mpo)
     assert mp.norm(diff) < 1e-6
 
@@ -326,7 +316,7 @@ def test_inject(_, local_dim, bond_dim):
     ac = (ac0 + ac1).reshape(2 * local_dim)
     ac_mpo = mp.MPArray.from_array(global_to_local(ac, sites=2), plegs)
     abbc_mpo = mp.inject(ac_mpo, pos=1, num=2, inject_ten=b)
-    abbc_from_mpo = abbc_mpo.to_array_global()
+    abbc_from_mpo = mpo_to_global(abbc_mpo)
     assert_array_almost_equal(abbc, abbc_from_mpo)
 
     # Here, only local order.
@@ -357,7 +347,7 @@ def test_inject(_, local_dim, bond_dim):
     ac = (ac0 + ac1).reshape(2 * local_dim)
     ac_mpo = mp.MPArray.from_array(global_to_local(ac, sites=2), plegs)
     abbc_mpo = mp.inject(ac_mpo, pos=1, num=2, inject_ten=None)
-    abbc_from_mpo = abbc_mpo.to_array_global()
+    abbc_from_mpo = mpo_to_global(abbc_mpo)
     assert_array_almost_equal(abbc, abbc_from_mpo)
 
     # Here, only local order.
@@ -480,19 +470,19 @@ def test_normalization_from_full(nr_sites, local_dim, _):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_normalization_incremental(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op = mpo.to_array_global()
+    op = mpo_to_global(mpo)
     assert_correct_normalization(mpo, 0, nr_sites)
-    assert_array_almost_equal(op, mpo.to_array_global())
+    assert_array_almost_equal(op, mpo_to_global(mpo))
 
     for site in range(1, nr_sites):
         mpo.normalize(left=site)
         assert_correct_normalization(mpo, site, nr_sites)
-        assert_array_almost_equal(op, mpo.to_array_global())
+        assert_array_almost_equal(op, mpo_to_global(mpo))
 
     for site in range(nr_sites - 1, 0, -1):
         mpo.normalize(right=site)
         assert_correct_normalization(mpo, site - 1, site)
-        assert_array_almost_equal(op, mpo.to_array_global())
+        assert_array_almost_equal(op, mpo_to_global(mpo))
 
 
 # FIXME Add counter to normalization functions
@@ -503,36 +493,36 @@ def test_normalization_jump(nr_sites, local_dim, bond_dim):
         return
 
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op = mpo.to_array_global()
+    op = mpo_to_global(mpo)
     assert_correct_normalization(mpo, 0, nr_sites)
-    assert_array_almost_equal(op, mpo.to_array_global())
+    assert_array_almost_equal(op, mpo_to_global(mpo))
 
     center = nr_sites // 2
     mpo.normalize(left=center - 1, right=center)
     assert_correct_normalization(mpo, center - 1, center)
-    assert_array_almost_equal(op, mpo.to_array_global())
+    assert_array_almost_equal(op, mpo_to_global(mpo))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_normalization_full(nr_sites, local_dim, bond_dim):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op = mpo.to_array_global()
+    op = mpo_to_global(mpo)
     assert_correct_normalization(mpo, 0, nr_sites)
-    assert_array_almost_equal(op, mpo.to_array_global())
+    assert_array_almost_equal(op, mpo_to_global(mpo))
 
     mpo.normalize(right=1)
     assert_correct_normalization(mpo, 0, 1)
-    assert_array_almost_equal(op, mpo.to_array_global())
+    assert_array_almost_equal(op, mpo_to_global(mpo))
 
     ###########################################################################
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op = mpo.to_array_global()
+    op = mpo_to_global(mpo)
     assert_correct_normalization(mpo, 0, nr_sites)
-    assert_array_almost_equal(op, mpo.to_array_global())
+    assert_array_almost_equal(op, mpo_to_global(mpo))
 
     mpo.normalize(left=len(mpo) - 1)
     assert_correct_normalization(mpo, len(mpo) - 1, len(mpo))
-    assert_array_almost_equal(op, mpo.to_array_global())
+    assert_array_almost_equal(op, mpo_to_global(mpo))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
@@ -545,7 +535,7 @@ def test_normalization_default_args(nr_sites, local_dim, bond_dim):
     assert_correct_normalization(mpo, 0, nr_sites)
 
     mpo.normalize(left=1)
-    mpo.normalize(allbutone=True)
+    mpo.normalize()
     assert_correct_normalization(mpo, nr_sites - 1, nr_sites)
 
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
@@ -557,7 +547,7 @@ def test_normalization_default_args(nr_sites, local_dim, bond_dim):
 
     mpo.normalize(left=1)
     mpo.normalize(right=nr_sites - 2)
-    mpo.normalize(allbutone=True)
+    mpo.normalize()
     assert_correct_normalization(mpo, 0, 1)
 
 
@@ -583,18 +573,18 @@ def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim):
         return
 
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
-    op = mpo.to_array_global()
+    op = mpo_to_global(mpo)
     scalar = np.random.randn()
 
     center = nr_sites // 2
     mpo.normalize(left=center - 1, right=center)
     mpo_times_two = scalar * mpo
 
-    assert_array_almost_equal(scalar * op, mpo_times_two.to_array_global())
+    assert_array_almost_equal(scalar * op, mpo_to_global(mpo_times_two))
     assert_correct_normalization(mpo_times_two, center - 1, center)
 
     mpo *= scalar
-    assert_array_almost_equal(scalar * op, mpo.to_array_global())
+    assert_array_almost_equal(scalar * op, mpo_to_global(mpo))
     assert_correct_normalization(mpo, center - 1, center)
 
 
@@ -636,7 +626,7 @@ COMPR_SETTINGS = tuplize((
 ))
 
 COMPR_NORM = tuplize((
-    None, dict(allbutone=True),
+    None, dict(),
     dict(left=1), dict(left=-1), dict(right=1), dict(right=-1),
     dict(left=1, right=2), dict(left=-2, right=-1), dict(left=1, right=-1),
 ))
@@ -675,9 +665,9 @@ def call_compression(mpa, comparg, bonddim, call_compress=False):
         pass
     elif comparg.get('startmpa') == 'fillbelow':
         startmpa = factory.random_mpa(len(mpa), mpa.pdims[0], bonddim, norm1=True)
-        comparg = ChainMap({'startmpa': startmpa}, comparg)
+        comparg = update_copy_of(comparg, {'startmpa': startmpa})
     else:
-        comparg = ChainMap({'bdim': bonddim}, comparg)
+        comparg = update_copy_of(comparg, {'bdim': bonddim})
     if call_compress:
         return mpa.compress(**comparg)
     else:
@@ -705,7 +695,7 @@ def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize, com
     compr2 = mpa.copy()
     overlap2 = call_compression(compr2, comparg, bond_dim, call_compress=True)
     compr, overlap = call_compression(mpa, comparg, bond_dim)
-    assert overlap == overlap2
+    assert_almost_equal(overlap, overlap2)
     assert_mpa_identical(compr, compr2)
 
 
@@ -729,7 +719,7 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
     if comparg['method'] == 'var' and comparg['num_sweeps'] == 3:
         # Do a large number of sweeps and use a fixed seed to compare
         # with SVD compression below.
-        comparg = ChainMap({'num_sweeps': 20 // comparg['var_sites']}, comparg)
+        comparg = update_copy_of(comparg, {'num_sweeps': 20 // comparg['var_sites']})
         st = np.random.RandomState(seed=42)
 
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2, st, norm1=True)
