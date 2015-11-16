@@ -463,7 +463,7 @@ class MPArray(object):
         |              |              | :code:`1`             |
         +--------------+--------------+-----------------------+
 
-        :code:`afull` is short for "almost full" (we do not support
+        :code:`'afull'` is short for "almost full" (we do not support
         normalizing the outermost sites).
 
         Arbitrary integer values of `left` and `right` have the
@@ -474,16 +474,16 @@ class MPArray(object):
         - :code:`self[right:]` will be right-normalized
 
         In accordance with the last table, the special values
-        :code:`None` and :code:`afull` will be replaced by the
+        :code:`None` and :code:`'afull'` will be replaced by the
         following integers:
 
-        +---------+--------------+-----------------+
-        |         | :code:`None` | :code:`'afull'` |
-        +---------+--------------+-----------------+
-        | `left`  | 0            | len(self) - 1   |
-        +---------+--------------+-----------------+
-        | `right` | len(self)    | 1               |
-        +---------+--------------+-----------------+
+        +---------+-------------------+-----------------------+
+        |         | :code:`None`      | :code:`'afull'`       |
+        +---------+-------------------+-----------------------+
+        | `left`  | :code:`0`         | :code:`len(self) - 1` |
+        +---------+-------------------+-----------------------+
+        | `right` | :code:`len(self)` | :code:`1`             |
+        +---------+-------------------+-----------------------+
 
         Exceptions raised:
 
