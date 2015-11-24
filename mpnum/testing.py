@@ -32,6 +32,8 @@ def assert_mpa_identical(mpa1, mpa2):
 
 def mpo_to_global(mpo):
     """Convert mpo to dense global array
-    """
-    return local_to_global(mpo.to_array(), len(mpo))
 
+    .. todo:: Use `mpa.to_array_global()` instead.
+
+    """
+    return mpo.to_array_global()
