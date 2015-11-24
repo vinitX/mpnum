@@ -16,7 +16,7 @@ import mpnum.factory as factory
 import mpnum.mparray as mp
 from mpnum import _tools
 from mpnum._tools import global_to_local
-from mpnum.testing import params_product, tuplize, assert_mpa_almost_equal, \
+from mpnum.testing import assert_mpa_almost_equal, \
     assert_mpa_identical, mpo_to_global
 
 
@@ -598,40 +598,60 @@ def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim):
 # six decimals" and is related to the FIXME at the module start.
 
 # nr_sites, local_dims, bond_dim
-COMPR_SIZES = (
-    (2, (2, 3), 5),
-    (5, 3, 4),
-    # TODO Some of the following settings take very long. Read the
-    # pytest documentation and find a way to conveniently run tests
-    # with larger parameter sets.
-    # (4, (2, 3), 5),
-    # (6, 2, 3),
-    # (5, (2, 2, 2), 20),  # about  2 minutes (Core i5-3380M)
-    # (16, 2, 10),         # about  2 minutes
-    # (16, 2, 30),         # about 10 minutes
+compr_sizes = pt.mark.parametrize(
+    # Start with `2*bond_dim` and compress to `bond_dim`.
+    'nr_sites, local_dims, bond_dim',
+    (
+        (4, 2, 3),
+        pt.mark.long((2, (2, 3), 5)),
+        pt.mark.long((5, 3, 4)),
+        # TODO Create a separate marker for very long tests:
+        # (4, (2, 3), 5),
+        # (6, 2, 3),
+        # (5, (2, 2, 2), 20),  # about  2 minutes (Core i5-3380M)
+        # (16, 2, 10),         # about  2 minutes
+        # (16, 2, 30),         # about 10 minutes
+    )
 )
 
-COMPR_SETTINGS = tuplize((
-    dict(method='svd', direction='left'),
-    dict(method='svd', direction='right'),
-    dict(method='svd', direction='left', relerr=1e-6),
-    dict(method='svd', direction='right', relerr=1e-6),
-    dict(method='var', num_sweeps=1, var_sites=1),
-    dict(method='var', num_sweeps=2, var_sites=1),
-    dict(method='var', num_sweeps=3, var_sites=1),
-    dict(method='var', num_sweeps=1, var_sites=2),
-    dict(method='var', num_sweeps=2, var_sites=2),
-    dict(method='var', num_sweeps=3, var_sites=2),
-    dict(method='var', num_sweeps=2, var_sites=2, startmpa='fillbelow'),
-))
+compr_settings = pt.mark.parametrize(
+    'comparg',
+    (
+        dict(method='svd', direction='left'),
+        dict(method='svd', direction='right'),
+        dict(method='svd', direction='left', relerr=1e-6),
+        dict(method='svd', direction='right', relerr=1e-6),
+        pt.mark.long(dict(method='var', num_sweeps=1, var_sites=1)),
+        dict(method='var', num_sweeps=2, var_sites=1),
+        pt.mark.long(dict(method='var', num_sweeps=3, var_sites=1)),
+        pt.mark.long(dict(method='var', num_sweeps=1, var_sites=2)),
+        dict(method='var', num_sweeps=2, var_sites=2),
+        pt.mark.long(dict(method='var', num_sweeps=3, var_sites=2)),
+        dict(method='var', num_sweeps=2, var_sites=1, startmpa='fillbelow'),
+    )
+)
 
-COMPR_NORM = tuplize((
-    None, dict(),
-    dict(left=1), dict(left=-1), dict(right=1), dict(right=-1),
-    dict(left=1, right=2), dict(left=-2, right=-1), dict(left=1, right=-1),
-))
+compr_normalization = pt.mark.parametrize(
+    'normalize',
+    (dict(left=1, right=-1), dict())
+    + tuple(pt.mark.long(x) for x in (
+        None,
+        dict(left='afull'),
+        dict(right='afull'),
+        dict(left=1), dict(left=-1), dict(right=1), dict(right=-1),
+        dict(left=1, right=2), dict(left=-2, right=-1),
+        dict(left=1, right=-1),
+    ))
+)
 
-COMPR_SETTINGS = params_product(COMPR_SIZES, COMPR_NORM, COMPR_SETTINGS)
+def _chain_decorators(*args):
+    def chain_decorator(f):
+        for deco in reversed(args):
+            f = deco(f)
+        return f
+    return chain_decorator
+
+compr_test_params = _chain_decorators(compr_sizes, compr_settings, compr_normalization)
 
 
 def normalize_if_applicable(mpa, nmz):
@@ -674,8 +694,7 @@ def call_compression(mpa, comparg, bonddim, call_compress=False):
         return mpa.compression(**comparg)
 
 
-@pt.mark.parametrize(
-    'nr_sites, local_dims, bond_dim, normalize, comparg', COMPR_SETTINGS)
+@compr_test_params
 def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize, comparg):
     """Test that .compression() and .compress() produce identical results.
 
@@ -699,8 +718,7 @@ def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize, com
     assert_mpa_identical(compr, compr2)
 
 
-@pt.mark.parametrize(
-    'nr_sites, local_dims, bond_dim, normalize, comparg', COMPR_SETTINGS)
+@compr_test_params
 def test_compression_result_properties(nr_sites, local_dims, bond_dim,
                                         normalize, comparg):
     """Test general properties of the MPA coming from a compression.
@@ -763,15 +781,14 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
         assert abs(overlap) >= left_svd_overlap * (1 - overlap_rel_tol)
 
 
-@pt.mark.parametrize(
-    'nr_sites, local_dims, bond_dim, normalize, comparg', COMPR_SETTINGS)
+@compr_test_params
 def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
                                          normalize, comparg):
     """Compression to larger bond dimension doesn't increase bond
     dimension.
 
     """
-    if 'relerr' in COMPR_SETTINGS:
+    if 'relerr' in comparg:
         return  # Test does not apply
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True)
     norm = mp.norm(mpa.copy())
@@ -785,9 +802,8 @@ def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
         assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
 
 
-@pt.mark.parametrize(
-    'nr_sites, local_dims, bond_dim, normalize, comparg, add',
-    params_product(COMPR_SETTINGS, (('zero',), ('self',))))
+@pt.mark.parametrize('add', ('zero', 'self'))
+@compr_test_params
 def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize, comparg, add):
     """`a + b` compresses exactly to a multiple of `a` if `b` is `0`, `a`
     or `-2*a`
