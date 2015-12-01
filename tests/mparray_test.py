@@ -592,11 +592,6 @@ def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim):
 #  SVD and variational compression  #
 #####################################
 
-# TODO To check non-normalized inputs, we take a normalized state and
-# multiply it with a constant with magnitude different from 1. This is
-# to avoid errors like "123456789.1 and 123456789.2 are not equal to
-# six decimals" and is related to the FIXME at the module start.
-
 # nr_sites, local_dims, bond_dim
 compr_sizes = pt.mark.parametrize(
     # Start with `2*bond_dim` and compress to `bond_dim`.
@@ -627,10 +622,14 @@ compr_settings = pt.mark.parametrize(
         pt.mark.long(dict(method='var', num_sweeps=1, var_sites=2)),
         dict(method='var', num_sweeps=2, var_sites=2),
         pt.mark.long(dict(method='var', num_sweeps=3, var_sites=2)),
+        # See :func:`call_compression` below for the meaning of
+        # 'fillbelow'.
         dict(method='var', num_sweeps=2, var_sites=1, startmpa='fillbelow'),
     )
 )
 
+# Test compression works for different normalizations of the MPA
+# before compression.
 compr_normalization = pt.mark.parametrize(
     'normalize',
     (dict(left=1, right=-1), dict())
@@ -651,7 +650,8 @@ def _chain_decorators(*args):
         return f
     return chain_decorator
 
-compr_test_params = _chain_decorators(compr_sizes, compr_settings, compr_normalization)
+compr_test_params = _chain_decorators(compr_sizes, compr_settings,
+                                      compr_normalization)
 
 
 def normalize_if_applicable(mpa, nmz):
@@ -669,8 +669,6 @@ def normalize_if_applicable(mpa, nmz):
 
     """
     if nmz is not None:
-        if 'allbutone' not in nmz and len(mpa) == 1:
-            return False
         if nmz.get('left') == 1 and nmz.get('right') == -1 and len(mpa) == 2:
             return False
         mpa.normalize(**nmz)
@@ -678,7 +676,18 @@ def normalize_if_applicable(mpa, nmz):
 
 
 def call_compression(mpa, comparg, bonddim, call_compress=False):
-    """Add 'bdim' if relerr is not given. Add 'startmpa' if requested.
+    """Call `mpa.compress` or `mpa.compression` with suitable arguments.
+
+    Does not make a copy of `mpa` in any case.
+
+    :param bonddim: Compress to bond dimension `bonddim`.
+    :param call_compress: If `True`, call `mpa.compress` instead of
+        `mpa.compression` (the default).
+    :param comparg: Settings dict for compression.  If `relerr` is not
+        present, add `bdim = bonddim`.  If `startmpa` is equal to
+        `'fillbelow'`, insert a random MPA.
+
+    :returns: Compressed MPA.
 
     """
     if 'relerr' in comparg:
@@ -694,19 +703,28 @@ def call_compression(mpa, comparg, bonddim, call_compress=False):
         return mpa.compression(**comparg)
 
 
+# TODO We want check compression for inputs with norm different from
+# 1.  In the next function and below, we do this with a normalized
+# state multiplied with a constant with magnitude different from 1.
+# This is to avoid errors like "123456789.1 and 123456789.2 are not
+# equal to six decimals" and is related to the FIXME at the module
+# start.
+
+
 @compr_test_params
 def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize, comparg):
     """Test that .compression() and .compress() produce identical results.
 
     """
+    # See comment above on "4.2 * "
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2, norm1=True)
     if not normalize_if_applicable(mpa, normalize):
         return
 
     comparg = comparg.copy()
     if comparg['method'] == 'var':
-        # Exact equality between `compr` and `compr2` below requires a
-        # fixed start vector.
+        # Exact equality between `compr` and `compr2` below requires
+        # using the same start vector in both cases.
         comparg['startmpa'] = factory.random_mpa(nr_sites, local_dims, bond_dim)
 
     # The results from .compression() and .compress() must match
@@ -723,6 +741,18 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
                                         normalize, comparg):
     """Test general properties of the MPA coming from a compression.
 
+    * Compare SVD compression against simpler implementation
+
+    * Check that var compression with enough sweeps is at least as
+      good as SVD compression
+
+    * Check that all implementations return the correct overlap
+
+    * Check that the bond dimension has decreased and that it is as
+      prescribed
+
+    * Check that the normalization advertised in the result is correct
+
     TODO: The worst case for compression is that all singular values
     have the same size.  This gives a fidelity lower bound for the
     compression result.  Check that lower bound.
@@ -735,8 +765,10 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
     """
     st = None
     if comparg['method'] == 'var' and comparg['num_sweeps'] == 3:
-        # Do a large number of sweeps and use a fixed seed to compare
-        # with SVD compression below.
+        # Below, we want to check that var is at least as good as SVD
+        # compression.  This requires a big enough number of sweeps.
+        # Because a big number of sweeps is not required in any other
+        # test, we override the number of sweeps here.
         comparg = update_copy_of(comparg, {'num_sweeps': 20 // comparg['var_sites']})
         st = np.random.RandomState(seed=42)
 
@@ -770,6 +802,9 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
         compr = compr.to_array()
         assert_array_almost_equal(alt_compr, compr)
 
+    # Var: If we perform enough sweeps (enough = empirical value), we
+    # expect to be at least as good as SVD compression (up to a small
+    # tolerance).
     if comparg['method'] == 'var' and comparg['num_sweeps'] > 5:
         right_svd_res = _svd_compression_full(mpa, 'right', bond_dim)
         left_svd_res = _svd_compression_full(mpa, 'left', bond_dim)
@@ -784,8 +819,8 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
 @compr_test_params
 def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
                                          normalize, comparg):
-    """Compression to larger bond dimension doesn't increase bond
-    dimension.
+    """Check that bond dimension does not increase if the target bond
+    dimension is larger than the MPA bond dimension
 
     """
     if 'relerr' in comparg:
@@ -802,11 +837,11 @@ def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
         assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
 
 
-@pt.mark.parametrize('add', ('zero', 'self'))
+@pt.mark.parametrize('add', ('zero', 'self', 'self2'))
 @compr_test_params
 def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize, comparg, add):
-    """`a + b` compresses exactly to a multiple of `a` if `b` is `0`, `a`
-    or `-2*a`
+    """Check that `a + b` compresses exactly to a multiple of `a` if `b`
+    is equal to one of `0`, `a` or `-2*a`
 
     """
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True)
@@ -833,13 +868,17 @@ def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize, compa
 #######################################
 #  Compression test helper functions  #
 #######################################
+
+
 def _svd_compression_full(mpa, direction, target_bonddim):
     """Re-implement MPArray.compress('svd') but on the level of the full
     matrix representation, i.e. it truncates the Schmidt-decompostion
     on each bipartition sequentially.
 
-    Two implementations that produce the same data are not a guarantee
-    for correctness, but a check for consistency is nice anyway.
+    We have two implementations and check that both produce the same
+    output.  This is useful because the correctness of the MPA-based
+    implementation depends crucially on correct normalization at each
+    step, while the implementation here is much simpler. 
 
     :param mpa: The MPA to compress
     :param direction: 'right' means sweep from left to right,
