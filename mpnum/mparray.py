@@ -588,7 +588,7 @@ class MPArray(object):
             normalization). Default `None`.
 
         Parameters for 'svdsweep':
-        =====================
+        ==========================
 
         TODO
 
