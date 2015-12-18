@@ -4,6 +4,7 @@
 """Auxiliary functions useful for writing tests"""
 
 
+import numpy as np
 import itertools as it
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 from ._tools import local_to_global
@@ -14,18 +15,23 @@ def assert_mpa_almost_equal(mpa1, mpa2, full=False, **kwargs):
     """
     if full:
         assert_array_almost_equal(mpa1.to_array(), mpa2.to_array(), **kwargs)
-        return
-    raise ValueError('not implemented yet')
+    else:
+        raise NotImplementedError("Coming soon...")
 
 
-def assert_mpa_identical(mpa1, mpa2):
+def assert_mpa_identical(mpa1, mpa2, decimal=np.infty):
     """Verify that two MPAs are complety identical
     """
     assert len(mpa1) == len(mpa2)
-    for i, lten1, lten2 in zip(it.count(), mpa1, mpa2):
-        assert_array_equal(lten1, lten2,
-                           err_msg='mismatch in lten {}'.format(i))
     assert mpa1.normal_form == mpa2.normal_form
+
+    for i, lten1, lten2 in zip(it.count(), mpa1, mpa2):
+        if decimal is np.infty:
+            assert_array_equal(lten1, lten2,
+                            err_msg='mismatch in lten {}'.format(i))
+        else:
+            assert_array_almost_equal(lten1, lten2, decimal=decimal,
+                                      err_msg='mismatch in lten {}'.format(i))
     # TODO: We should make a comprehensive comparison between `mpa1`
     # and `mpa2`.  Are we missing other things?
 
