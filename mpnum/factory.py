@@ -288,6 +288,10 @@ def random_mpdo(sites, ldim, bdim, randstate=np.random):
     ((4, 4, 4), ((2, 2), (2, 2), (2, 2), (2, 2)))
     >>> rho.normal_form
     (0, 4)
+    >>> rho_dense = rho.to_array_global().reshape((2**4,) * 2)
+    >>> from numpy.linalg import eigvals
+    >>> min(eigvals(rho_dense)) >= -1e-14
+    True
 
     """
     # generate density matrix as a mixture of `bdim` pure product states
