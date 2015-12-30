@@ -34,9 +34,9 @@ Represent a vector :math:`\lvert \psi \rangle \in \mathcal H` as
 
 .. math::
 
-   \langle i_1 \ldots i_n \vert \psi \rangle 
-   = A^{(1)}_{i_1} \cdots A^{(n)}_{i_n}, 
-   \quad A^{(k)}_{i_k} \in \mathbb C^{D_{k-1} \times D_k}, 
+   \langle i_1 \ldots i_n \vert \psi \rangle
+   = A^{(1)}_{i_1} \cdots A^{(n)}_{i_n},
+   \quad A^{(k)}_{i_k} \in \mathbb C^{D_{k-1} \times D_k},
    \quad D_0 = 1 = D_n.
 
 The :math:`k`-th local tensor is :math:`T_{l,i,r} =
@@ -55,7 +55,7 @@ Represent an operator :math:`M \in \mathcal B` as
 
   \langle i_1 \ldots i_n \vert M \vert j_1 \ldots j_n \rangle
   = A^{(1)}_{i_1 j_1} \cdots A^{(n)}_{i_n j_n},
-  \quad A^{(k)}_{i_k j_k} \in \mathbb C^{D_{k-1} \times D_k}, 
+  \quad A^{(k)}_{i_k j_k} \in \mathbb C^{D_{k-1} \times D_k},
    \quad D_0 = 1 = D_n.
 
 The :math:`k`-th local tensor is :math:`T_{l,i,j,r} = (A^{(k)}_{i
@@ -84,7 +84,7 @@ and represent :math:`\lvert \Phi \rangle` as
 
    \langle i_1 i'_1 \ldots i_n i'_n \vert \Phi \rangle
    = A^{(1)}_{i_1 i'_1} \cdots A^{(n)}_{i_n i'_n},
-   \quad A^{(k)}_{i_k j_k} \in \mathbb C^{D_{k-1} \times D_k}, 
+   \quad A^{(k)}_{i_k j_k} \in \mathbb C^{D_{k-1} \times D_k},
    \quad D_0 = 1 = D_n.
 
 The :math:`k`-th local tensor is :math:`T_{l,i,i',r} = (A^{(k)}_{i
@@ -98,6 +98,9 @@ can set all :math:`d_i = 1`.
 .. todo:: Add references.
 
 .. todo:: Are derived classes MPO/MPS/PMPS of any help?
+
+.. todo:: I am not sure the current definition of PMPS is the most elegant
+          for our purposes...
 
 """
 
@@ -246,7 +249,7 @@ def reductions_mps_as_pmps(mps, width=None, startsites=None, stopsites=None):
 
 
 def reductions_mps_as_mpo(mps, width=None, startsites=None, stopsites=None):
-    """Iterate over MPO reduced states of an MPS
+    """Iterate over MPO mpdoreduced states of an MPS
 
     `width`, `startsites` and `stopsites`: See
     :func:`reductions_mpo()`.

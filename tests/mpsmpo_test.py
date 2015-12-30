@@ -7,6 +7,7 @@ import pytest as pt
 
 from numpy.testing import assert_array_almost_equal
 
+import mpnum.mparray as mp
 import mpnum.factory as factory
 import mpnum.mpsmpo as mm
 import mpnum._tools as _tools
@@ -71,6 +72,19 @@ def test_reductions_pmps(nr_sites, local_dim, bond_dim, max_red_width):
     # check default argument for startsite
     assert len(list(mm.reductions_pmps(pmps, max_red_width))) \
         == nr_sites - max_red_width + 1
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim, width',
+                     [(6, 2, 4, 3), (4, 3, 5, 2)])
+def test_reductions_mps(nr_sites, local_dim, bond_dim, width):
+    mps = factory.random_mpa(nr_sites, (local_dim,), bond_dim)
+    mpo = mp.louter(mps, mps.conj())
+
+    pmps_reds = mm.reductions_mps_as_mpo(mps, width)
+    mpo_reds = mm.reductions_mpo(mpo, width)
+
+    for red1, red2 in zip(pmps_reds, mpo_reds):
+        assert_array_almost_equal(red1.to_array(), red2.to_array())
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
