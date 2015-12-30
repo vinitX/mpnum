@@ -91,3 +91,18 @@ def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim):
 
         assert_array_equal(evals_np.shape, (len(paulis),) * width)
         assert_array_almost_equal(evals_mp.to_array(), evals_np)
+
+
+@pt.mark.parametrize('nr_sites, width, local_dim, bond_dim',
+                     [(6, 3, 2, 5), (4, 2, 3, 4)])
+def test_mppovm_expectation_pure(nr_sites, width, local_dim, bond_dim):
+    paulis = povm.pauli_povm(local_dim)
+    mppaulis = mppovm.MPPovm.from_local_povm(paulis, width)
+    psi = factory.random_mps(nr_sites, local_dim, bond_dim)
+    rho = mpsmpo.mps_to_mpo(psi)
+    expect_psi = list(mppaulis.expectations(psi))
+    expect_rho = list(mppaulis.expectations(rho))
+
+    assert len(expect_psi) == len(expect_rho)
+    for e_rho, e_psi in zip(expect_rho, expect_psi):
+        assert_array_almost_equal(e_rho.to_array(), e_psi.to_array())

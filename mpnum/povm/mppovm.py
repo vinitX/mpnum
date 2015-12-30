@@ -63,7 +63,10 @@ class MPPovm(mp.MPArray):
         assert len(self) <= len(mpa)
 
         if all(pleg == 1 for pleg in mpa.plegs):
-            raise NotImplementedError("MPS expectations coming soon")
+            pmap = self.probability_map
+            for rho_red in mpsmpo.reductions_mps_as_mpo(mpa, len(self)):
+                yield mp.dot(pmap, rho_red.ravel())
+            return
         elif all(pleg == 2 for pleg in mpa.plegs):
             pmap = self.probability_map
             for rho_red in mpsmpo.reductions_mpo(mpa, len(self)):
