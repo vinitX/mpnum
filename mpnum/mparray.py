@@ -1037,6 +1037,22 @@ def inject(mpa, pos, num, inject_ten=None):
     return MPArray(ltens)
 
 
+def louter(a, b):
+    """Computes the tensorproduct of :math:`a \otimes b` locally, that is
+    when a and b have the same number of sites, the new local tensors are the
+    tensorproducts of the original ones.
+
+    :param MPArray a: MPArray
+    :param MPArray b: MPArray of same length as `a`
+    :returns: Tensor product of `a` and `b` in terms of their local tensors
+
+    """
+    assert len(a) == len(b)
+    ltens = (_local_dot(t1[:, None], t2[:, None], axes=(1, 1))
+             for t1, t2 in zip(a, b))
+    return MPArray(ltens)
+
+
 def norm(mpa):
     """Computes the norm (Hilbert space norm for MPS, Frobenius norm for MPO)
     of the matrix product operator. In contrast to `mparray.inner`, this can

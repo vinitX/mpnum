@@ -362,6 +362,24 @@ def test_inject(_, local_dim, bond_dim):
     assert_array_almost_equal(abc, abc_from_mpo)
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_louter(nr_sites, local_dim, bond_dim):
+    mpa1 = factory.random_mpa(nr_sites, local_dim, bond_dim)
+    mpa2 = factory.random_mpa(nr_sites, local_dim, bond_dim)
+    arr1 = mpa1.to_array()
+    arr1 = arr1.reshape(arr1.shape + (1, ) * nr_sites)
+    arr2 = mpa2.to_array()
+    arr2 = arr2.reshape((1, ) * nr_sites + arr2.shape)
+
+    tensor_mp = mp.louter(mpa1, mpa2)
+    tensor_np = arr1 * arr2
+
+    assert tensor_mp.plegs == (2,) * nr_sites
+    assert tensor_np.shape == (local_dim,) * (2 * nr_sites)
+
+    assert_array_almost_equal(tensor_np, tensor_mp.to_array_global())
+
+
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, local_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_local_sum(nr_sites, local_dim, bond_dim, local_width):
