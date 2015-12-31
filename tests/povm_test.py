@@ -106,3 +106,18 @@ def test_mppovm_expectation_pure(nr_sites, width, local_dim, bond_dim):
     assert len(expect_psi) == len(expect_rho)
     for e_rho, e_psi in zip(expect_rho, expect_psi):
         assert_array_almost_equal(e_rho.to_array(), e_psi.to_array())
+
+
+@pt.mark.parametrize('nr_sites, width, local_dim, bond_dim',
+                     [(6, 3, 2, 5), (4, 2, 3, 4)])
+def test_mppovm_expectation_pmps(nr_sites, width, local_dim, bond_dim):
+    paulis = povm.pauli_povm(local_dim)
+    mppaulis = mppovm.MPPovm.from_local_povm(paulis, width)
+    psi = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    rho = mpsmpo.pmps_to_mpo(psi)
+    expect_psi = list(mppaulis.expectations(psi, mode='pmps'))
+    expect_rho = list(mppaulis.expectations(rho))
+
+    assert len(expect_psi) == len(expect_rho)
+    for e_rho, e_psi in zip(expect_rho, expect_psi):
+        assert_array_almost_equal(e_rho.to_array(), e_psi.to_array())

@@ -51,26 +51,40 @@ class MPPovm(mp.MPArray):
         return mp.MPArray(mp._local_reshape(ten, (ten.shape[1], -1)).conj()
                           for ten in self._ltens)
 
-    def expectations(self, mpa):
+    def expectations(self, mpa, mode='auto'):
         """Computes the exp. values of the POVM elements with given state
 
-        :param mpa: MPDO
+        :param mpa: State given as MPDO, MPS, or PMPS
+        :param mode: In which form `mpa` is given. Possible values: 'mpdo',
+            'pmps', 'mps', or 'auto'. If 'auto' is passed, we choose between
+            'mps' or 'mpdo' depending on the number of physical legs
         :returns: Iterator over the expectation values, the n-th element is
             the expectation value correponding to the reduced state on sites
             [n,...,n + len(self) - 1]
 
         """
         assert len(self) <= len(mpa)
+        if mode is 'auto':
+            if all(pleg == 1 for pleg in mpa.plegs):
+                mode = 'mps'
+            elif all(pleg == 2 for pleg in mpa.plegs):
+                mode = 'mpdo'
 
-        if all(pleg == 1 for pleg in mpa.plegs):
-            pmap = self.probability_map
-            for rho_red in mpsmpo.reductions_mps_as_mpo(mpa, len(self)):
+        pmap = self.probability_map
+
+        if mode is 'mps':
+            for psi_red in mpsmpo.reductions_mps_as_pmps(mpa, len(self)):
+                rho_red = mpsmpo.pmps_to_mpo(psi_red)
                 yield mp.dot(pmap, rho_red.ravel())
             return
-        elif all(pleg == 2 for pleg in mpa.plegs):
-            pmap = self.probability_map
+        elif mode is 'mpdo':
             for rho_red in mpsmpo.reductions_mpo(mpa, len(self)):
                 yield mp.dot(pmap, rho_red.ravel())
             return
-
-        raise ValueError("Could not understand data dype.")
+        elif mode is 'pmps':
+            for psi_red in mpsmpo.reductions_pmps(mpa, len(self)):
+                rho_red = mpsmpo.pmps_to_mpo(psi_red)
+                yield mp.dot(pmap, rho_red.ravel())
+            return
+        else:
+            raise ValueError("Could not understand data dype.")
