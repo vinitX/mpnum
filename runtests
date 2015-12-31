@@ -6,9 +6,9 @@ cd "${DIR}"
 export MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 
 if python2 -c "import pytest" &> /dev/null; then
-    python2 runtests.py
+    python2 runtests.py "$@"
 fi
 if python3 -c "import pytest" &> /dev/null; then
-    python3 runtests.py
+    python3 runtests.py "$@"
 fi
 
