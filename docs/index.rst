@@ -12,6 +12,7 @@ Contents:
    :maxdepth: 99
 
    todo
+   intro
    modules
 
 Indices and tables
