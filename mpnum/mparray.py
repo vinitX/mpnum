@@ -728,12 +728,20 @@ class MPArray(object):
         if bdim > self.bdim:
             # The caller expects that the result is indpendent from
             # `self`. Take a copy. If we are called from .compress()
-            # instead of .compression(), we could avoid the copy just
+            # instead of .compression(), we could avoid the copy and
             # return self.
             copy = self.copy()
             return copy, norm(copy)**2
 
         if startmpa is None:
+            # At the moment, the start mpa we generate always has
+            # complex entries.  Is this an advantage over real entries
+            # if the input mpa `self` has only real entries?  I
+            # suppose it makes computation slower and provides no
+            # advantage.  If we wanted to change this, we would have
+            # to check all the local tensors for float/complex
+            # entries, or for the most complicated dtype (float32 vs
+            # float64, ...).
             from mpnum.factory import random_mpa
             compr = random_mpa(len(self), self.pdims, bdim, randstate=randstate)
             compr *= norm(self) / norm(compr)
