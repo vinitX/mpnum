@@ -167,3 +167,24 @@ The following figure describes the relation:
 It also tells us how to convert a PMPS representation into an MPO
 representation and how the bond dimension changes: The MPO bond
 dimension is the square of the PMPS bond dimension.
+
+
+Matrix product arrays
+"""""
+
+The library mpnum implements the class :code:`mpnum.mparray.MPArray`
+which can be used for MPS, MPO, PMPS and other MPS-like
+representations.  :code:`MPArray` is short for *matrix product array*
+(MPA) and this class provides an MPS with an arbitrary number of
+physical legs at each site.  Each physical leg can also have an
+arbitrary dimension.  A corresponding figure could look like this:
+
+.. image:: tensors_mpa.svg
+
+
+How to continue
+---------------
+
+The ipython notebook :code:`mpnum_intro.ipynb` in the folder
+:code:`Notebooks` provides an introduction on how to use :code:`mpnum`
+for basic MPS, MPO and MPA operations.
