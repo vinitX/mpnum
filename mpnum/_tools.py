@@ -47,7 +47,7 @@ def global_to_local(array, sites):
 
 
 def local_to_global(array, sites, left_skip=0, right_skip=0):
-    """Inverse to local_to_global
+    """Inverse of local_to_global
 
     :param np.ndarray array: Array with ndim, such that ndim % sites = 0
     :param int sites: Number of distinct sites
