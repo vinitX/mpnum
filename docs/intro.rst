@@ -39,6 +39,8 @@ simple case of of a tensor contraction is the product of two matrices:
 We represent this tensor contraction with the following figure:
 
 .. image:: tensors_matrixproduct.svg
+   :scale: 150%
+   :align: center
 
 Each of the tensors :math:`A`, :math:`B` and :math:`C` is represent by
 one box.  All the tensors have two indices (as they are matrices),
@@ -68,6 +70,8 @@ matrix:
 This formula is represented by the following figure:
 
 .. image:: tensors_matrixelement.svg
+   :scale: 150%
+   :align: center
 
 
 Matrix product states (MPS)
@@ -85,7 +89,8 @@ where :math:`A_i \in \mathbb C^{1 \times D}`, :math:`B_j, C_k \in
 This construction is given by the following simple figure:
 
 .. image:: tensors_mps.svg
-	   :scale: 200%
+   :scale: 150%
+   :align: center
 
 We call :math:`\psi` a *global tensor* and we call the MPS matrices
 :math:`A_i`, :math:`B_j` etc. which are associated to a certain
@@ -95,11 +100,15 @@ Very often, we can omit the labels of all the legs.  The figure then
 becomes very simple:
 
 .. image:: tensors_mps_no_names.svg
+   :scale: 150%
+   :align: center
 
 As explained in the next paragraph on MPOs, we usually add *dummy
 bonds* of size 1 to our tensors:
 
 .. image:: tensors_mps_no_names_with_dummies.svg
+   :scale: 150%
+   :align: center
 
 
 Matrix product operators (MPO)
@@ -120,6 +129,8 @@ are matrices and the :math:`C_{i_3j_3}` are column vectors.  This is
 represented by the following figure:
 
 .. image:: tensors_mpo.svg
+   :scale: 150%
+   :align: center
 
 Be aware that the legs of :math:`\rho` are not in the order :math:`i_1
 i_2 i_3 j_1 j_2 j_3` (called *global order*) which is expected from
@@ -138,6 +149,8 @@ In order to simplify the implementation, it is useful to introduce
 or MPO chain:
 
 .. image:: tensors_mpo_with_dummies.svg
+   :scale: 150%
+   :align: center
 
 With these dummy bonds, all the tensors in the representation have
 exactly two bond indices.
@@ -147,10 +160,14 @@ global and local tensors while leaving the physical row indices
 downward:
 
 .. image:: tensors_mpo_updown.svg
+   :scale: 150%
+   :align: center
 
 With this arrangement, we can nicely express a product of two MPOs:
 
 .. image:: tensors_mpo_product.svg
+   :scale: 150%
+   :align: center
 
 This figure tells us how to obtain the local tensors which represent
 the product: We have to compute new tensors as indicated by the shaded
@@ -166,6 +183,8 @@ The local purification from matrix product state representation (PMPS
 or LPMPS) is defined as follows:
 
 .. image:: tensors_pmps.svg
+   :scale: 150%
+   :align: center
 
 Here, all the :math:`i` indices are actual sites and all the :math:`j`
 indices are ancilla sites used for the purification.  The non-negative
@@ -178,6 +197,8 @@ operator described by this representation is given by
 The following figure describes the relation:
 
 .. image:: tensors_pmps_to_mpo.svg
+   :scale: 150%
+   :align: center
 
 It also tells us how to convert a PMPS representation into an MPO
 representation and how the bond dimension changes: The MPO bond
@@ -195,6 +216,8 @@ physical legs at each site.  Each physical leg can also have an
 arbitrary dimension.  A corresponding figure could look like this:
 
 .. image:: tensors_mpa.svg
+   :scale: 150%
+   :align: center
 
 
 How to continue
