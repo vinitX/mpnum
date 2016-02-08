@@ -1,5 +1,7 @@
 # encoding: utf-8
-"""General helper functions for dealing with arrays (esp. for quantum mechanics
+"""General helper functions for dealing with arrays (esp. for quantum
+mechanics)
+
 """
 
 from __future__ import division, print_function
