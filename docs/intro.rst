@@ -85,6 +85,7 @@ where :math:`A_i \in \mathbb C^{1 \times D}`, :math:`B_j, C_k \in
 This construction is given by the following simple figure:
 
 .. image:: tensors_mps.svg
+	   :scale: 200%
 
 We call :math:`\psi` a *global tensor* and we call the MPS matrices
 :math:`A_i`, :math:`B_j` etc. which are associated to a certain

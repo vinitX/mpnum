@@ -273,3 +273,5 @@ autodoc_default_flags = [
     #'special-members',   # __special__
     'show-inheritance',
 ]
+
+html_translator_class = 'mpnum.docs.HTMLTranslator'
