@@ -22,8 +22,12 @@ would not be nice.
 
 
 
-Pictorial representation
-------------------------
+Graphical notation for tensors
+----
+
+
+Our graphical notation for tensors is very similar to the graphical
+notation used by Schollwoeck [:ref:`Sch11 <Sch11>`, e.g. Figure 38].
 
 
 Basics
