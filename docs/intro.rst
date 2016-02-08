@@ -7,7 +7,21 @@ Introduction
 .. todo:: The images are too small. Find a fix.
 
 
-	  
+
+Contributing
+----
+
+Contributions to the code are very welcome.  Regarding code style,
+please try to fix all warnings reported by flake8::
+
+  python -m flake8 .
+
+Regarding line length, we try to have not more than 80 characters per
+line, with some exceptions if the excess is small and reformatting
+would not be nice.
+
+
+
 Pictorial representation
 ------------------------
 
@@ -23,7 +37,7 @@ simple case of of a tensor contraction is the product of two matrices:
    C = A B^T
 
 We represent this tensor contraction with the following figure:
- 
+
 .. image:: tensors_matrixproduct.svg
 
 Each of the tensors :math:`A`, :math:`B` and :math:`C` is represent by
@@ -43,7 +57,7 @@ in the formula as well:
 .. math::
 
    C_{ij} = \sum_{j} A_{ij} B_{kj}
-	   
+
 Another simple example is the following product of two vectors and a
 matrix:
 
@@ -55,7 +69,7 @@ This formula is represented by the following figure:
 
 .. image:: tensors_matrixelement.svg
 
-	   
+
 Matrix product states (MPS)
 """""""""""""""""""""""""""
 
@@ -69,7 +83,7 @@ The matrix product state representation of a state :math:`\vert \psi
 where :math:`A_i \in \mathbb C^{1 \times D}`, :math:`B_j, C_k \in
 \mathbb C^{D \times D}` and :math:`D_l \in \mathbb C^{D \times 1}`.
 This construction is given by the following simple figure:
-	   
+
 .. image:: tensors_mps.svg
 
 We call :math:`\psi` a *global tensor* and we call the MPS matrices
@@ -142,7 +156,7 @@ the product: We have to compute new tensors as indicated by the shaded
 area.  The figure also tells us that the bond dimension of the result
 is the product of the bond dimensions of the two individual MPO
 representations.
-	   
+
 
 Local purification form MPS (PMPS)
 """""
@@ -161,7 +175,7 @@ operator described by this representation is given by
    \rho = \operatorname{tr}_{j_1j_2j_3}( \vert \psi \rangle \! \langle \psi \vert )
 
 The following figure describes the relation:
-   
+
 .. image:: tensors_pmps_to_mpo.svg
 
 It also tells us how to convert a PMPS representation into an MPO
