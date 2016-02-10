@@ -64,7 +64,7 @@ class MPPovm(mp.MPArray):
 
         """
         assert len(self) <= len(mpa)
-        if mode is 'auto':
+        if mode == 'auto':
             if all(pleg == 1 for pleg in mpa.plegs):
                 mode = 'mps'
             elif all(pleg == 2 for pleg in mpa.plegs):
@@ -72,16 +72,16 @@ class MPPovm(mp.MPArray):
 
         pmap = self.probability_map
 
-        if mode is 'mps':
+        if mode == 'mps':
             for psi_red in mpsmpo.reductions_mps_as_pmps(mpa, len(self)):
                 rho_red = mpsmpo.pmps_to_mpo(psi_red)
                 yield mp.dot(pmap, rho_red.ravel())
             return
-        elif mode is 'mpdo':
+        elif mode == 'mpdo':
             for rho_red in mpsmpo.reductions_mpo(mpa, len(self)):
                 yield mp.dot(pmap, rho_red.ravel())
             return
-        elif mode is 'pmps':
+        elif mode == 'pmps':
             for psi_red in mpsmpo.reductions_pmps(mpa, len(self)):
                 rho_red = mpsmpo.pmps_to_mpo(psi_red)
                 yield mp.dot(pmap, rho_red.ravel())
