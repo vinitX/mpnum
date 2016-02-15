@@ -5,10 +5,12 @@ mechanics)
 """
 
 from __future__ import division, print_function
-import itertools as it
-import numpy as np
-from six.moves import range, zip
 
+import itertools as it
+
+import numpy as np
+
+from six.moves import range, zip
 
 SI = np.eye(2)
 SX = np.array([[0, 1], [1, 0]])

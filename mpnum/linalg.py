@@ -1,18 +1,18 @@
 # encoding: utf-8
 
 from __future__ import absolute_import, division, print_function
-from six.moves import range
 
 import numpy as np
-
 from scipy.sparse.linalg import eigs
 
-import mpnum
-import mpnum.factory
-import mpnum.mparray as mp
-import mpnum._tools as _tools
+from six.moves import range
 
-from mpnum._named_ndarray import named_ndarray
+from . import mparray as mp
+from . import _tools
+from ._named_ndarray import named_ndarray
+from .factory import random_mpa
+
+__all__ = ['mineig']
 
 
 def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten):
@@ -296,8 +296,8 @@ def mineig(mpo,
         if startvec_bonddim is None:
             startvec_bonddim = max(mpo.bdims)
 
-        startvec = mpnum.factory.random_mpa(nr_sites, pdims, startvec_bonddim,
-                                            randstate=randstate)
+        startvec = random_mpa(nr_sites, pdims, startvec_bonddim,
+                              randstate=randstate)
         startvec /= mp.norm(startvec)
     # For
     #
@@ -361,3 +361,4 @@ def mineig(mpo,
             eigvec[pos:pos_end] = eigvec_lten
 
     return eigval, eigvec
+

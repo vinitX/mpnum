@@ -26,7 +26,6 @@ References:
 # TODO Replace all occurences of self._ltens with self[...] or similar &
 #      benchmark. This will allow easier transition to lazy evaluation of
 #      local tensors
-
 from __future__ import absolute_import, division, print_function
 
 import functools as ft
@@ -36,9 +35,15 @@ import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
 
-from mpnum._tools import block_diag, matdot, local_to_global, global_to_local
-from mpnum._named_ndarray import named_ndarray
 from six.moves import range, zip, zip_longest
+
+from ._named_ndarray import named_ndarray
+from ._tools import block_diag, global_to_local, local_to_global, matdot
+
+
+__all__ = ['MPArray', 'dot', 'inject', 'inner', 'local_sum', 'louter',
+           'norm', 'normdist', 'outer', 'partialdot', 'partialtrace',
+           'prune', 'trace']
 
 
 class MPArray(object):

@@ -109,9 +109,15 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 from numpy.testing import assert_array_equal
 
-import mpnum.mparray as mp
-from mpnum._tools import matdot
 from six.moves import range
+
+from . import mparray as mp
+from ._tools import matdot
+
+
+__all__ = ['mps_to_mpo', 'mps_to_pmps', 'pmps_to_mpo', 'reductions_mpo',
+           'reductions_mps_as_mpo', 'reductions_mps_as_pmps',
+           'reductions_pmps']
 
 
 def _check_reductions_args(nr_sites, width, startsites, stopsites):

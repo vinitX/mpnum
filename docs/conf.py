@@ -267,11 +267,11 @@ todo_include_todos = True
 
 # Show inheritance and private and special members by default.
 autodoc_default_flags = [
-    'members', 
+    'members',
     'undoc-members',
     'private-members',   # _private
     #'special-members',   # __special__
     'show-inheritance',
 ]
 
-html_translator_class = 'mpnum.docs.HTMLTranslator'
+html_translator_class = 'mpnum._docs.HTMLTranslator'

@@ -4,10 +4,10 @@
 """Auxiliary functions useful for writing tests"""
 
 
-import numpy as np
 import itertools as it
-from numpy.testing import assert_array_equal, assert_array_almost_equal
-from ._tools import local_to_global
+
+import numpy as np
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 
 
 def assert_mpa_almost_equal(mpa1, mpa2, full=False, **kwargs):
@@ -36,6 +36,7 @@ def assert_mpa_identical(mpa1, mpa2, decimal=np.infty):
     # and `mpa2`.  Are we missing other things?
 
 
+# FIXME If we have the method, we dont need this function
 def mpo_to_global(mpo):
     """Convert mpo to dense global array
 

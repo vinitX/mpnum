@@ -3,16 +3,22 @@
 
 from __future__ import division, print_function
 
-import itertools as it
 import functools as ft
+import itertools as it
 
 import numpy as np
 from scipy.linalg import qr
 
-import mpnum.mparray as mp
-import mpnum.mpsmpo as mpsmpo
-from mpnum._tools import global_to_local, matdot
 from six.moves import range
+
+from . import mparray as mp
+from . import mpsmpo
+from ._tools import global_to_local, matdot
+
+
+__all__ = ['eye', 'random_local_ham', 'random_mpa', 'random_mpdo',
+           'random_mps', 'random_op', 'random_state', 'random_vec',
+           'zero']
 
 
 def _zrandn(shape, randstate=None):
