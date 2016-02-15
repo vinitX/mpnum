@@ -15,8 +15,8 @@ def main(*args):
     os.environ['NUMBA_DISABLE_JIT'] = '1'
     # Run doctests afterwards because they auto-import things. We want to see
     # missing imports.
-    pytest.main(list(args) + ['tests', 'tests_photonic_tomo'])
-    pytest.main(['--doctest-modules', 'mpnum', 'photonic_tomo'])
+    pytest.main(list(args) + ['tests'])
+    pytest.main(['--doctest-modules', 'mpnum'])
 
 
 if __name__ == '__main__':

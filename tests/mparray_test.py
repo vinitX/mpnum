@@ -16,7 +16,7 @@ import mpnum.factory as factory
 import mpnum.mparray as mp
 from mpnum import _tools
 from mpnum._tools import global_to_local
-from mpnum.testing import assert_mpa_almost_equal, \
+from mpnum._testing import assert_mpa_almost_equal, \
     assert_mpa_identical, mpo_to_global
 
 
