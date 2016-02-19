@@ -576,6 +576,17 @@ class MPArray(object):
     def compress(self, method='svd', **kwargs):
         """Compress `self`, modifying it in-place.
 
+        .. note:: At the moment, we return the overlap <M|M'> of the
+            original M and its compr. M'. In the future, we will
+            return the (relative) Frobenius norm difference instead.
+
+        .. todo:: Return (relative) Frobenius norm difference instead
+            of overlap.
+
+        :returns: Overlap <M|M'> of the original M and its
+            compr. M'. In the future, we will return the (relative)
+            Frobenius norm difference instead.
+
         :param method: 'svd', 'svdsweep' or 'var'
 
         Parameters for 'svd':
@@ -617,8 +628,6 @@ class MPArray(object):
         Increasing `var_sites` makes it less likely to get stuck in a
         local minimum.
 
-        :returns: Overlap <M|M'> of the original M and its compr. M'
-
         .. todo:: Check whether the return value is precisely verified
                   in the tests.
 
@@ -644,10 +653,20 @@ class MPArray(object):
     def compression(self, method='svd', **kwargs):
         """Return a compression of `self`. Does not modify `self`.
 
+        .. note:: At the moment, we return (among other things) the
+            overlap <M|M'> of the original M and its compr. M'. In the
+            future, we will return the (relative) Frobenius norm
+            difference instead.
+
+        .. todo:: Return (relative) Frobenius norm difference instead
+            of overlap.
+
         Parameters: See :func:`MPArray.compress()`.
 
         :returns: `(compressed_mpa, overlap)`, for `overlap` see
-            :func:`MPArray.compress()`.
+            :func:`MPArray.compress()`. In the future, we will return
+            the (relative) Frobenius norm difference instead of the
+            overlap.
 
         Note that this function does not modify `self`, but it may
         change the normalization of `self`. (Call to :func:`norm` in

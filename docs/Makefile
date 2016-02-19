@@ -179,5 +179,5 @@ pseudoxml:
 	@echo "Build finished. The pseudo-XML files are in $(BUILDDIR)/pseudoxml."
 
 livehtml:
-	sphinx-autobuild -p 8102 -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html -z ../mpnum -z ../photonic_tomo
+	sphinx-autobuild -p 8102 -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html -z ../mpnum
 

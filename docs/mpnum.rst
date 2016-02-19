@@ -9,18 +9,18 @@ mpnum Package
     :undoc-members:
     :show-inheritance:
 
-:mod:`_named_ndarray` Module
-----------------------------
+:mod:`mparray` Module
+---------------------
 
-.. automodule:: mpnum._named_ndarray
+.. automodule:: mpnum.mparray
     :members:
     :undoc-members:
     :show-inheritance:
 
-:mod:`_tools` Module
+:mod:`mpsmpo` Module
 --------------------
 
-.. automodule:: mpnum._tools
+.. automodule:: mpnum.mpsmpo
     :members:
     :undoc-members:
     :show-inheritance:
@@ -41,26 +41,26 @@ mpnum Package
     :undoc-members:
     :show-inheritance:
 
-:mod:`mparray` Module
----------------------
-
-.. automodule:: mpnum.mparray
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`mpsmpo` Module
+:mod:`_tools` Module
 --------------------
 
-.. automodule:: mpnum.mpsmpo
+.. automodule:: mpnum._tools
     :members:
     :undoc-members:
     :show-inheritance:
 
-:mod:`testing` Module
+:mod:`_named_ndarray` Module
+----------------------------
+
+.. automodule:: mpnum._named_ndarray
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+:mod:`_testing` Module
 ---------------------
 
-.. automodule:: mpnum.testing
+.. automodule:: mpnum._testing
     :members:
     :undoc-members:
     :show-inheritance:
@@ -70,7 +70,5 @@ Subpackages
 
 .. toctree::
 
-    mpnum.localcert
     mpnum.povm
-    mpnum.tomography
 

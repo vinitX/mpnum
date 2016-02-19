@@ -4,10 +4,6 @@
 Introduction
 ============
 
-.. todo:: The images are too small. Find a fix.
-
-
-
 Contributing
 ----
 
