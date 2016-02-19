@@ -17,8 +17,8 @@ from ._tools import global_to_local, matdot
 
 
 __all__ = ['eye', 'random_local_ham', 'random_mpa', 'random_mpdo',
-           'random_mps', 'random_op', 'random_state', 'random_vec',
-           'zero']
+           'random_mps', 'random_mpo', 'random_op', 'random_state',
+           'random_vec', 'zero']
 
 
 def _zrandn(shape, randstate=None):
