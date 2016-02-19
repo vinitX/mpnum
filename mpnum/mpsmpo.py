@@ -42,9 +42,9 @@ Represent a vector :math:`\lvert \psi \rangle \in \mathcal H` as
 The :math:`k`-th local tensor is :math:`T_{l,i,r} =
 (A^{(k)}_i)_{l,r}`.
 
-The vector :math:`\lvert \psi \rangle` can be a state, with the
-density matrix given by :math:`\rho = \lvert \psi \rangle \langle \psi
-\rvert \in \mathcal B`.
+The vector :math:`\lvert \psi \rangle` can be a quantum state, with
+the density matrix given by :math:`\rho = \lvert \psi \rangle \langle
+\psi \rvert \in \mathcal B`.  Reference: E.g. [Sch11_].
 
 Matrix product operator (MPO)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,8 +61,9 @@ Represent an operator :math:`M \in \mathcal B` as
 The :math:`k`-th local tensor is :math:`T_{l,i,j,r} = (A^{(k)}_{i
 j})_{l,r}`.
 
-This representation can be used to represent a mixed state :math:`\rho
-= M`, but it is not limited to positive semidefinite :math:`M`.
+This representation can be used to represent a mixed quantum state
+:math:`\rho = M`, but it is not limited to positive semidefinite
+:math:`M`.  Reference: E.g. [Sch11_].
 
 Locally purified matrix product state (PMPS)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,15 +93,29 @@ i'})_{l,r}`.
 
 The ancillary dimensions :math:`d'_i` are not determined by the
 :math:`d_i` but depend on the state. E.g. if :math:`\rho` is pure, one
-can set all :math:`d_i = 1`.
+can set all :math:`d_i = 1`.  Reference: E.g. [Cue13_].
 
-
-.. todo:: Add references.
 
 .. todo:: Are derived classes MPO/MPS/PMPS of any help?
 
 .. todo:: I am not sure the current definition of PMPS is the most elegant
           for our purposes...
+
+
+References:
+
+* .. _Cue13:
+
+  [Cue13] De las Cuevas, G., Schuch, N., Pérez-García, D., and Cirac,
+  J. I. (2013). “Purifications of multipartite states: limitations and
+  constructive methods”. New J. Phys. 15(12), p. 123021. `DOI:
+  10.1088/1367-2630/15/12/123021`_. `arXiv: 1308.1914`_.
+
+  .. _`DOI: 10.1088/1367-2630/15/12/123021`:
+     http://dx.doi.org/10.1088/1367-2630/15/12/123021
+
+  .. _`arXiv: 1308.1914`: http://arxiv.org/abs/1308.1914
+
 
 """
 
