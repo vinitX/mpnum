@@ -1,5 +1,12 @@
 # encoding: utf-8
 
+"""Linear algebra with matrix product arrays
+
+Currently, we support computing ground states (i.e. minimal eigenvalue
+and eigenvector).
+
+"""
+
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
