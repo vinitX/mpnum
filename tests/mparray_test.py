@@ -791,7 +791,7 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
         comparg = update_copy_of(comparg, {'num_sweeps': 20 // comparg['var_sites']})
         st = np.random.RandomState(seed=42)
 
-    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2, st, norm1=True)
+    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2, st)
     if not normalize_if_applicable(mpa, normalize):
         return
     compr, overlap = call_compression(mpa.copy(), comparg, bond_dim)
@@ -805,7 +805,9 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
         assert compr.bdim <= bond_dim
 
     # Check that the overlap is correct.
-    assert_almost_equal(overlap, mp.inner(mpa, compr))
+    def get_overlap_mp(mpa1, mpa2):
+        return np.abs(mp.inner(mpa1, mpa2)) / (mp.norm(mpa1) * mp.norm(mpa2))
+    assert_almost_equal(overlap, get_overlap_mp(mpa, compr))
 
     # SVD: Check that .normal_form is as expected.
     if comparg['method'] == 'svd':
@@ -828,11 +830,18 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
         right_svd_res = _svd_compression_full(mpa, 'right', bond_dim)
         left_svd_res = _svd_compression_full(mpa, 'left', bond_dim)
         array = mpa.to_array()
-        right_svd_overlap = np.abs(np.vdot(array, right_svd_res))
-        left_svd_overlap = np.abs(np.vdot(array, left_svd_res))
+
+        # TODO Refactor, this is a mess!
+        def get_overlap_np(npa1, npa2):
+            def norm(npa):
+                return np.sqrt(np.vdot(npa, npa))
+            return np.abs(np.vdot(npa1, npa2)) / (norm(npa1) * norm(npa2))
+
+        right_svd_overlap = get_overlap_np(array, right_svd_res)
+        left_svd_overlap = get_overlap_np(array, left_svd_res)
         overlap_rel_tol = 1e-6
-        assert abs(overlap) >= right_svd_overlap * (1 - overlap_rel_tol)
-        assert abs(overlap) >= left_svd_overlap * (1 - overlap_rel_tol)
+        assert overlap >= right_svd_overlap * (1 - overlap_rel_tol)
+        assert overlap >= left_svd_overlap * (1 - overlap_rel_tol)
 
 
 @compr_test_params
@@ -845,13 +854,12 @@ def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
     if 'relerr' in comparg:
         return  # Test does not apply
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True)
-    norm = mp.norm(mpa.copy())
     if not normalize_if_applicable(mpa, normalize):
         return
 
     for factor in (1, 2):
         compr, overlap = call_compression(mpa, comparg, bond_dim * factor)
-        assert_almost_equal(overlap, norm**2)
+        assert_almost_equal(overlap, 1.0)
         assert_mpa_almost_equal(compr, mpa, full=True)
         assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
 
@@ -864,7 +872,6 @@ def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize, compa
 
     """
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True)
-    norm = mp.norm(mpa.copy())
     if not normalize_if_applicable(mpa, normalize):
         return
     zero = factory.zero(nr_sites, local_dims, bond_dim)
@@ -879,7 +886,7 @@ def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize, compa
         assert dim1 + dim2 == sum_dim
 
     compr, overlap = call_compression(msum, comparg, bond_dim)
-    assert_almost_equal(overlap, (norm * factor)**2)
+    assert_almost_equal(overlap, 1.0)
     assert_mpa_almost_equal(compr, factor * mpa, full=True)
     assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
 
