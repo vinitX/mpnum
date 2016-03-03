@@ -308,7 +308,7 @@ def random_mpdo(sites, ldim, bdim, randstate=np.random):
 
     # Scramble the local tensors
     for n, bdim in enumerate(rho.bdims):
-        unitary = _gue(bdim, randstate)
+        unitary = _unitary_haar(bdim, randstate)
         rho[n] = matdot(rho[n], unitary)
         rho[n + 1] = matdot(np.transpose(unitary).conj(), rho[n + 1])
 
@@ -337,9 +337,9 @@ def random_local_ham(sites, ldim=2, intlen=2, randstate=None):
     return mp.local_sum(local_hams)
 
 
-def _gue(dim, randstate=None):
-    """Returns a sample from the Gaussian unitary ensemble of given dimension.
-    (i.e. the haar measure on U(dim)).
+def _unitary_haar(dim, randstate=None):
+    """Returns a sample from the Haar measure of the unitary group of given
+    dimension.
 
     :param int dim: Dimension
     :param randn: Function to create real N(0,1) distributed random variables.
