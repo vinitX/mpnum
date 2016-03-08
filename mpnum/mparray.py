@@ -574,7 +574,7 @@ class MPArray(object):
         self._rnormalized = to_site
 
     def compress(self, method='svd', **kwargs):
-        """Compress `self`, modifying it in-place.
+        r"""Compress `self`, modifying it in-place.
 
         .. note:: At the moment, we return the overlap <M|M'> of the
             original M and its compr. M'. In the future, we will
@@ -584,7 +584,8 @@ class MPArray(object):
             of overlap.
 
         :returns: Relative overlap
-            :math:`\frac{\vert\langle M \vert M' \rangle\vert}{\Vert M \Vert \, \Vert M' \Vert}`
+            :math:`\frac{\vert\langle M \vert M' \rangle\vert}
+            {\Vert M \Vert \, \Vert M' \Vert}`
             of the original M and its compr. M'.
 
         :param method: 'svd', 'svdsweep' or 'var'
