@@ -42,8 +42,8 @@ We represent this tensor contraction with the following figure:
    :scale: 150%
    :align: center
 
-Each of the tensors :math:`A`, :math:`B` and :math:`C` is represent by
-one box.  All the tensors have two indices (as they are matrices),
+Each of the tensors :math:`A`, :math:`B` and :math:`C` is represented
+by one box.  All the tensors have two indices (as they are matrices),
 therefore there are two lines emerging from each box, called *legs*.
 Connected legs indicate a contraction.  The relation between legs on
 the left and right hand sides of the equality sign is given by their
