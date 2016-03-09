@@ -27,3 +27,6 @@ from .factory import *
 from .linalg import *
 from .mparray import *
 from .mpsmpo import *
+
+
+__version__ = 0.1

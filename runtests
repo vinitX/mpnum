@@ -5,9 +5,9 @@ cd "${DIR}"
 
 
 if python2 -c "import pytest" &> /dev/null; then
-    python2 runtests.py "$@"
+    python2 setup.py test "$@"
 fi
 if python3 -c "import pytest" &> /dev/null; then
-    python3 runtests.py "$@"
+    python3 setup.py test "$@"
 fi
 
