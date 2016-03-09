@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/dseuss/mpnum.svg?branch=master)](https://travis-ci.org/dseuss/mpnum)
+
 MPNUM: A matrix-product-representation library for Python
 =========================================================
 
@@ -17,7 +19,7 @@ Required packages:
 
 Supported Python versions:
 
-* 2.7, 3.5
+* 2.7, 3.3, 3.4, 3.5
 
 
 ## License
