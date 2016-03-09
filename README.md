@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/dseuss/mpnum.svg?branch=master)](https://travis-ci.org/dseuss/mpnum)
+[![Travis](http://img.shields.io/travis/dseuss/mpnum.svg?label=tests)](https://travis-ci.org/dseuss/mpnum)
 
 MPNUM: A matrix-product-representation library for Python
 =========================================================
