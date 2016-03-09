@@ -24,6 +24,8 @@ Supported Python versions:
 
 (c) 2015, Daniel Suess <daniel@dsuess.me>, Milan Holzaepfel <mail@mjh.name>
 
+Distributed under the terms of the BSD 3-Clause License (see LICENSE).
+
 
 ## Building the HTML documentation
 
