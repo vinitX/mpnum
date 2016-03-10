@@ -391,7 +391,7 @@ def test_local_sum(nr_sites, local_dim, bond_dim, local_width):
         res = mp.outer(mpas)
         return res
 
-    rs = np.random.RandomState(seed=0)
+    rs = np.random
     nr_startpos = nr_sites - local_width + 1
     mpas = [factory.random_mpa(local_width, (local_dim,) * 2, bond_dim,
                                randstate=rs)
@@ -789,7 +789,7 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
         # Because a big number of sweeps is not required in any other
         # test, we override the number of sweeps here.
         comparg = update_copy_of(comparg, {'num_sweeps': 20 // comparg['var_sites']})
-        st = np.random.RandomState(seed=42)
+        st = np.random
 
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2, st)
     if not normalize_if_applicable(mpa, normalize):

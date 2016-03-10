@@ -21,7 +21,7 @@ def test_mineig(nr_sites, local_dim, bond_dim):
     # With startvec_bonddim = 2 * bonddim and this seed, mineig() gets
     # stuck in a local minimum. With startvec_bonddim = 3 * bonddim,
     # it does not.
-    randstate = np.random.RandomState(seed=46)
+    randstate = np.random
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=randstate,
                              hermitian=True, normalized=True)
     mpo.normalize()
@@ -50,7 +50,7 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim):
     # With startvec_bonddim = 2 * bonddim and minimize_sites=1,
     # mineig() gets stuck in a local minimum. With minimize_sites=2,
     # it does not.
-    randstate = np.random.RandomState(seed=46)
+    randstate = np.random
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=randstate,
                              hermitian=True, normalized=True)
     mpo.normalize()
