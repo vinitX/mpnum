@@ -3,7 +3,6 @@
 # TODO Requirements are not really minimal at the moment...
 # TODO Having PyTest in requirements not optimal, fix to make travis use
 #      the tests_require
-# TODO Profiling & coverage should go in here
 
 import os
 import sys
@@ -79,8 +78,7 @@ if __name__ == '__main__':
             'NumPy>=1.5.1',
             'SciPy>=0.15',
             'six>=1.0',
-            'PyTest>=2.8.7',
-            'sphinx>=1.2'
+            'PyTest>=2.8.7'
         ],
         keywords=[],
         classifiers=[
