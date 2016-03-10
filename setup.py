@@ -28,11 +28,13 @@ class PyTest(Command):
 
     description = "Runs test suite"
     user_options = [
-        ('selector=', None, "Specifies the tests to run")
+        ('selector=', None, "Specifies the tests to run"),
+        ('covreport', None, "Run coverage report from tests")
     ]
 
     def initialize_options(self):
         self.selector = 'not long'
+        self.covreport = None
 
     def finalize_options(self):
         pass
@@ -44,15 +46,24 @@ class PyTest(Command):
         # before importing numba.
         os.environ['NUMBA_DISABLE_JIT'] = '1'
 
-        # Run doctests afterwards because they auto-import things. We want to
-        # see missing imports.
-        errno = pytest.main(['-m', self.selector, 'tests'])
-        if errno != 0:
-            raise SystemExit(errno)
+        if self.covreport is None:
+            # Run doctests afterwards because they auto-import things. We want
+            # to see missing imports.
+            errno = pytest.main(['-m', self.selector, 'tests'])
+            if errno != 0:
+                raise SystemExit(errno)
 
-        errno = pytest.main(['--doctest-modules', 'mpnum'])
-        if errno != 0:
-            raise SystemExit(errno)
+            errno = pytest.main(['--doctest-modules', 'mpnum'])
+            if errno != 0:
+                raise SystemExit(errno)
+
+        else:
+            errno = pytest.main(['-m', self.selector, '--cov-report', 'term',
+                                 '--cov-report', 'html', '--cov=mpnum',
+                                 '--doctest-modules', 'mpnum', 'tests'])
+            if errno != 0:
+                raise SystemExit(errno)
+
 
 if __name__ == '__main__':
     setup(
