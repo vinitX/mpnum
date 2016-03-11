@@ -2,7 +2,8 @@ language: python
 env:
     global:
     -GH_REF: github.com/dseuss/mpnum.git
-
+notifications:
+    email: false
 python:
     - '2.7'
     - '3.3'
