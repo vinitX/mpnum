@@ -2,6 +2,10 @@ language: python
 env:
     global:
     -GH_REF: github.com/dseuss/mpnum.git
+branches:
+    only:
+        - master
+        - failing-travis
 
 python:
     - '2.7'

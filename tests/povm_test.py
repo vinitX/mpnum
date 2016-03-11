@@ -50,7 +50,7 @@ def test_povm_normalization_ic(dim):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim',
                      [(6, 2, 7), (3, 3, 3), (3, 6, 3), (3, 7, 4)])
-def test_povm_ic_mpa(nr_sites, local_dim, bond_dim):
+def test_povm_ic_mpa(nr_sites, local_dim, bond_dim, rgen):
     # Check that the tensor product of the PauliGen POVM is IC.
     paulis = povm.pauli_povm(local_dim)
     inv_map = mp_from_array_repeat(paulis.linear_inversion_map, nr_sites)
@@ -63,7 +63,7 @@ def test_povm_ic_mpa(nr_sites, local_dim, bond_dim):
     # Check linear inversion for a particular example MPA.
     # Linear inversion works for arbitrary matrices, not only for states,
     # so we test it for an arbitrary MPA.
-    mpa = factory.random_mpa(nr_sites, local_dim**2, bond_dim)
+    mpa = factory.random_mpa(nr_sites, local_dim**2, bond_dim, randstate=rgen)
     # Normalize, otherwise the absolute error check below will not work.
     mpa /= mp.norm(mpa)
     probabs = mp.dot(probab_map, mpa)
@@ -73,10 +73,10 @@ def test_povm_ic_mpa(nr_sites, local_dim, bond_dim):
 
 @pt.mark.parametrize('nr_sites, width, local_dim, bond_dim',
                      [(6, 3, 2, 5), (4, 2, 3, 4)])
-def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim):
+def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim, rgen):
     paulis = povm.pauli_povm(local_dim)
     mppaulis = mppovm.MPPovm.from_local_povm(paulis, width)
-    rho = factory.random_mpdo(nr_sites, local_dim, bond_dim)
+    rho = factory.random_mpdo(nr_sites, local_dim, bond_dim, randstate=rgen)
     pmap = paulis.probability_map
     expectations = list(mppaulis.expectations(rho))
     reductions = mpsmpo.reductions_mpo(rho, width)
@@ -95,10 +95,10 @@ def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim):
 
 @pt.mark.parametrize('nr_sites, width, local_dim, bond_dim',
                      [(6, 3, 2, 5), (4, 2, 3, 4)])
-def test_mppovm_expectation_pure(nr_sites, width, local_dim, bond_dim):
+def test_mppovm_expectation_pure(nr_sites, width, local_dim, bond_dim, rgen):
     paulis = povm.pauli_povm(local_dim)
     mppaulis = mppovm.MPPovm.from_local_povm(paulis, width)
-    psi = factory.random_mps(nr_sites, local_dim, bond_dim)
+    psi = factory.random_mps(nr_sites, local_dim, bond_dim, randstate=rgen)
     rho = mpsmpo.mps_to_mpo(psi)
     expect_psi = list(mppaulis.expectations(psi))
     expect_rho = list(mppaulis.expectations(rho))
@@ -110,10 +110,11 @@ def test_mppovm_expectation_pure(nr_sites, width, local_dim, bond_dim):
 
 @pt.mark.parametrize('nr_sites, width, local_dim, bond_dim',
                      [(6, 3, 2, 5), (4, 2, 3, 4)])
-def test_mppovm_expectation_pmps(nr_sites, width, local_dim, bond_dim):
+def test_mppovm_expectation_pmps(nr_sites, width, local_dim, bond_dim, rgen):
     paulis = povm.pauli_povm(local_dim)
     mppaulis = mppovm.MPPovm.from_local_povm(paulis, width)
-    psi = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    psi = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen)
     rho = mpsmpo.pmps_to_mpo(psi)
     expect_psi = list(mppaulis.expectations(psi, mode='pmps'))
     expect_rho = list(mppaulis.expectations(rho))

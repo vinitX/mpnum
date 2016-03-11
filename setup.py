@@ -40,12 +40,6 @@ class PyTest(Command):
 
     def run(self):
         import pytest
-
-        # FIXME Dirty monkeypatch to seed random tests "properly"
-        # seed from hash("I feel so dirty") % 10**8
-        import numpy
-        numpy.random = numpy.random.RandomState(seed=52973992)
-
         # Disable numba JIT optimization, which will take a couple of seconds
         # (i.e. as long as the tests are supposed to take).  This must be done
         # before importing numba.

@@ -14,15 +14,14 @@ from mparray_test import MP_TEST_PARAMETERS
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_mineig(nr_sites, local_dim, bond_dim):
+def test_mineig(nr_sites, local_dim, bond_dim, rgen):
     # Need at least two sites
     if nr_sites < 2:
         return
     # With startvec_bonddim = 2 * bonddim and this seed, mineig() gets
     # stuck in a local minimum. With startvec_bonddim = 3 * bonddim,
     # it does not.
-    randstate = np.random
-    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=randstate,
+    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
                              hermitian=True, normalized=True)
     mpo.normalize()
     op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
@@ -34,7 +33,7 @@ def test_mineig(nr_sites, local_dim, bond_dim):
     mineig = eigvals[mineig_pos]
     mineig_eigvec = eigvec[:, mineig_pos]
     mineig_mp, mineig_eigvec_mp = mpnum.linalg.mineig(
-        mpo, startvec_bonddim=3 * bond_dim, randstate=randstate)
+        mpo, startvec_bonddim=3 * bond_dim, randstate=rgen)
     mineig_eigvec_mp = mineig_eigvec_mp.to_array().flatten()
 
     overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec_mp)
@@ -43,15 +42,14 @@ def test_mineig(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim):
+def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
     # Need at least three sites for minimize_sites = 2
     if nr_sites < 3:
         return
     # With startvec_bonddim = 2 * bonddim and minimize_sites=1,
     # mineig() gets stuck in a local minimum. With minimize_sites=2,
     # it does not.
-    randstate = np.random
-    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=randstate,
+    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
                              hermitian=True, normalized=True)
     mpo.normalize()
     op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
@@ -62,7 +60,7 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim):
     mineig_pos = eigvals.argmin()
     mineig, mineig_eigvec = eigvals[mineig_pos], eigvec[:, mineig_pos]
     mineig_mp, mineig_eigvec_mp = mpnum.linalg.mineig(
-        mpo, startvec_bonddim=2 * bond_dim, randstate=randstate,
+        mpo, startvec_bonddim=2 * bond_dim, randstate=rgen,
         minimize_sites=2)
     mineig_eigvec_mp = mineig_eigvec_mp.to_array().flatten()
 
