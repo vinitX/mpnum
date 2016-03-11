@@ -754,7 +754,7 @@ def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize, com
     compr, overlap = call_compression(mpa, comparg, bond_dim, rgen)
     assert_almost_equal(overlap, overlap2)
     # FIXME Why do they not agree completely? We are doing the same thing...
-    assert_mpa_identical(compr, compr2, decimal=14)
+    assert_mpa_identical(compr, compr2, decimal=12)
 
 
 @compr_test_params
