@@ -37,12 +37,12 @@ def update_copy_of(target, newvals):
 #                         Basic creation & operations                         #
 ###############################################################################
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
-def test_from_full(nr_sites, local_dim, _):
-    psi = factory.random_vec(nr_sites, local_dim)
+def test_from_full(nr_sites, local_dim, _, rgen):
+    psi = factory.random_vec(nr_sites, local_dim, randstate=rgen)
     mps = mp.MPArray.from_array(psi, 1)
     assert_array_almost_equal(psi, mps.to_array())
 
-    op = factory.random_op(nr_sites, local_dim)
+    op = factory.random_op(nr_sites, local_dim, randstate=rgen)
     mpo = mp.MPArray.from_array(op, 2)
     assert_array_almost_equal(op, mpo.to_array())
 
@@ -58,15 +58,15 @@ def test_from_kron(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
-def test_conjugations(nr_sites, local_dim, _):
-    op = factory.random_op(nr_sites, local_dim)
+def test_conjugations(nr_sites, local_dim, _, rgen):
+    op = factory.random_op(nr_sites, local_dim, randstate=rgen)
     mpo = mp.MPArray.from_array(op, 2)
     assert_array_almost_equal(np.conj(op), mpo.conj().to_array())
 
 
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
-def test_transposition(nr_sites, local_dim, _):
-    op = factory.random_op(nr_sites, local_dim)
+def test_transposition(nr_sites, local_dim, _, rgen):
+    op = factory.random_op(nr_sites, local_dim, randstate=rgen)
     mpo = mp.MPArray.from_array(global_to_local(op, nr_sites), 2)
 
     opT = op.reshape((local_dim**nr_sites,) * 2).T \
@@ -78,10 +78,10 @@ def test_transposition(nr_sites, local_dim, _):
 #                            Algebraic operations                             #
 ###############################################################################
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_dot(nr_sites, local_dim, bond_dim):
-    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+def test_dot(nr_sites, local_dim, bond_dim, rgen):
+    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op1 = mpo_to_global(mpo1)
-    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op2 = mpo_to_global(mpo2)
 
     # Dotproduct of all 1st physical with 0th physical legs = np.dot
@@ -108,7 +108,7 @@ def test_dot(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_partialdot(nr_sites, local_dim, bond_dim):
+def test_partialdot(nr_sites, local_dim, bond_dim, rgen):
     # Only for at least two sites, we can apply an operator to a part
     # of a chain.
     if nr_sites < 2:
@@ -116,9 +116,9 @@ def test_partialdot(nr_sites, local_dim, bond_dim):
     part_sites = nr_sites // 2
     start_at = min(2, nr_sites // 2)
 
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
-    mpo_part = factory.random_mpa(part_sites, (local_dim, local_dim), bond_dim)
+    mpo_part = factory.random_mpa(part_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op_part = mpo_to_global(mpo_part).reshape((local_dim**part_sites,) * 2)
     op_part_embedded = np.kron(
         np.kron(np.eye(local_dim**start_at), op_part),
@@ -136,10 +136,10 @@ def test_partialdot(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_inner_vec(nr_sites, local_dim, bond_dim):
-    mp_psi1 = factory.random_mpa(nr_sites, local_dim, bond_dim)
+def test_inner_vec(nr_sites, local_dim, bond_dim, rgen):
+    mp_psi1 = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
     psi1 = mp_psi1.to_array().ravel()
-    mp_psi2 = factory.random_mpa(nr_sites, local_dim, bond_dim)
+    mp_psi2 = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
     psi2 = mp_psi2.to_array().ravel()
 
     inner_np = np.vdot(psi1, psi2)
@@ -148,10 +148,10 @@ def test_inner_vec(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_inner_mat(nr_sites, local_dim, bond_dim):
-    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+def test_inner_mat(nr_sites, local_dim, bond_dim, rgen):
+    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op1 = mpo_to_global(mpo1).reshape((local_dim**nr_sites, ) * 2)
-    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op2 = mpo_to_global(mpo2).reshape((local_dim**nr_sites, ) * 2)
 
     inner_np = np.trace(np.dot(op1.conj().transpose(), op2))
@@ -160,8 +160,8 @@ def test_inner_mat(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_norm(nr_sites, local_dim, bond_dim):
-    mp_psi = factory.random_mpa(nr_sites, local_dim, bond_dim)
+def test_norm(nr_sites, local_dim, bond_dim, rgen):
+    mp_psi = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
     psi = mp_psi.to_array()
 
     assert_almost_equal(mp.inner(mp_psi, mp_psi), mp.norm(mp_psi)**2)
@@ -169,17 +169,17 @@ def test_norm(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_normdist(nr_sites, local_dim, bond_dim):
-    psi1 = factory.random_mpa(nr_sites, local_dim, bond_dim)
-    psi2 = factory.random_mpa(nr_sites, local_dim, bond_dim)
+def test_normdist(nr_sites, local_dim, bond_dim, rgen):
+    psi1 = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    psi2 = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
 
     assert_almost_equal(mp.normdist(psi1, psi2), mp.norm(psi1 - psi2))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
-def test_partialtrace(nr_sites, local_dim, bond_dim, keep_width):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+def test_partialtrace(nr_sites, local_dim, bond_dim, keep_width, rgen):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op = mpo_to_global(mpo)
 
     for site in range(nr_sites - keep_width + 1):
@@ -193,18 +193,18 @@ def test_partialtrace(nr_sites, local_dim, bond_dim, keep_width):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_trace(nr_sites, local_dim, bond_dim):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+def test_trace(nr_sites, local_dim, bond_dim, rgen):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
 
     assert_almost_equal(np.trace(op), mp.trace(mpo))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_add_and_subtr(nr_sites, local_dim, bond_dim):
-    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+def test_add_and_subtr(nr_sites, local_dim, bond_dim, rgen):
+    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op1 = mpo_to_global(mpo1)
-    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op2 = mpo_to_global(mpo2)
 
     assert_array_almost_equal(op1 + op2, mpo_to_global(mpo1 + mpo2))
@@ -215,11 +215,12 @@ def test_add_and_subtr(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', [(3, 2, 2)])
-def test_operations_typesafety(nr_sites, local_dim, bond_dim):
+def test_operations_typesafety(nr_sites, local_dim, bond_dim, rgen):
     # create a real MPA
     mpo1 = factory._generate(nr_sites, (local_dim, local_dim), bond_dim,
-                             func=lambda shape: np.random.randn(*shape))
-    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+                             func=lambda shape: rgen.randn(*shape))
+    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              randstate=rgen)
 
     assert mpo1[0].dtype == float
     assert mpo2[0].dtype == complex
@@ -237,13 +238,13 @@ def test_operations_typesafety(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim, rgen):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     # FIXME Change behavior of to_array
     # For nr_sites == 1, changing `mpo` below will change `op` as
     # well, unless we call .copy().
     op = mpo_to_global(mpo).copy()
-    scalar = np.random.randn()
+    scalar = rgen.randn()
 
     assert_array_almost_equal(scalar * op, mpo_to_global(scalar * mpo))
 
@@ -252,13 +253,13 @@ def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_div_mpo_scalar(nr_sites, local_dim, bond_dim):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+def test_div_mpo_scalar(nr_sites, local_dim, bond_dim, rgen):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     # FIXME Change behavior of to_array
     # For nr_sites == 1, changing `mpo` below will change `op` as
     # well, unless we call .copy().
-    op =mpo_to_global(mpo).copy()
-    scalar = np.random.randn()
+    op = mpo_to_global(mpo).copy()
+    scalar = rgen.randn()
 
     assert_array_almost_equal(op / scalar, mpo_to_global(mpo / scalar))
 
@@ -267,14 +268,15 @@ def test_div_mpo_scalar(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_outer(nr_sites, local_dim, bond_dim):
+def test_outer(nr_sites, local_dim, bond_dim, rgen):
     # This test produces at most `nr_sites` by tensoring two
     # MPOs. This doesn't work for :code:`nr_sites = 1`.
     if nr_sites < 2:
         return
 
     # NOTE: Everything here is in local form!!!
-    mpo = factory.random_mpa(nr_sites // 2, (local_dim, local_dim), bond_dim)
+    mpo = factory.random_mpa(nr_sites // 2, (local_dim, local_dim), bond_dim,
+                             randstate=rgen)
     op = mpo.to_array()
 
     # Test with 2-factors with full form
@@ -363,9 +365,9 @@ def test_inject(_, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_louter(nr_sites, local_dim, bond_dim):
-    mpa1 = factory.random_mpa(nr_sites, local_dim, bond_dim)
-    mpa2 = factory.random_mpa(nr_sites, local_dim, bond_dim)
+def test_louter(nr_sites, local_dim, bond_dim, rgen):
+    mpa1 = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    mpa2 = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
     arr1 = mpa1.to_array()
     arr1 = arr1.reshape(arr1.shape + (1, ) * nr_sites)
     arr2 = mpa2.to_array()
@@ -382,7 +384,7 @@ def test_louter(nr_sites, local_dim, bond_dim):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, local_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
-def test_local_sum(nr_sites, local_dim, bond_dim, local_width):
+def test_local_sum(nr_sites, local_dim, bond_dim, local_width, rgen):
     eye_mpa = factory.eye(1, local_dim)
 
     def embed_mpa(mpa, startpos):
@@ -391,10 +393,9 @@ def test_local_sum(nr_sites, local_dim, bond_dim, local_width):
         res = mp.outer(mpas)
         return res
 
-    rs = np.random
     nr_startpos = nr_sites - local_width + 1
     mpas = [factory.random_mpa(local_width, (local_dim,) * 2, bond_dim,
-                               randstate=rs)
+                               randstate=rgen)
             for i in range(nr_startpos)]
 
     # Embed with mp.outer() and calculate naive MPA sum:
@@ -416,10 +417,10 @@ def test_local_sum(nr_sites, local_dim, bond_dim, local_width):
 ###############################################################################
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, sites_per_group',
                      MP_TEST_PARAMETERS_GROUPS)
-def test_group_sites(nr_sites, local_dim, bond_dim, sites_per_group):
+def test_group_sites(nr_sites, local_dim, bond_dim, sites_per_group, rgen):
     assert (nr_sites % sites_per_group) == 0, \
         'nr_sites not a multiple of sites_per_group'
-    mpa = factory.random_mpa(nr_sites, (local_dim,) * 2, bond_dim)
+    mpa = factory.random_mpa(nr_sites, (local_dim,) * 2, bond_dim, randstate=rgen)
     grouped_mpa = mpa.group_sites(sites_per_group)
     op = mpa.to_array()
     grouped_op = grouped_mpa.to_array()
@@ -428,11 +429,11 @@ def test_group_sites(nr_sites, local_dim, bond_dim, sites_per_group):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, sites_per_group',
                      MP_TEST_PARAMETERS_GROUPS)
-def test_split_sites(nr_sites, local_dim, bond_dim, sites_per_group):
+def test_split_sites(nr_sites, local_dim, bond_dim, sites_per_group, rgen):
     assert (nr_sites % sites_per_group) == 0, \
         'nr_sites not a multiple of sites_per_group'
-    mpa = factory.random_mpa(nr_sites // sites_per_group,
-                             (local_dim,) * (2 * sites_per_group), bond_dim)
+    plegs = (local_dim,) * (2 * sites_per_group)
+    mpa = factory.random_mpa(nr_sites // sites_per_group, plegs, bond_dim, randstate=rgen)
     split_mpa = mpa.split_sites(sites_per_group)
     op = mpa.to_array()
     split_op = split_mpa.to_array()
@@ -478,16 +479,16 @@ def assert_correct_normalization(mpo, lnormal_target=None, rnormal_target=None):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
-def test_normalization_from_full(nr_sites, local_dim, _):
-    op = factory.random_op(nr_sites, local_dim)
+def test_normalization_from_full(nr_sites, local_dim, _, rgen):
+    op = factory.random_op(nr_sites, local_dim, randstate=rgen)
     mpo = mp.MPArray.from_array(op, 2)
     assert_correct_normalization(mpo, nr_sites - 1, nr_sites)
 
 
 # FIXME Add counter to normalization functions
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_normalization_incremental(nr_sites, local_dim, bond_dim):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+def test_normalization_incremental(nr_sites, local_dim, bond_dim, rgen):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op = mpo_to_global(mpo)
     assert_correct_normalization(mpo, 0, nr_sites)
     assert_array_almost_equal(op, mpo_to_global(mpo))
@@ -505,12 +506,12 @@ def test_normalization_incremental(nr_sites, local_dim, bond_dim):
 
 # FIXME Add counter to normalization functions
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_normalization_jump(nr_sites, local_dim, bond_dim):
+def test_normalization_jump(nr_sites, local_dim, bond_dim, rgen):
     # This test assumes at least two sites.
     if nr_sites == 1:
         return
 
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, rgen)
     op = mpo_to_global(mpo)
     assert_correct_normalization(mpo, 0, nr_sites)
     assert_array_almost_equal(op, mpo_to_global(mpo))
@@ -522,8 +523,8 @@ def test_normalization_jump(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_normalization_full(nr_sites, local_dim, bond_dim):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+def test_normalization_full(nr_sites, local_dim, bond_dim, rgen):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op = mpo_to_global(mpo)
     assert_correct_normalization(mpo, 0, nr_sites)
     assert_array_almost_equal(op, mpo_to_global(mpo))
@@ -533,7 +534,7 @@ def test_normalization_full(nr_sites, local_dim, bond_dim):
     assert_array_almost_equal(op, mpo_to_global(mpo))
 
     ###########################################################################
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op = mpo_to_global(mpo)
     assert_correct_normalization(mpo, 0, nr_sites)
     assert_array_almost_equal(op, mpo_to_global(mpo))
@@ -544,19 +545,19 @@ def test_normalization_full(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_normalization_default_args(nr_sites, local_dim, bond_dim):
+def test_normalization_default_args(nr_sites, local_dim, bond_dim, rgen):
     # The following normalizations assume at least two sites.
     if nr_sites == 1:
         return
 
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     assert_correct_normalization(mpo, 0, nr_sites)
 
     mpo.normalize(left=1)
     mpo.normalize()
     assert_correct_normalization(mpo, nr_sites - 1, nr_sites)
 
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     assert_correct_normalization(mpo, 0, nr_sites)
 
     # The following normalization assumes at least three sites.
@@ -569,30 +570,30 @@ def test_normalization_default_args(nr_sites, local_dim, bond_dim):
     assert_correct_normalization(mpo, 0, 1)
 
 
-def test_normalization_compression():
+def test_normalization_compression(rgen):
     """If the bond dimension is too large at the boundary, qr decompostion
     in normalization may yield smaller bond dimension"""
-    mpo = factory.random_mpa(sites=2, ldim=2, bdim=20)
+    mpo = factory.random_mpa(sites=2, ldim=2, bdim=20, randstate=rgen)
     mpo.normalize(right=1)
     assert_correct_normalization(mpo, 0, 1)
     assert mpo.bdims[0] == 2
 
-    mpo = factory.random_mpa(sites=2, ldim=2, bdim=20)
+    mpo = factory.random_mpa(sites=2, ldim=2, bdim=20, randstate=rgen)
     mpo.normalize(left=1)
     assert_correct_normalization(mpo, 1, 2)
     assert mpo.bdims[0] == 2
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim):
+def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim, rgen):
     if nr_sites < 2:
         # Re-normalization has no effect for nr_sites == 1. There is
         # nothing more to test than :func:`test_mult_mpo_scalar`.
         return
 
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     op = mpo_to_global(mpo)
-    scalar = np.random.randn()
+    scalar = rgen.randn()
 
     center = nr_sites // 2
     mpo.normalize(left=center - 1, right=center)
@@ -650,8 +651,8 @@ compr_settings = pt.mark.parametrize(
 # before compression.
 compr_normalization = pt.mark.parametrize(
     'normalize',
-    (dict(left=1, right=-1), dict())
-    + tuple(pt.mark.long(x) for x in (
+    (dict(left=1, right=-1), dict()) +
+        tuple(pt.mark.long(x) for x in (
         None,
         dict(left='afull'),
         dict(right='afull'),
@@ -660,6 +661,7 @@ compr_normalization = pt.mark.parametrize(
         dict(left=1, right=-1),
     ))
 )
+
 
 def _chain_decorators(*args):
     def chain_decorator(f):
@@ -693,7 +695,7 @@ def normalize_if_applicable(mpa, nmz):
     return True
 
 
-def call_compression(mpa, comparg, bonddim, call_compress=False):
+def call_compression(mpa, comparg, bonddim, rgen, call_compress=False):
     """Call `mpa.compress` or `mpa.compression` with suitable arguments.
 
     Does not make a copy of `mpa` in any case.
@@ -708,10 +710,9 @@ def call_compression(mpa, comparg, bonddim, call_compress=False):
     :returns: Compressed MPA.
 
     """
-    if 'relerr' in comparg:
-        pass
-    elif comparg.get('startmpa') == 'fillbelow':
-        startmpa = factory.random_mpa(len(mpa), mpa.pdims[0], bonddim, norm1=True)
+    if not ('relerr' in comparg) and (comparg.get('startmpa') == 'fillbelow'):
+        startmpa = factory.random_mpa(len(mpa), mpa.pdims[0], bonddim,
+                                      norm1=True, randstate=rgen)
         comparg = update_copy_of(comparg, {'startmpa': startmpa})
     else:
         comparg = update_copy_of(comparg, {'bdim': bonddim})
@@ -721,21 +722,21 @@ def call_compression(mpa, comparg, bonddim, call_compress=False):
         return mpa.compression(**comparg)
 
 
-# TODO We want check compression for inputs with norm different from
-# 1.  In the next function and below, we do this with a normalized
-# state multiplied with a constant with magnitude different from 1.
-# This is to avoid errors like "123456789.1 and 123456789.2 are not
-# equal to six decimals" and is related to the FIXME at the module
-# start.
+# We want check compression for inputs with norm different from 1.  In the next
+# function and below, we do this with a normalized state multiplied with a
+# constant with magnitude different from 1.  This is to avoid errors like
+# "123456789.1 and 123456789.2 are not equal to six decimals" and is related to
+# the fixme at the module start.
 
 
 @compr_test_params
-def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize, comparg):
+def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize, comparg, rgen):
     """Test that .compression() and .compress() produce identical results.
 
     """
-    # See comment above on "4.2 * "
-    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2, norm1=True)
+    # See comment above on "4.2 *"
+    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2,
+                                   norm1=True, randstate=rgen)
     if not normalize_if_applicable(mpa, normalize):
         return
 
@@ -743,21 +744,22 @@ def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize, com
     if comparg['method'] == 'var':
         # Exact equality between `compr` and `compr2` below requires
         # using the same start vector in both cases.
-        comparg['startmpa'] = factory.random_mpa(nr_sites, local_dims, bond_dim)
+        comparg['startmpa'] = factory.random_mpa(nr_sites, local_dims, bond_dim,
+                                                 randstate=rgen)
 
     # The results from .compression() and .compress() must match
     # exactly. No numerical difference is allowed.
     compr2 = mpa.copy()
-    overlap2 = call_compression(compr2, comparg, bond_dim, call_compress=True)
-    compr, overlap = call_compression(mpa, comparg, bond_dim)
+    overlap2 = call_compression(compr2, comparg, bond_dim, rgen, call_compress=True)
+    compr, overlap = call_compression(mpa, comparg, bond_dim, rgen)
     assert_almost_equal(overlap, overlap2)
     # FIXME Why do they not agree completely? We are doing the same thing...
-    assert_mpa_identical(compr, compr2, decimal=14)
+    assert_mpa_identical(compr, compr2, decimal=12)
 
 
 @compr_test_params
 def test_compression_result_properties(nr_sites, local_dims, bond_dim,
-                                        normalize, comparg):
+                                        normalize, comparg, rgen):
     """Test general properties of the MPA coming from a compression.
 
     * Compare SVD compression against simpler implementation
@@ -782,19 +784,18 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
     .compress(). At the moment, we mostly test .compression().
 
     """
-    st = None
     if comparg['method'] == 'var' and comparg['num_sweeps'] == 3:
         # Below, we want to check that var is at least as good as SVD
         # compression.  This requires a big enough number of sweeps.
         # Because a big number of sweeps is not required in any other
         # test, we override the number of sweeps here.
         comparg = update_copy_of(comparg, {'num_sweeps': 20 // comparg['var_sites']})
-        st = np.random
 
-    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2, st)
+    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2,
+                                   randstate=rgen)
     if not normalize_if_applicable(mpa, normalize):
         return
-    compr, overlap = call_compression(mpa.copy(), comparg, bond_dim)
+    compr, overlap = call_compression(mpa.copy(), comparg, bond_dim, rgen)
 
     # 'relerr' is currently 1e-6 and no bond_dim is provided, so no
     # compression will occur.
@@ -846,19 +847,20 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
 
 @compr_test_params
 def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
-                                         normalize, comparg):
+                                         normalize, comparg, rgen):
     """Check that bond dimension does not increase if the target bond
     dimension is larger than the MPA bond dimension
 
     """
     if 'relerr' in comparg:
         return  # Test does not apply
-    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True)
+    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True,
+                                   randstate=rgen)
     if not normalize_if_applicable(mpa, normalize):
         return
 
     for factor in (1, 2):
-        compr, overlap = call_compression(mpa, comparg, bond_dim * factor)
+        compr, overlap = call_compression(mpa, comparg, bond_dim * factor, rgen)
         assert_almost_equal(overlap, 1.0)
         assert_mpa_almost_equal(compr, mpa, full=True)
         assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
@@ -866,12 +868,14 @@ def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
 
 @pt.mark.parametrize('add', ('zero', 'self', 'self2'))
 @compr_test_params
-def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize, comparg, add):
+def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize,
+                                comparg, add, rgen):
     """Check that `a + b` compresses exactly to a multiple of `a` if `b`
     is equal to one of `0`, `a` or `-2*a`
 
     """
-    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True)
+    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True,
+                                   randstate=rgen)
     if not normalize_if_applicable(mpa, normalize):
         return
     zero = factory.zero(nr_sites, local_dims, bond_dim)
@@ -885,7 +889,7 @@ def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize, compa
     for dim1, dim2, sum_dim in zip(mpa.bdims, add.bdims, msum.bdims):
         assert dim1 + dim2 == sum_dim
 
-    compr, overlap = call_compression(msum, comparg, bond_dim)
+    compr, overlap = call_compression(msum, comparg, bond_dim, rgen)
     assert_almost_equal(overlap, 1.0)
     assert_mpa_almost_equal(compr, factor * mpa, full=True)
     assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
