@@ -27,8 +27,9 @@ def _get_reductions(red_fun, mpa, max_red_width):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, max_red_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
-def test_reductions_mpo(nr_sites, local_dim, bond_dim, max_red_width):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+def test_reductions_mpo(nr_sites, local_dim, bond_dim, max_red_width, rgen):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen)
     op = mpo.to_array_global()
 
     start, stop, red = _get_reductions(mm.reductions_mpo, mpo, max_red_width)
@@ -50,8 +51,9 @@ def test_reductions_mpo(nr_sites, local_dim, bond_dim, max_red_width):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, max_red_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
-def test_reductions_pmps(nr_sites, local_dim, bond_dim, max_red_width):
-    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+def test_reductions_pmps(nr_sites, local_dim, bond_dim, max_red_width, rgen):
+    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              randstate=rgen)
     op = mm.pmps_to_mpo(pmps).to_array_global()
 
     start, stop, red = _get_reductions(mm.reductions_pmps, pmps, max_red_width)
@@ -76,8 +78,9 @@ def test_reductions_pmps(nr_sites, local_dim, bond_dim, max_red_width):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
-def test_reductions_mps(nr_sites, local_dim, bond_dim, width):
-    mps = factory.random_mpa(nr_sites, (local_dim,), bond_dim)
+def test_reductions_mps(nr_sites, local_dim, bond_dim, width, rgen):
+    mps = factory.random_mpa(nr_sites, (local_dim,), bond_dim,
+                             randstate=rgen)
     mpo = mp.louter(mps, mps.conj())
 
     pmps_reds = mm.reductions_mps_as_mpo(mps, width)
@@ -88,11 +91,12 @@ def test_reductions_mps(nr_sites, local_dim, bond_dim, width):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_pmps_to_mpo(nr_sites, local_dim, bond_dim):
+def test_pmps_to_mpo(nr_sites, local_dim, bond_dim, rgen):
     if (nr_sites % 2) != 0:
         return
     nr_sites = nr_sites // 2
-    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim)
+    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              randstate=rgen)
     rho_mp = mm.pmps_to_mpo(pmps).to_array_global()
 
     # Local form is what we will use: One system site, one ancilla site, etc
@@ -109,8 +113,8 @@ def test_pmps_to_mpo(nr_sites, local_dim, bond_dim):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_mps_to_mpo(nr_sites, local_dim, bond_dim):
-    mps = factory.random_mpa(nr_sites, local_dim, bond_dim)
+def test_mps_to_mpo(nr_sites, local_dim, bond_dim, rgen):
+    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
     # Instead of calling the two functions, we call mps_to_mpo(),
     # which does exactly that:
     #   mps_as_puri = mp.mps_as_local_purification_mps(mps)

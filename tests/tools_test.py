@@ -9,26 +9,29 @@ from scipy.linalg import block_diag
 from six.moves import range
 
 
-def test_block_diag_simple():
+def test_block_diag_simple(rgen):
     rows = (4, 7)
     cols = (3, 6)
-    summands = [factory._zrandn((rows[i], cols[i])) for i in range(len(rows))]
+    summands = [factory._zrandn((rows[i], cols[i]), randstate=rgen)
+                for i in range(len(rows))]
     blockdiag_sum = _tools.block_diag(summands)
     blockdiag_sum_scipy = block_diag(*summands)
     assert_array_almost_equal(blockdiag_sum, blockdiag_sum_scipy)
 
 
-def test_block_diag():
+def test_block_diag(rgen):
     leftmargin = 3
     rightmargin = 5
     rows = (4, 7)
     cols = (3, 6)
     nr_blocks = len(rows)
     nr_summands = 3
-    leftvecs = factory._zrandn((nr_blocks, nr_summands, leftmargin))
-    middlematrices = [factory._zrandn((nr_summands, rows[i], cols[i]))
+    leftvecs = factory._zrandn((nr_blocks, nr_summands, leftmargin),
+                               randstate=rgen)
+    middlematrices = [factory._zrandn((nr_summands, rows[i], cols[i]), randstate=rgen)
                       for i in range(nr_blocks)]
-    rightvecs = factory._zrandn((nr_blocks, nr_summands, rightmargin))
+    rightvecs = factory._zrandn((nr_blocks, nr_summands, rightmargin),
+                                randstate=rgen)
     blockdiag_summands = []
     for i in range(nr_blocks):
         summand = np.zeros((leftmargin, rows[i], cols[i], rightmargin), dtype=complex)
