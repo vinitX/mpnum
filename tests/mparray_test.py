@@ -688,6 +688,9 @@ def normalize_if_applicable(mpa, nmz):
     comprehensive.
 
     """
+    # Make sure the input is non-normalized. Otherwise, the output can
+    # be more normalized than desired for the test.
+    assert mpa.normal_form == (0, len(mpa)), "want non-normalized MPA for test"
     if nmz is not None:
         if nmz.get('left') == 1 and nmz.get('right') == -1 and len(mpa) == 2:
             return False
