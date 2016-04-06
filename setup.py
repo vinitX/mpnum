@@ -75,8 +75,8 @@ if __name__ == '__main__':
         license="BSD",
         description=description,
         install_requires=[
-            'NumPy>=1.5.1',
             'SciPy>=0.15',
+            'NumPy>=1.5.1',
             'six>=1.0',
             'PyTest>=2.8.7'
         ],
