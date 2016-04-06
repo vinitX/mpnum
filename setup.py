@@ -64,6 +64,30 @@ class PyTest(Command):
                 raise SystemExit(errno)
 
 
+_install_requires = [
+    'SciPy>=0.15',
+    'NumPy>=1.5.1',
+    'six>=1.0',
+    'PyTest>=2.8.7'
+]
+
+
+def _get_install_requires(req, not_on_rtd=['scipy', 'numpy']):
+    """Remove packages which cannot be installed on readthedocs.org
+
+    scipy and numpy are available on readthedocs as system packages,
+    but they must not appear in install_requires (see
+    http://docs.readthedocs.org/en/latest/faq.html).
+
+    """
+    on_rtd = os.environ.get('READTHEDOCS') == 'True'
+    if on_rtd:
+        req = [dep for dep in req
+               if all(blocker.lower() not in dep.lower()
+                      for blocker in not_on_rtd)]
+    return req
+
+
 if __name__ == '__main__':
     setup(
         name=name,
@@ -74,12 +98,7 @@ if __name__ == '__main__':
         package_dir={name: name},
         license="BSD",
         description=description,
-        install_requires=[
-            'SciPy>=0.15',
-            'NumPy>=1.5.1',
-            'six>=1.0',
-            'PyTest>=2.8.7'
-        ],
+        install_requires=_get_install_requires(_install_requires),
         keywords=[],
         classifiers=[
             "Operating System :: OS Indendent",
