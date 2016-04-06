@@ -576,20 +576,44 @@ class MPArray(object):
     def compress(self, method='svd', **kwargs):
         r"""Compress `self`, modifying it in-place.
 
-        .. note:: At the moment, we return the overlap <M|M'> of the
-            original M and its compr. M'. In the future, we will
-            return the (relative) Frobenius norm difference instead.
+        Let :math:`\vert u \rangle` the original vector and let
+        :math:`\vert c \rangle` the compressed vector. The
+        compressions we return have the property (cf. [Sch11_,
+        Sec. 4.5.2])
 
-        .. todo:: Return (relative) Frobenius norm difference instead
-            of overlap.
+        .. math::
 
-        :returns: Overlap :math:`\vert\langle M \vert M' \rangle\vert`
-            of the original M and its compression M'.
+           \langle u \vert c \rangle = \langle c \vert c \rangle \in (0, \infty).
+
+        It is a useful property because it ensures
+
+        .. math::
+
+           \min_{\phi \in \mathbb R} \| u - r e^{i \phi} c \| &= \| u - r c \|,
+           \quad r > 0, \\
+           \min_{\mu \in \mathbb C} \| u - \mu c \| &= \| u - c \|
+
+        for the vector 2-norm. Users of this function can compute norm
+        differences between u and a normalized c via
+
+        .. math::
+
+           \| u - r c \|^2 &= \| u \|^2 + r (r - 2) \langle u \vert c \rangle, 
+           \quad r \ge 0.
+
+        In the special case of :math:`\|u\| = 1` and :math:`c_0 = c/\| c
+        \|` (pure quantum states as MPS), we obtain
+
+        .. math::
+
+           \| u - c_0 \|^2 &= 2(1 - \sqrt{\langle u \vert c \rangle})
+
+        :returns: Inner product :math:`\langle u \vert c \rangle \in
+            (0, \infty)` of the original u and its compression c.
 
         :param method: 'svd', 'svdsweep' or 'var'
 
-        Parameters for 'svd':
-        =====================
+        .. rubric:: Parameters for 'svd':
 
         :param bdim: Maximal bond dimension of the result. Default
             `None`.
@@ -602,13 +626,11 @@ class MPArray(object):
             (inverse) or `None` (choose depending on
             normalization). Default `None`.
 
-        Parameters for 'svdsweep':
-        ==========================
+        .. rubric:: Parameters for 'svdsweep':
 
         TODO
 
-        Parameters for 'var':
-        =====================
+        .. rubric:: Parameters for 'var':
 
         :param startmpa: Start vector, also fixes the bond dimension
             of the result. Default: Random, with same norm as self.
@@ -626,9 +648,6 @@ class MPArray(object):
 
         Increasing `var_sites` makes it less likely to get stuck in a
         local minimum.
-
-        .. todo:: Check whether the return value is precisely verified
-                  in the tests.
 
         References:
 
@@ -652,24 +671,10 @@ class MPArray(object):
     def compression(self, method='svd', **kwargs):
         """Return a compression of `self`. Does not modify `self`.
 
-        .. note:: At the moment, we return (among other things) the
-            overlap <M|M'> of the original M and its compr. M'. In the
-            future, we will return the (relative) Frobenius norm
-            difference instead.
-
-        .. todo:: Return (relative) Frobenius norm difference instead
-            of overlap.
-
         Parameters: See :func:`MPArray.compress()`.
 
-        :returns: `(compressed_mpa, overlap)`, for `overlap` see
-            :func:`MPArray.compress()`. In the future, we will return
-            the (relative) Frobenius norm difference instead of the
-            overlap.
-
-        Note that this function does not modify `self`, but it may
-        change the normalization of `self`. (Call to :func:`norm` in
-        :func:`_compression_var`.)
+        :returns: `(compressed_mpa, iprod)` where `iprod` is the inner
+            product returned by :func:`MPArray.compress()`.
 
         """
         if method == 'svd':
@@ -749,7 +754,7 @@ class MPArray(object):
         elif bdim is None:
             raise ValueError('You must provide startmpa or bdim')
         if bdim > self.bdim:
-            # The caller expects that the result is indpendent from
+            # The caller expects that the result is independent from
             # `self`. Take a copy. If we are called from .compress()
             # instead of .compression(), we could avoid the copy and
             # return self.

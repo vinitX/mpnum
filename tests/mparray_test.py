@@ -808,7 +808,7 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
         # Check that the target bond dimension is satisfied
         assert compr.bdim <= bond_dim
 
-    # Check that the overlap is correct.
+    # Check that the inner product is correct.
     assert_almost_equal(overlap, mp.inner(mpa, compr))
 
     # SVD: Check that .normal_form is as expected.
