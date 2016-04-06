@@ -583,10 +583,8 @@ class MPArray(object):
         .. todo:: Return (relative) Frobenius norm difference instead
             of overlap.
 
-        :returns: Relative overlap
-            :math:`\frac{\vert\langle M \vert M' \rangle\vert}
-            {\Vert M \Vert \, \Vert M' \Vert}`
-            of the original M and its compr. M'.
+        :returns: Overlap :math:`\vert\langle M \vert M' \rangle\vert`
+            of the original M and its compression M'.
 
         :param method: 'svd', 'svdsweep' or 'var'
 
@@ -665,7 +663,9 @@ class MPArray(object):
         Parameters: See :func:`MPArray.compress()`.
 
         :returns: `(compressed_mpa, overlap)`, for `overlap` see
-            :func:`MPArray.compress()`.
+            :func:`MPArray.compress()`. In the future, we will return
+            the (relative) Frobenius norm difference instead of the
+            overlap.
 
         Note that this function does not modify `self`, but it may
         change the normalization of `self`. (Call to :func:`norm` in
@@ -680,6 +680,8 @@ class MPArray(object):
             return self._compression_var(**kwargs)
         else:
             raise ValueError('{!r} is not a valid method'.format(method))
+
+
 
     def _compress_svd(self, bdim=None, relerr=0.0, direction=None):
         """Compress `self` using SVD [Sch11_, Sec. 4.5.1]
@@ -698,16 +700,11 @@ class MPArray(object):
 
         if direction == 'right':
             self.normalize(right=1)
-            norm_old = norm(self)
-            overlap = self._compress_svd_r(bdim, relerr)
+            return self._compress_svd_r(bdim, relerr)
         elif direction == 'left':
             self.normalize(left=len(self) - 1)
-            norm_old = norm(self)
-            overlap = self._compress_svd_l(bdim, relerr)
+            return self._compress_svd_l(bdim, relerr)
 
-        # Calculating norms is basically free since states are already left-
-        # or right-normalized
-        return overlap / (norm_old * norm(self))
         raise ValueError('{} is not a valid direction'.format(direction))
 
     def _compress_svdsweep(self, stages=None, bdim=None, relerr=0.0,
@@ -745,7 +742,7 @@ class MPArray(object):
         if len(self) == 1:
             # Cannot do anything. We make a copy, see below.
             copy = self.copy()
-            return copy, 1.0
+            return copy, norm(copy)**2
 
         if startmpa is not None:
             bdim = startmpa.bdim
@@ -757,7 +754,7 @@ class MPArray(object):
             # instead of .compression(), we could avoid the copy and
             # return self.
             copy = self.copy()
-            return copy, 1.0
+            return copy, norm(copy)**2
 
         if startmpa is None:
             # At the moment, the start mpa we generate always has
@@ -780,10 +777,10 @@ class MPArray(object):
         compr = compr.ravel()
         compr._adapt_to(self.ravel(), num_sweeps, var_sites)
         compr = compr.reshape(shape)
-
         # FIXME Compute overlap from the norms of `self` and `target`,
+        # FIXME Dont return if not asked to...
         # which are faster to obtain because they are normalized.
-        overlap = np.abs(inner(self, compr)) / (norm(self) * norm(compr))
+        overlap = inner(self, compr)
         return compr, overlap
 
     def _compress_svd_r(self, bdim, relerr):
