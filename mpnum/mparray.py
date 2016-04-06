@@ -767,7 +767,6 @@ class MPArray(object):
             # float64, ...).
             from mpnum.factory import random_mpa
             compr = random_mpa(len(self), self.pdims, bdim, randstate=randstate)
-            compr *= norm(self) / norm(compr)
         else:
             compr = startmpa.copy()
             assert all(d1 == d2 for d1, d2 in zip(self.pdims, compr.pdims))
@@ -775,12 +774,8 @@ class MPArray(object):
         # flatten the array since MPS is expected & bring back
         shape = self.pdims
         compr = compr.ravel()
-        compr._adapt_to(self.ravel(), num_sweeps, var_sites)
+        overlap = compr._adapt_to(self.ravel(), num_sweeps, var_sites)
         compr = compr.reshape(shape)
-        # FIXME Compute overlap from the norms of `self` and `target`,
-        # FIXME Dont return if not asked to...
-        # which are faster to obtain because they are normalized.
-        overlap = inner(self, compr)
         return compr, overlap
 
     def _compress_svd_r(self, bdim, relerr):
@@ -844,13 +839,11 @@ class MPArray(object):
     #  Possible TODOs:
     #
     #  - Can we refactor this function into several shorter functions?
-    #  - implement calculating the overlap between 'compr' and 'target' from
-    #  the norm of 'compr', given that 'target' is normalized
     #  - track overlap between 'compr' and 'target' and stop sweeping if it
-    #  is small
+    #    is small
     #  - maybe increase bond dimension of given error cannot be reached
     #  - Shall we track the error in the SVD truncation for multi-site
-    #  updates? [Sch11_] says it turns out to be useful in actual DMRG.
+    #    updates? [Sch11_] says it turns out to be useful in actual DMRG.
     #  - return these details for tracking errors in larger computations
     def _adapt_to(self, target, num_sweeps, var_sites):
         """Iteratively minimize the l2 distance between `self` and `target`.
@@ -935,7 +928,13 @@ class MPArray(object):
                                                        target[pos:pos_end],
                                                        rvecs[pos], max_bonddim)
 
-        return self
+        # Let u the uncompressed vector and c the compression which we
+        # return. c satisfies <c|c> = <u|c> (mentioned more or less in
+        # [Sch11_]). We compute <c|c> to get <u|c> and use the
+        # normalization of the state to compute <c|c> (e.g. [Sch11_,
+        # Fig. 24]).
+        self.normalize(right=1)  # necessary if var_sites > 1
+        return (np.abs(self[0])**2).sum()
 
 
 #############################################
