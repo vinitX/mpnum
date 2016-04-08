@@ -156,7 +156,7 @@ def block_diag(summands, axes=(0, 1)):
     shapes = np.array([array.shape[:nr_axes] for array in summands])
     res = np.zeros(tuple(shapes.sum(axis=0)) + summands[0].shape[nr_axes:],
                    dtype=summands[0].dtype)
-    startpos = np.zeros(nr_axes)
+    startpos = np.zeros(nr_axes, dtype=int)
 
     for array, shape in zip(summands, shapes):
         endpos = startpos + shape
