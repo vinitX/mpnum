@@ -60,9 +60,14 @@ class POVM(object):
     @property
     def probability_map(self):
         """Map that takes a raveled density matrix to the POVM probabilities
+
+        The following two return the same::
+
+            probab = np.array([ np.trace(np.dot(elem, rho)) for elem in a_povm ])
+            probab = np.dot(a_povm.probability_map, rho.ravel())
         """
-        elems = self._elements
-        return np.conj(elems.reshape(len(self), -1))
+        # tr(M rho) = \sum_ij M_ji rho_ij = \sum_ij (M^T)_ij rho_ij
+        return self._elements.transpose((0, 2, 1)).reshape(len(self), -1)
 
     @property
     def linear_inversion_map(self):

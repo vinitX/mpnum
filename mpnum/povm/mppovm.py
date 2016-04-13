@@ -46,10 +46,25 @@ class MPPovm(mp.MPArray):
 
     @property
     def probability_map(self):
-        """Map that takes a raveled density matrix to the POVM probabilities
+        """Map that takes a raveled MPDO to the POVM probabilities
+
+        You can use :func:`MPPovm.expectations()` as a convenient
+        wrapper around this map.
+
+        If `rho` is a matrix product density operator (MPDO), then
+
+        .. code::
+
+            mp.dot(a_povm.probability_map, rho.ravel())
+
+        produces the POVM probabilities as MPA (similar to
+        :func:`mpnum.povm.localpovm.POVM.probability_map`).
+
         """
-        return mp.MPArray(mp._local_reshape(ten, (ten.shape[1], -1)).conj()
-                          for ten in self._ltens)
+        # See :func:`.localpovm.POVM.probability_map` for explanation
+        # of the transpose.
+        return self.transpose((0, 2, 1)).reshape(
+            (pdim[0], -1) for pdim in self.pdims)
 
     def expectations(self, mpa, mode='auto'):
         """Computes the exp. values of the POVM elements with given state
