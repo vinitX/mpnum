@@ -74,6 +74,38 @@ def test_transpose(nr_sites, local_dim, _, rgen):
     assert_array_almost_equal(opT, mpo_to_global(mpo.T))
 
 
+def test_transpose_axes(rgen):
+    ldim = (2, 5, 3)
+    axes = (2, 0, 1)
+    new_ldim = tuple(ldim[ax] for ax in axes)
+
+    # Easy (to implement) test: One physical site only.
+    vec = factory._zrandn(ldim, rgen)
+    mps = mp.MPArray.from_array(vec, plegs=len(ldim))
+    assert len(mps) == 1
+
+    vec_t = vec.transpose(axes)
+    mps_t = mps.transpose(axes)
+    mps_t_to_vec = mps_t.to_array()
+    assert vec_t.shape == new_ldim
+    assert_array_equal(mps_t_to_vec, vec_t)
+
+    # Test with 3 sites
+    nr_sites = 3
+    tensor = factory._zrandn(ldim * nr_sites, rgen)  # local form
+    mpa = mp.MPArray.from_array(tensor, plegs=len(ldim))
+    assert len(mpa) == nr_sites
+    assert mpa.pdims == (ldim,) * nr_sites
+    # transpose axes in local form
+    tensor_axes = tuple(ax + site * len(ldim)
+                     for site in range(nr_sites) for ax in axes)
+    tensor_t = tensor.transpose(tensor_axes)
+    mpa_t = mpa.transpose(axes)
+    mpa_t_to_tensor = mpa_t.to_array()
+    assert mpa_t.pdims == (new_ldim,) * nr_sites
+    assert_array_almost_equal(mpa_t_to_tensor, tensor_t)
+
+
 ###############################################################################
 #                            Algebraic operations                             #
 ###############################################################################

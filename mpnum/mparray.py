@@ -321,6 +321,22 @@ class MPArray(object):
         """Transpose (=reverse order of) physical legs"""
         return type(self)([_local_transpose(tens) for tens in self._ltens])
 
+    def transpose(self, axes=None):
+        """Transpose physical legs
+
+        :param axes: New order of the physical axes (default `None` =
+            reverse the order).
+
+        >>> from .factory import random_mpa
+        >>> mpa = random_mpa(2, (2, 3, 4), 2)
+        >>> mpa.pdims
+        ((2, 3, 4), (2, 3, 4))
+        >>> mpa.transpose((2, 0, 1)).pdims
+        ((4, 2, 3), (4, 2, 3))
+
+        """
+        return type(self)([_local_transpose(tens, axes) for tens in self._ltens])
+
     def adj(self):
         """Hermitian adjoint"""
         return type(self)([_local_transpose(tens).conjugate()
@@ -1519,15 +1535,21 @@ def _local_reshape(ltens, shape):
     return ltens.reshape((full_shape[0], ) + tuple(shape) + (full_shape[-1], ))
 
 
-def _local_transpose(ltens):
+def _local_transpose(ltens, axes=None):
     """Transposes the physical legs of the local tensor `ltens`
 
     :param ltens: Local tensor as numpy.ndarray with ndim >= 2
+    :param axes: 
     :returns: Transpose of ltens except for first and last dimension
 
     """
-    return np.transpose(ltens, axes=[0] + list(range(ltens.ndim - 2, 0, -1)) +
-                        [ltens.ndim - 1])
+    # Should we construct `axes` using numpy arrays?
+    last = ltens.ndim - 1
+    if axes is None:
+        axes = tuple(it.chain((0,), reversed(range(1, last)), (last,)))
+    else:
+        axes = tuple(it.chain((0,), (ax + 1 for ax in axes), (last,)))
+    return np.transpose(ltens, axes=axes)
 
 
 def _ltens_to_array(ltens):
