@@ -316,8 +316,9 @@ class MPArray(object):
     ##########################
     #  Algebraic operations  #
     ##########################
+    @property
     def T(self):
-        """Transpose of the physical legs"""
+        """Transpose (=reverse order of) physical legs"""
         return type(self)([_local_transpose(tens) for tens in self._ltens])
 
     def adj(self):

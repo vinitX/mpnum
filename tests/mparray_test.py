@@ -65,13 +65,13 @@ def test_conjugations(nr_sites, local_dim, _, rgen):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
-def test_transposition(nr_sites, local_dim, _, rgen):
+def test_transpose(nr_sites, local_dim, _, rgen):
     op = factory.random_op(nr_sites, local_dim, randstate=rgen)
     mpo = mp.MPArray.from_array(global_to_local(op, nr_sites), 2)
 
     opT = op.reshape((local_dim**nr_sites,) * 2).T \
         .reshape((local_dim,) * 2 * nr_sites)
-    assert_array_almost_equal(opT, mpo_to_global(mpo.T()))
+    assert_array_almost_equal(opT, mpo_to_global(mpo.T))
 
 
 ###############################################################################
