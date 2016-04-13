@@ -1,5 +1,6 @@
 
 
+.. _mpnum-introduction:
 
 Introduction
 ============
@@ -83,8 +84,10 @@ The matrix product state representation of a state :math:`\vert \psi
    \langle i j k l \vert \psi \rangle = \psi_{ijkl} = A_i B_j C_k D_l
 
 where :math:`A_i \in \mathbb C^{1 \times D}`, :math:`B_j, C_k \in
-\mathbb C^{D \times D}` and :math:`D_l \in \mathbb C^{D \times 1}`.
-This construction is given by the following simple figure:
+\mathbb C^{D \times D}` and :math:`D_l \in \mathbb C^{D \times 1}`
+(reference: e.g. [:ref:`Sch11 <Sch11>`]; :ref:`exact definition
+<mpsmpo-definitions>`).  This construction is also known as *tensor
+train* and it is given by the following simple figure:
 
 .. image:: tensors_mps.svg
    :align: center
@@ -120,8 +123,9 @@ on three subsystems is given by
    A_{i_1j_1} B_{i_2j_2} C_{i_3j_3}
 
 where the :math:`A_{i_1j_1}` are row vectors, the :math:`B_{i_2j_2}`
-are matrices and the :math:`C_{i_3j_3}` are column vectors.  This is
-represented by the following figure:
+are matrices and the :math:`C_{i_3j_3}` are column vectors (reference:
+e.g. [:ref:`Sch11 <Sch11>`]; :ref:`exact definition
+<mpsmpo-definitions>`). This is represented by the following figure:
 
 .. image:: tensors_mpo.svg
    :align: center
@@ -177,8 +181,10 @@ or LPMPS) is defined as follows:
    :align: center
 
 Here, all the :math:`i` indices are actual sites and all the :math:`j`
-indices are ancilla sites used for the purification.  The non-negative
-operator described by this representation is given by
+indices are ancilla sites used for the purification (reference:
+e.g. [:ref:`Cue13 <Cue13>`]; :ref:`exact definition
+<mpsmpo-definitions>`).  The non-negative operator described by this
+representation is given by
 
 .. math::
 
@@ -197,7 +203,7 @@ dimension is the square of the PMPS bond dimension.
 Matrix product arrays
 """""
 
-The library mpnum implements the class :code:`mpnum.mparray.MPArray`
+The library mpnum implements the class :class:`mpnum.mparray.MPArray`
 which can be used for MPS, MPO, PMPS and other MPS-like
 representations.  :code:`MPArray` is short for *matrix product array*
 (MPA) and this class provides an MPS with an arbitrary number of
@@ -208,9 +214,13 @@ arbitrary dimension.  A corresponding figure could look like this:
    :align: center
 
 
-How to continue
----------------
+Next steps
+-----
 
 The ipython notebook :code:`mpnum_intro.ipynb` in the folder
 :code:`Notebooks` provides an introduction on how to use :code:`mpnum`
-for basic MPS, MPO and MPA operations.
+for basic MPS, MPO and MPA operations. You can also `view
+mpnum_intro.ipynb on Github`_.
+
+.. _`view mpnum_intro.ipynb on Github`:
+   https://github.com/dseuss/mpnum/blob/master/examples/mpnum_intro.ipynb

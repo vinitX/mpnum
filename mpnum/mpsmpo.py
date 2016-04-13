@@ -3,6 +3,9 @@
 
 r"""Matrix Product State (MPS) and Operator (MPO) functions
 
+The :ref:`mpnum-introduction` also covers the definitions mentioned
+below.
+
 .. _mpsmpo-definitions:
 
 Definitions
