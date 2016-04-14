@@ -24,11 +24,24 @@ class MPPovm(mp.MPArray):
         computing expectation values with MPSs/MPDOs.
 
     Here, we choose the second.
+
+    .. todo:: Right now we use this class for multi-site POVMs with
+        elements obtained from every possible combination of the
+        elements of single-site POVMs: The POVM index is split across
+        all sites. Explore whether and how this concept can also be
+        useful in other cases.
+
     """
 
-    def __iter__(self):
+    @property
+    def elements(self):
         """Returns an iterator over all POVM elements. The result is the i-th
         POVM element in MPO form.
+
+        It would be nice to call this method `__iter__`, but this
+        breaks `mp.dot(mppovm, ...)`. In addition,
+        `next(iter(mppovm))` would not be equal to `mppovm[0]`.
+
         """
         return self.paxis_iter(axes=0)
 
