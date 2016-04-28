@@ -122,7 +122,12 @@ class MPArray(object):
     # FIXME Can we return immutable view into array without having to set the
     #   WRITEABLE flag for the local copy?
     def __iter__(self):
-        """Use only for read-only access! Do not change arrays in place!"""
+        """Use only for read-only access! Do not change arrays in place!
+
+        Subclasses should not override this method because it will
+        break basic MPA functionality such as :func:`dot`.
+
+        """
         return iter(self._ltens)
 
     def __getitem__(self, index):
