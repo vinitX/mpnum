@@ -28,38 +28,37 @@ class PyTest(Command):
     description = "Runs test suite"
     user_options = [
         ('selector=', None, "Specifies the tests to run"),
-        ('covreport', None, "Run coverage report from tests")
+        ('covreport', None, "Run coverage report from tests"),
+        ('pdb', None, "Whether to run pdb on failure"),
     ]
 
     def initialize_options(self):
         self.selector = 'not long'
         self.covreport = None
+        self.pdb = False
 
     def finalize_options(self):
         pass
 
     def run(self):
         import pytest
-        # Disable numba JIT optimization, which will take a couple of seconds
-        # (i.e. as long as the tests are supposed to take).  This must be done
-        # before importing numba.
-        os.environ['NUMBA_DISABLE_JIT'] = '1'
+        args = [] if not self.pdb else ['--pdb']
 
         if self.covreport is None:
             # Run doctests afterwards because they auto-import things. We want
             # to see missing imports.
-            errno = pytest.main(['-m', self.selector, 'tests'])
+            errno = pytest.main(['-m', self.selector, 'tests'] + args)
             if errno != 0:
                 raise SystemExit(errno)
 
-            errno = pytest.main(['--doctest-modules', 'mpnum'])
+            errno = pytest.main(['--doctest-modules', 'mpnum'] + args)
             if errno != 0:
                 raise SystemExit(errno)
 
         else:
             errno = pytest.main(['-m', self.selector, '--cov-report', 'term',
                                  '--cov-report', 'html', '--cov=mpnum',
-                                 '--doctest-modules', 'mpnum', 'tests'])
+                                 '--doctest-modules', 'mpnum', 'tests'] + args)
             if errno != 0:
                 raise SystemExit(errno)
 
