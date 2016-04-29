@@ -85,10 +85,10 @@ def test_transpose_axes(rgen):
     assert len(mps) == 1
 
     vec_t = vec.transpose(axes)
-    mps_t = mps.transpose(axes)
-    mps_t_to_vec = mps_t.to_array()
+    mpa_t = mps.transpose(axes)
+    mpa_t_to_vec = mpa_t.to_array()
     assert vec_t.shape == new_ldim
-    assert_array_equal(mps_t_to_vec, vec_t)
+    assert_array_equal(mpa_t_to_vec, vec_t)
 
     # Test with 3 sites
     nr_sites = 3
@@ -98,7 +98,7 @@ def test_transpose_axes(rgen):
     assert mpa.pdims == (ldim,) * nr_sites
     # transpose axes in local form
     tensor_axes = tuple(ax + site * len(ldim)
-                     for site in range(nr_sites) for ax in axes)
+                        for site in range(nr_sites) for ax in axes)
     tensor_t = tensor.transpose(tensor_axes)
     mpa_t = mpa.transpose(axes)
     mpa_t_to_tensor = mpa_t.to_array()
@@ -137,6 +137,56 @@ def test_dot(nr_sites, local_dim, bond_dim, rgen):
     # this should also be the default axes
     dot_mp = mpo_to_global(mp.dot(mpo1, mpo2, axes=(-2, -1)))
     assert_array_almost_equal(dot_np, dot_mp)
+
+
+def test_dot_multiaxes(rgen):
+    ldim1 = (2, 2, 3, 2)
+    ldim2 = (3, 2, 4)
+    ax1 = (0, 2)
+    ax2 = (-2, 0)
+    assert len(ax1) == len(ax2)
+
+    # Easy (to implement) test: One physical site.
+    vec1 = factory._zrandn(ldim1, rgen)
+    vec2 = factory._zrandn(ldim2, rgen)
+    mpa1 = mp.MPArray.from_array(vec1, plegs=len(ldim1))
+    mpa2 = mp.MPArray.from_array(vec2, plegs=len(ldim2))
+    assert len(mpa1) == 1
+    assert len(mpa2) == 1
+
+    mpa_prod = mp.dot(mpa1, mpa2, axes=(ax1, ax2)).to_array()
+    vec_prod = np.tensordot(vec1, vec2, (ax1, ax2))
+    assert_array_almost_equal(mpa_prod, vec_prod)
+
+    # Test with 3 sites
+    nr_sites = 3
+    vec1 = factory._zrandn(ldim1 * nr_sites, rgen)  # local form
+    vec2 = factory._zrandn(ldim2 * nr_sites, rgen)  # local form
+    mpa1 = mp.MPArray.from_array(vec1, plegs=len(ldim1))
+    mpa2 = mp.MPArray.from_array(vec2, plegs=len(ldim2))
+    assert len(mpa1) == nr_sites
+    assert len(mpa2) == nr_sites
+    mpa_prod = mp.dot(mpa1, mpa2, axes=(ax1, ax2)).to_array()
+    vec_ax1, vec_ax2 = (
+        tuple(ax + site * nldim
+              if ax >= 0 else ax - (nr_sites - site - 1) * nldim
+              for site in range(nr_sites) for ax in ax_n)
+        for ax_n, nldim in ((ax1, len(ldim1)), (ax2, len(ldim2)))
+    )
+    vec_prod = np.tensordot(vec1, vec2, (vec_ax1, vec_ax2))
+    # The problem with vec_prod is: The order of the indices does not
+    # match the order of the indices in mpa_prod. We need to change
+    # that order:
+    nldim1, nldim2 = (len(ldim1) - len(ax1), len(ldim2) - len(ax2))
+    assert vec_prod.ndim == nr_sites * (nldim1 + nldim2)
+    perm = tuple(
+        offset + site * nldim + ax
+        for site in range(nr_sites)
+        for offset, nldim in ((0, nldim1), (nr_sites * nldim1, nldim2))
+        for ax in range(nldim)
+    )
+    vec_prod = vec_prod.transpose(perm)
+    assert_array_almost_equal(mpa_prod, vec_prod)
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)

@@ -972,9 +972,14 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
     (physical) axes. [Sch11_, Sec. 4.2]
 
     :param mpa1, mpa2: Factors as MPArrays
-    :param axes: 2-tuple of axes to sum over. Note the difference in
-        convention compared to np.tensordot(default: last axis of `mpa1`
-        and first axis of `mpa2`)
+
+    :param axes: Tuple `(ax1, ax2)` where `ax1` (`ax2`) is a single
+        physical leg number or sequence of physical leg numbers
+        referring to `mpa1` (`mpa2`). The first (second, etc) entries
+        of `ax1` and `ax2` will be contracted. Very similar to the
+        `axes` argument for `np.tensordot()`, but the default value is
+        different.
+
     :returns: Dot product of the physical arrays
 
     """
@@ -983,8 +988,12 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
 
     # adapt the axes from physical to true legs
     ax_l, ax_r = axes
-    ax_l = ax_l + 1 if ax_l >= 0 else ax_l - 1
-    ax_r = ax_r + 1 if ax_r >= 0 else ax_r - 1
+    if hasattr(ax_l, '__len__'):
+        ax_l = tuple(ax + 1 if ax >= 0 else ax - 1 for ax in ax_l)
+        ax_r = tuple(ax + 1 if ax >= 0 else ax - 1 for ax in ax_r)
+    else:
+        ax_l = ax_l + 1 if ax_l >= 0 else ax_l - 1
+        ax_r = ax_r + 1 if ax_r >= 0 else ax_r - 1
 
     ltens = [_local_dot(l, r, (ax_l, ax_r)) for l, r in zip(mpa1, mpa2)]
 
