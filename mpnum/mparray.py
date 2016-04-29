@@ -987,15 +987,13 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
         "Length is not equal: {} != {}".format(len(mpa1), len(mpa2))
 
     # adapt the axes from physical to true legs
-    ax_l, ax_r = axes
-    if hasattr(ax_l, '__len__'):
-        ax_l = tuple(ax + 1 if ax >= 0 else ax - 1 for ax in ax_l)
-        ax_r = tuple(ax + 1 if ax >= 0 else ax - 1 for ax in ax_r)
+    if hasattr(axes[0], '__len__'):
+        axes = tuple(tuple(ax + 1 if ax >= 0 else ax - 1 for ax in axes2)
+                     for axes2 in axes)
     else:
-        ax_l = ax_l + 1 if ax_l >= 0 else ax_l - 1
-        ax_r = ax_r + 1 if ax_r >= 0 else ax_r - 1
+        axes = tuple(ax + 1 if ax >= 0 else ax - 1 for ax in axes)
 
-    ltens = [_local_dot(l, r, (ax_l, ax_r)) for l, r in zip(mpa1, mpa2)]
+    ltens = [_local_dot(l, r, axes) for l, r in zip(mpa1, mpa2)]
 
     return MPArray(ltens)
 
@@ -1003,24 +1001,25 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
 def partialdot(mpa1, mpa2, start_at, axes=(-1, 0)):
     """Partial dot product of two MPAs of inequal length.
 
-    The shorter MPA will start on site 'start_at'. Local dot products
+    The shorter MPA will start on site `start_at`. Local dot products
     will be carried out on all sites of the shorter MPA. Other sites
     will remain unmodified.
 
-    mpa1 and mpa2 can also have equal length with start_at = 0. Then
-    we do the same as dot(), with the axes argument being more
-    flexible.
+    mpa1 and mpa2 can also have equal length if `start_at = 0`. In
+    this case, we do the same as :func:`dot()`.
 
     :param mpa1, mpa2: Factors as MPArrays, length must be inequal.
     :param start_at: The shorter MPA will start on this site.
-    :param axes: 2-tuple of axes to sum over. Note the difference in
-        convention compared to np.tensordot(default: last axis of `mpa1`
-        and first axis of `mpa2`)
+    :param axes: See `axes` argument to :func:`dot()`.
     :returns: MPA with length of the longer MPA.
 
     """
     # adapt the axes from physical to true legs
-    axes = tuple(ax + 1 if ax >= 0 else ax - 1 for ax in axes)
+    if hasattr(axes[0], '__len__'):
+        axes = tuple(tuple(ax + 1 if ax >= 0 else ax - 1 for ax in axes2)
+                     for axes2 in axes)
+    else:
+        axes = tuple(ax + 1 if ax >= 0 else ax - 1 for ax in axes)
 
     # Make the MPAs equal length (in fact, the shorter one will be
     # infinite length, but that's fine because we use zip()).

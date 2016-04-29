@@ -217,6 +217,66 @@ def test_partialdot(nr_sites, local_dim, bond_dim, rgen):
     assert_array_almost_equal(prod2, prod2_mpo)
 
 
+def test_partialdot_multiaxes(rgen):
+    ldim1 = (2, 2, 3, 2)
+    ldim2 = (3, 2, 4)
+    ax1 = (0, 2)
+    ax2 = (-2, 0)
+    assert len(ax1) == len(ax2)
+
+    # Easy (to implement) test: One physical site.
+    vec1 = factory._zrandn(ldim1, rgen)
+    vec2 = factory._zrandn(ldim2, rgen)
+    mpa1 = mp.MPArray.from_array(vec1, plegs=len(ldim1))
+    mpa2 = mp.MPArray.from_array(vec2, plegs=len(ldim2))
+    assert len(mpa1) == 1
+    assert len(mpa2) == 1
+
+    mpa_prod = mp.partialdot(mpa1, mpa2, start_at=0, axes=(ax1, ax2)).to_array()
+    vec_prod = np.tensordot(vec1, vec2, (ax1, ax2))
+    assert_array_almost_equal(mpa_prod, vec_prod)
+
+    # Test with 3 sites
+    nr_sites = 3
+    nr_sites_shorter = 2
+    start_at = 1
+    vec1 = factory._zrandn(ldim1 * nr_sites, rgen)  # local form
+    vec2 = factory._zrandn(ldim2 * nr_sites_shorter, rgen)  # local form
+    mpa1 = mp.MPArray.from_array(vec1, plegs=len(ldim1))
+    mpa2 = mp.MPArray.from_array(vec2, plegs=len(ldim2))
+    assert len(mpa1) == nr_sites
+    assert len(mpa2) == nr_sites_shorter
+    mpa_prod = mp.partialdot(mpa1, mpa2, start_at, axes=(ax1, ax2)).to_array()
+    vec_ax1, vec_ax2 = (
+        tuple(ax + (startsite + site) * nldim
+              if ax >= 0 else ax - (nr_sites_shorter - site - 1) * nldim
+              for site in range(nr_sites_shorter) for ax in ax_n)
+        for ax_n, nldim, startsite in
+        ((ax1, len(ldim1), start_at), (ax2, len(ldim2), 0))
+    )
+    vec_prod = np.tensordot(vec1, vec2, (vec_ax1, vec_ax2))
+    # The problem with vec_prod is: The order of the indices does not
+    # match the order of the indices in mpa_prod. We need to change
+    # that order:
+    nldim1, nldim2 = (len(ldim1) - len(ax1), len(ldim2) - len(ax2))
+    assert vec_prod.ndim == start_at * len(ldim1) + nr_sites_shorter * (nldim1 + nldim2)
+    # For sites before start_at, the axes of `vec1` remain unchanged.
+    perm = tuple(range(len(ldim1) * start_at))
+    # For site start_at and following sites, we need to fix the order
+    # of sites. We use the same scheme as `test_dot_multiaxes` above.
+    perm2 = tuple(
+        offset + site * nldim + ax
+        for site in range(nr_sites_shorter)
+        for offset, nldim in ((0, nldim1), (nr_sites_shorter * nldim1, nldim2))
+        for ax in range(nldim)
+    )
+    # Now we displace that permutation by the number of unchanged
+    # sites at the beginning:
+    perm += tuple(len(perm) + ax for ax in perm2)
+    vec_prod = vec_prod.transpose(perm)
+    assert_array_almost_equal(mpa_prod, vec_prod)
+
+
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_inner_vec(nr_sites, local_dim, bond_dim, rgen):
     mp_psi1 = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
