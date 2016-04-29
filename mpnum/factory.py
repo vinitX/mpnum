@@ -287,17 +287,13 @@ def random_mpdo(sites, ldim, bdim, randstate=np.random):
     :param ldim: Local dimension
     :param bdim: Bond dimension
     :param randstate: numpy.random.RandomState instance
-    :returns: randomly choosen matrix product (pure) state
+    :returns: randomly choosen classicaly correlated matrix product density op.
 
     >>> rho = random_mpdo(4, 2, 4)
     >>> rho.bdims, rho.pdims
     ((4, 4, 4), ((2, 2), (2, 2), (2, 2), (2, 2)))
     >>> rho.normal_form
     (0, 4)
-    >>> rho_dense = rho.to_array_global().reshape((2**4,) * 2)
-    >>> from numpy.linalg import eigvals
-    >>> min(eigvals(rho_dense)) >= -1e-14
-    True
 
     """
     # generate density matrix as a mixture of `bdim` pure product states
