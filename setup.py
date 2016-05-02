@@ -7,7 +7,7 @@
 import os
 import sys
 
-from setuptools import Command, setup
+from setuptools import Command, find_packages, setup
 
 authors = [u"Daniel Suess", u"Milan Holzäpfel"]
 name = "mpnum"
@@ -93,8 +93,7 @@ if __name__ == '__main__':
         author=', '.join(authors),
         url="https://github.com/dseuss/mpnum",
         version=version,
-        packages=[name],
-        package_dir={name: name},
+        packages=find_packages(exclude=['tests']),
         license="BSD",
         description=description,
         install_requires=_get_install_requires(_install_requires),
