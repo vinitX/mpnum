@@ -861,6 +861,10 @@ def call_compression(mpa, comparg, bonddim, rgen, call_compress=False):
         comparg = update_copy_of(comparg, {'startmpa': startmpa})
     else:
         comparg = update_copy_of(comparg, {'bdim': bonddim})
+
+    if (comparg.get('method') == 'var') and not ('startmpa' in comparg):
+        comparg = update_copy_of(comparg, {'randstate': rgen})
+
     if call_compress:
         return mpa.compress(**comparg)
     else:
