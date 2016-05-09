@@ -215,6 +215,9 @@ def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
     """
     if eigs_opts is None:
         eigs_opts = {'k': 1, 'which': 'SR', 'tol': 1e-6}
+    else:
+        eigs_opts = eigs_opts.copy()
+        eigs_opts['k'] = 1
     op = _mineig_local_op(leftvec, mpo_ltens, rightvec)
     eigvec_bonddim = max(lten.shape[0] for lten in eigvec_ltens)
     eigvec_lten = eigvec_ltens[0]
@@ -254,7 +257,8 @@ def mineig(mpo,
         no start vector is given. (default: Use the bond dimension of `mpo`)
     :param randstate: numpy.random.RandomState instance or None
     :param max_num_sweeps: Maximum number of sweeps to do (default 5)
-    :param eigs_opts: kwargs for scipy.sparse.linalg.eigs(), always set k=1!
+    :param eigs_opts: kwargs for scipy.sparse.linalg.eigs(), k is always set
+        equal to 1!
     :param int minimize_sites: Number of connected sites minimization should
         be performed on (default 1)
     :returns: mineigval, mineigval_eigvec_mpa
