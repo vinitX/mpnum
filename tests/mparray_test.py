@@ -857,7 +857,7 @@ def call_compression(mpa, comparg, bonddim, rgen, call_compress=False):
     """
     if not ('relerr' in comparg) and (comparg.get('startmpa') == 'fillbelow'):
         startmpa = factory.random_mpa(len(mpa), mpa.pdims[0], bonddim,
-                                      norm1=True, randstate=rgen)
+                                      normalized=True, randstate=rgen)
         comparg = update_copy_of(comparg, {'startmpa': startmpa})
     else:
         comparg = update_copy_of(comparg, {'bdim': bonddim})
@@ -885,7 +885,7 @@ def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize, com
     """
     # See comment above on "4.2 *"
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2,
-                                   norm1=True, randstate=rgen)
+                                   normalized=True, randstate=rgen)
     if not normalize_if_applicable(mpa, normalize):
         return
 
@@ -941,7 +941,7 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
         comparg = update_copy_of(comparg, {'num_sweeps': 20 // comparg['var_sites']})
 
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2,
-                                   norm1=True, randstate=rgen)
+                                   normalized=True, randstate=rgen)
     if not normalize_if_applicable(mpa, normalize):
         return
     compr, overlap = call_compression(mpa.copy(), comparg, bond_dim, rgen)
@@ -994,7 +994,7 @@ def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
     """
     if 'relerr' in comparg:
         return  # Test does not apply
-    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True,
+    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, normalized=True,
                                    randstate=rgen)
     norm = mp.norm(mpa.copy())
     if not normalize_if_applicable(mpa, normalize):
@@ -1015,7 +1015,7 @@ def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize,
     is equal to one of `0`, `a` or `-2*a`
 
     """
-    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, norm1=True,
+    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, normalized=True,
                                    randstate=rgen)
     norm = mp.norm(mpa.copy())
     if not normalize_if_applicable(mpa, normalize):
