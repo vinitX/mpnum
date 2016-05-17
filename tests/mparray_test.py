@@ -359,10 +359,10 @@ def test_add_and_subtr(nr_sites, local_dim, bond_dim, rgen):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', [(3, 2, 2)])
 def test_operations_typesafety(nr_sites, local_dim, bond_dim, rgen):
     # create a real MPA
-    mpo1 = factory._generate(nr_sites, (local_dim, local_dim), bond_dim,
-                             func=lambda shape: rgen.randn(*shape))
+    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              randstate=rgen, dtype=float)
     mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
-                              randstate=rgen)
+                              randstate=rgen, dtype=complex)
 
     assert mpo1[0].dtype == float
     assert mpo2[0].dtype == complex

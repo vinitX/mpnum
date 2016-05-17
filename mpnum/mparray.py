@@ -155,6 +155,11 @@ class MPArray(object):
         self._ltens[index] = value
 
     @property
+    def dtype(self):
+        """Returns the dtype that should be returned by to_array"""
+        return np.common_type(*self._ltens)
+
+    @property
     def dims(self):
         """Tuple of shapes for the local tensors"""
         return tuple(m.shape for m in self._ltens)
@@ -620,7 +625,7 @@ class MPArray(object):
 
         .. math::
 
-           \| u - r c \|^2 &= \| u \|^2 + r (r - 2) \langle u \vert c \rangle, 
+           \| u - r c \|^2 &= \| u \|^2 + r (r - 2) \langle u \vert c \rangle,
            \quad r \ge 0.
 
         In the special case of :math:`\|u\| = 1` and :math:`c_0 = c/\| c
@@ -1552,7 +1557,7 @@ def _local_transpose(ltens, axes=None):
     """Transposes the physical legs of the local tensor `ltens`
 
     :param ltens: Local tensor as numpy.ndarray with ndim >= 2
-    :param axes: 
+    :param axes:
     :returns: Transpose of ltens except for first and last dimension
 
     """

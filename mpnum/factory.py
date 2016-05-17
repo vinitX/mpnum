@@ -33,7 +33,20 @@ def _zrandn(shape, randstate=None):
     return randstate.randn(*shape) + 1.j * randstate.randn(*shape)
 
 
-def random_vec(sites, ldim, randstate=None):
+def _randn(shape, randstate=None):
+    """Shortcut for :code:`np.random.randn(*shape)`
+
+    :param randstate: Instance of np.radom.RandomState or None (which yields
+        the default np.random) (default None)
+
+    """
+    randstate = randstate if randstate is not None else np.random
+    return randstate.randn(*shape)
+
+_randfuncs = {np.float: _randn, np.complex_: _zrandn}
+
+
+def random_vec(sites, ldim, randstate=None, dtype=np.complex_):
     """Returns a random complex vector (normalized to ||x||_2 = 1) of shape
     (ldim,) * sites, i.e. a pure state with local dimension `ldim` living on
     `sites` sites.
@@ -49,12 +62,13 @@ def random_vec(sites, ldim, randstate=None):
     True
     """
     shape = (ldim, ) * sites
-    psi = _zrandn(shape, randstate=randstate)
+    psi = _randfuncs[dtype](shape, randstate=randstate)
     psi /= np.linalg.norm(psi)
     return psi
 
 
-def random_op(sites, ldim, hermitian=False, normalized=False, randstate=None):
+def random_op(sites, ldim, hermitian=False, normalized=False, randstate=None,
+              dtype=np.complex_):
     """Returns a random operator  of shape (ldim,ldim) * sites with local
     dimension `ldim` living on `sites` sites in global form.
 
@@ -68,7 +82,7 @@ def random_op(sites, ldim, hermitian=False, normalized=False, randstate=None):
     >>> A = random_op(3, 2); A.shape
     (2, 2, 2, 2, 2, 2)
     """
-    op = _zrandn((ldim**sites,) * 2, randstate=randstate)
+    op = _randfuncs[dtype]((ldim**sites,) * 2, randstate=randstate)
     if hermitian:
         op += np.transpose(op).conj()
     if normalized:
@@ -151,7 +165,8 @@ def _generate(sites, ldim, bdim, func):
     return mp.MPArray(ltens)
 
 
-def random_mpa(sites, ldim, bdim, randn=_zrandn, randstate=None, normalized=False):
+def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
+               dtype=np.complex_):
     """Returns a MPA with randomly choosen local tensors
 
     :param sites: Number of sites
@@ -167,6 +182,8 @@ def random_mpa(sites, ldim, bdim, randn=_zrandn, randstate=None, normalized=Fals
     :param randn: Function used to generate random local tensors
     :param randstate: numpy.random.RandomState instance or None
     :param normalized: Resulting `mpa` has `mp.norm(mpa) == 1`
+    :param dtype: Whicht type the returned array should have. Currently only
+        `np.real_` and `np.complex_` is implemented (default: complex)
     :returns: randomly choosen matrix product array
 
     >>> mpa = random_mpa(4, 2, 10)
@@ -182,7 +199,8 @@ def random_mpa(sites, ldim, bdim, randn=_zrandn, randstate=None, normalized=Fals
     ((10, 10, 10), ((1,), (2, 3), (4, 5), (1,)))
 
     """
-    mpa = _generate(sites, ldim, bdim, ft.partial(_zrandn, randstate=randstate))
+    randfun = ft.partial(_randfuncs[dtype], randstate=randstate)
+    mpa = _generate(sites, ldim, bdim, randfun)
     if normalized:
         mpa /= mp.norm(mpa.copy())
     return mpa
