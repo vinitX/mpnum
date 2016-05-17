@@ -26,6 +26,8 @@ MP_TEST_PARAMETERS = [(1, 7, np.nan), (2, 3, 3), (3, 2, 4), (6, 2, 4),
 # nr_sites, local_dim, bond_dim, sites_per_group
 MP_TEST_PARAMETERS_GROUPS = [(6, 2, 4, 3), (6, 2, 4, 2), (4, 3, 5, 2)]
 
+MP_TEST_DTYPES = [np.float_, np.complex_]
+
 
 def update_copy_of(target, newvals):
     new = target.copy()
@@ -36,42 +38,52 @@ def update_copy_of(target, newvals):
 ###############################################################################
 #                         Basic creation & operations                         #
 ###############################################################################
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
-def test_from_full(nr_sites, local_dim, _, rgen):
-    psi = factory.random_vec(nr_sites, local_dim, randstate=rgen)
+def test_from_full(nr_sites, local_dim, _, rgen, dtype):
+    psi = factory.random_vec(nr_sites, local_dim, randstate=rgen, dtype=dtype)
     mps = mp.MPArray.from_array(psi, 1)
     assert_array_almost_equal(psi, mps.to_array())
+    assert mps.dtype == dtype
 
-    op = factory.random_op(nr_sites, local_dim, randstate=rgen)
+    op = factory.random_op(nr_sites, local_dim, randstate=rgen, dtype=dtype)
     mpo = mp.MPArray.from_array(op, 2)
     assert_array_almost_equal(op, mpo.to_array())
+    assert mpo.dtype == dtype
 
 
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_from_kron(nr_sites, local_dim, bond_dim):
+def test_from_kron(nr_sites, local_dim, bond_dim, dtype):
     plegs = 2
-    factors = tuple(factory._zrandn([nr_sites] + ([local_dim] * plegs)))
+    randfun = factory._randfuncs[dtype]
+    factors = tuple(randfun([nr_sites] + ([local_dim] * plegs)))
     op = _tools.mkron(*factors)
     op.shape = [local_dim] * (plegs * nr_sites)
     mpo = mp.MPArray.from_kron(factors)
     assert_array_almost_equal(op, mpo_to_global(mpo))
+    assert mpo.dtype == dtype
 
 
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
-def test_conjugations(nr_sites, local_dim, _, rgen):
-    op = factory.random_op(nr_sites, local_dim, randstate=rgen)
+def test_conjugations(nr_sites, local_dim, _, rgen, dtype):
+    op = factory.random_op(nr_sites, local_dim, randstate=rgen, dtype=dtype)
     mpo = mp.MPArray.from_array(op, 2)
     assert_array_almost_equal(np.conj(op), mpo.conj().to_array())
+    assert mpo.conj().dtype == dtype
 
 
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
-def test_transpose(nr_sites, local_dim, _, rgen):
-    op = factory.random_op(nr_sites, local_dim, randstate=rgen)
+def test_transpose(nr_sites, local_dim, _, rgen, dtype):
+    op = factory.random_op(nr_sites, local_dim, randstate=rgen, dtype=dtype)
     mpo = mp.MPArray.from_array(global_to_local(op, nr_sites), 2)
 
     opT = op.reshape((local_dim**nr_sites,) * 2).T \
         .reshape((local_dim,) * 2 * nr_sites)
     assert_array_almost_equal(opT, mpo_to_global(mpo.T))
+    assert mpo.T.dtype == dtype
 
 
 def test_transpose_axes(rgen):
@@ -109,11 +121,14 @@ def test_transpose_axes(rgen):
 ###############################################################################
 #                            Algebraic operations                             #
 ###############################################################################
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_dot(nr_sites, local_dim, bond_dim, rgen):
-    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+def test_dot(nr_sites, local_dim, bond_dim, rgen, dtype):
+    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              randstate=rgen, dtype=dtype)
     op1 = mpo_to_global(mpo1)
-    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              randstate=rgen, dtype=dtype)
     op2 = mpo_to_global(mpo2)
 
     # Dotproduct of all 1st physical with 0th physical legs = np.dot
@@ -123,6 +138,7 @@ def test_dot(nr_sites, local_dim, bond_dim, rgen):
     dot_np = dot_np.reshape(op1.shape)
     dot_mp = mpo_to_global(mp.dot(mpo1, mpo2, axes=(1, 0)))
     assert_array_almost_equal(dot_np, dot_mp)
+    assert dot_mp.dtype == dtype
     # this should also be the default axes
     dot_mp = mpo_to_global(mp.dot(mpo1, mpo2))
     assert_array_almost_equal(dot_np, dot_mp)
@@ -134,6 +150,7 @@ def test_dot(nr_sites, local_dim, bond_dim, rgen):
     dot_np = dot_np.reshape(op1.shape)
     dot_mp = mpo_to_global(mp.dot(mpo1, mpo2, axes=(0, 1)))
     assert_array_almost_equal(dot_np, dot_mp)
+    assert dot_mp.dtype == dtype
     # this should also be the default axes
     dot_mp = mpo_to_global(mp.dot(mpo1, mpo2, axes=(-2, -1)))
     assert_array_almost_equal(dot_np, dot_mp)
@@ -189,8 +206,9 @@ def test_dot_multiaxes(rgen):
     assert_array_almost_equal(mpa_prod, vec_prod)
 
 
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_partialdot(nr_sites, local_dim, bond_dim, rgen):
+def test_partialdot(nr_sites, local_dim, bond_dim, rgen, dtype):
     # Only for at least two sites, we can apply an operator to a part
     # of a chain.
     if nr_sites < 2:
@@ -198,9 +216,11 @@ def test_partialdot(nr_sites, local_dim, bond_dim, rgen):
     part_sites = nr_sites // 2
     start_at = min(2, nr_sites // 2)
 
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen, dtype=dtype)
     op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
-    mpo_part = factory.random_mpa(part_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+    mpo_part = factory.random_mpa(part_sites, (local_dim, local_dim), bond_dim,
+                                  randstate=rgen, dtype=dtype)
     op_part = mpo_to_global(mpo_part).reshape((local_dim**part_sites,) * 2)
     op_part_embedded = np.kron(
         np.kron(np.eye(local_dim**start_at), op_part),
@@ -215,6 +235,8 @@ def test_partialdot(nr_sites, local_dim, bond_dim, rgen):
 
     assert_array_almost_equal(prod1, prod1_mpo)
     assert_array_almost_equal(prod2, prod2_mpo)
+    assert prod1_mpo.dtype == dtype
+    assert prod2_mpo.dtype == dtype
 
 
 def test_partialdot_multiaxes(rgen):
@@ -277,28 +299,36 @@ def test_partialdot_multiaxes(rgen):
     assert_array_almost_equal(mpa_prod, vec_prod)
 
 
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_inner_vec(nr_sites, local_dim, bond_dim, rgen):
-    mp_psi1 = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+def test_inner_vec(nr_sites, local_dim, bond_dim, rgen, dtype):
+    mp_psi1 = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
+                                 dtype=dtype)
     psi1 = mp_psi1.to_array().ravel()
-    mp_psi2 = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    mp_psi2 = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
+                                 dtype=dtype)
     psi2 = mp_psi2.to_array().ravel()
 
     inner_np = np.vdot(psi1, psi2)
     inner_mp = mp.inner(mp_psi1, mp_psi2)
     assert_almost_equal(inner_mp, inner_np)
+    assert inner_mp.dtype == dtype
 
 
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_inner_mat(nr_sites, local_dim, bond_dim, rgen):
-    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+def test_inner_mat(nr_sites, local_dim, bond_dim, rgen, dtype):
+    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              randstate=rgen, dtype=dtype)
     op1 = mpo_to_global(mpo1).reshape((local_dim**nr_sites, ) * 2)
-    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              randstate=rgen, dtype=dtype)
     op2 = mpo_to_global(mpo2).reshape((local_dim**nr_sites, ) * 2)
 
     inner_np = np.trace(np.dot(op1.conj().transpose(), op2))
     inner_mp = mp.inner(mpo1, mpo2)
     assert_almost_equal(inner_mp, inner_np)
+    assert inner_mp.dtype == dtype
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
@@ -318,10 +348,12 @@ def test_normdist(nr_sites, local_dim, bond_dim, rgen):
     assert_almost_equal(mp.normdist(psi1, psi2), mp.norm(psi1 - psi2))
 
 
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, keep_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
-def test_partialtrace(nr_sites, local_dim, bond_dim, keep_width, rgen):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+def test_partialtrace(nr_sites, local_dim, bond_dim, keep_width, rgen, dtype):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen, dtype=dtype)
     op = mpo_to_global(mpo)
 
     for site in range(nr_sites - keep_width + 1):
@@ -332,56 +364,69 @@ def test_partialtrace(nr_sites, local_dim, bond_dim, keep_width, rgen):
         red_from_op = _tools.partial_trace(op, traceout)
         assert_array_almost_equal(mpo_to_global(red_mpo), red_from_op,
                                   err_msg="not equal at site {}".format(site))
+        assert red_mpo.dtype == dtype
 
 
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_trace(nr_sites, local_dim, bond_dim, rgen):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+def test_trace(nr_sites, local_dim, bond_dim, rgen, dtype):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen, dtype=dtype)
     op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
 
-    assert_almost_equal(np.trace(op), mp.trace(mpo))
+    mpo_trace = mp.trace(mpo)
+    assert_almost_equal(np.trace(op), mpo_trace)
+    assert np.array(mpo_trace).dtype == dtype
 
 
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_add_and_subtr(nr_sites, local_dim, bond_dim, rgen):
-    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+def test_add_and_subtr(nr_sites, local_dim, bond_dim, rgen, dtype):
+    mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              randstate=rgen, dtype=dtype)
     op1 = mpo_to_global(mpo1)
-    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+    mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              randstate=rgen, dtype=dtype)
     op2 = mpo_to_global(mpo2)
 
     assert_array_almost_equal(op1 + op2, mpo_to_global(mpo1 + mpo2))
     assert_array_almost_equal(op1 - op2, mpo_to_global(mpo1 - mpo2))
+    assert (mpo1 + mpo2).dtype == dtype
+    assert (mpo1 + mpo2).dtype == dtype
 
     mpo1 += mpo2
     assert_array_almost_equal(op1 + op2, mpo_to_global(mpo1))
+    assert mpo1.dtype == dtype
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', [(3, 2, 2)])
 def test_operations_typesafety(nr_sites, local_dim, bond_dim, rgen):
     # create a real MPA
     mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
-                              randstate=rgen, dtype=float)
+                              randstate=rgen, dtype=np.float_)
     mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
-                              randstate=rgen, dtype=complex)
+                              randstate=rgen, dtype=np.complex_)
 
-    assert mpo1[0].dtype == float
-    assert mpo2[0].dtype == complex
+    assert mpo1.dtype == np.float_
+    assert mpo2.dtype == np.complex_
 
-    assert (mpo1 + mpo1)[0].dtype == float
-    assert (mpo1 + mpo2)[0].dtype == complex
-    assert (mpo2 + mpo1)[0].dtype == complex
+    assert (mpo1 + mpo1).dtype == np.float_
+    assert (mpo1 + mpo2).dtype == np.complex_
+    assert (mpo2 + mpo1).dtype == np.complex_
 
-    assert (mpo1 - mpo1)[0].dtype == float
-    assert (mpo1 - mpo2)[0].dtype == complex
-    assert (mpo2 - mpo1)[0].dtype == complex
+    assert (mpo1 - mpo1).dtype == np.float_
+    assert (mpo1 - mpo2).dtype == np.complex_
+    assert (mpo2 - mpo1).dtype == np.complex_
 
     mpo1 += mpo2
-    assert mpo1[0].dtype == complex
+    assert mpo1.dtype == np.complex_
 
 
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim, rgen):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim, rgen, dtype):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen, dtype=dtype)
     # FIXME Change behavior of to_array
     # For nr_sites == 1, changing `mpo` below will change `op` as
     # well, unless we call .copy().
@@ -392,6 +437,8 @@ def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim, rgen):
 
     mpo *= scalar
     assert_array_almost_equal(scalar * op, mpo_to_global(mpo))
+    assert mpo.dtype == dtype
+    assert (1.j * mpo).dtype == np.complex_
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
