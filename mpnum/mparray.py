@@ -155,6 +155,11 @@ class MPArray(object):
         self._ltens[index] = value
 
     @property
+    def dtype(self):
+        """Returns the dtype that should be returned by to_array"""
+        return np.common_type(*self._ltens)
+
+    @property
     def dims(self):
         """Tuple of shapes for the local tensors"""
         return tuple(m.shape for m in self._ltens)
@@ -620,7 +625,7 @@ class MPArray(object):
 
         .. math::
 
-           \| u - r c \|^2 &= \| u \|^2 + r (r - 2) \langle u \vert c \rangle, 
+           \| u - r c \|^2 &= \| u \|^2 + r (r - 2) \langle u \vert c \rangle,
            \quad r \ge 0.
 
         In the special case of :math:`\|u\| = 1` and :math:`c_0 = c/\| c
@@ -784,16 +789,9 @@ class MPArray(object):
             return copy, norm(copy)**2
 
         if startmpa is None:
-            # At the moment, the start mpa we generate always has
-            # complex entries.  Is this an advantage over real entries
-            # if the input mpa `self` has only real entries?  I
-            # suppose it makes computation slower and provides no
-            # advantage.  If we wanted to change this, we would have
-            # to check all the local tensors for float/complex
-            # entries, or for the most complicated dtype (float32 vs
-            # float64, ...).
             from mpnum.factory import random_mpa
-            compr = random_mpa(len(self), self.pdims, bdim, randstate=randstate)
+            compr = random_mpa(len(self), self.pdims, bdim, randstate=randstate,
+                               dtype=self.dtype)
         else:
             compr = startmpa.copy()
             assert all(d1 == d2 for d1, d2 in zip(self.pdims, compr.pdims))
@@ -1552,7 +1550,7 @@ def _local_transpose(ltens, axes=None):
     """Transposes the physical legs of the local tensor `ltens`
 
     :param ltens: Local tensor as numpy.ndarray with ndim >= 2
-    :param axes: 
+    :param axes:
     :returns: Transpose of ltens except for first and last dimension
 
     """
