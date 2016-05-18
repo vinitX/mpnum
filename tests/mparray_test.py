@@ -456,8 +456,9 @@ def test_div_mpo_scalar(nr_sites, local_dim, bond_dim, rgen):
     assert_array_almost_equal(op / scalar, mpo_to_global(mpo))
 
 
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_outer(nr_sites, local_dim, bond_dim, rgen):
+def test_outer(nr_sites, local_dim, bond_dim, rgen, dtype):
     # This test produces at most `nr_sites` by tensoring two
     # MPOs. This doesn't work for :code:`nr_sites = 1`.
     if nr_sites < 2:
@@ -465,7 +466,7 @@ def test_outer(nr_sites, local_dim, bond_dim, rgen):
 
     # NOTE: Everything here is in local form!!!
     mpo = factory.random_mpa(nr_sites // 2, (local_dim, local_dim), bond_dim,
-                             randstate=rgen)
+                             randstate=rgen, dtype=dtype)
     op = mpo.to_array()
 
     # Test with 2-factors with full form
@@ -474,6 +475,7 @@ def test_outer(nr_sites, local_dim, bond_dim, rgen):
     assert len(mpo_double) == 2 * len(mpo)
     assert_array_almost_equal(op_double, mpo_double.to_array())
     assert_array_equal(mpo_double.bdims, mpo.bdims + (1,) + mpo.bdims)
+    assert mpo.dtype == dtype
 
     # Test 3-factors iteratively (since full form would be too large!!
     diff = mp.outer((mpo, mpo, mpo)) - mp.outer((mpo, mp.outer((mpo, mpo))))
@@ -675,9 +677,11 @@ def test_normalization_from_full(nr_sites, local_dim, _, rgen):
 
 
 # FIXME Add counter to normalization functions
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_normalization_incremental(nr_sites, local_dim, bond_dim, rgen):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+def test_normalization_incremental(nr_sites, local_dim, bond_dim, rgen, dtype):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen, dtype=dtype)
     op = mpo_to_global(mpo)
     assert_correct_normalization(mpo, 0, nr_sites)
     assert_array_almost_equal(op, mpo_to_global(mpo))
@@ -686,21 +690,25 @@ def test_normalization_incremental(nr_sites, local_dim, bond_dim, rgen):
         mpo.normalize(left=site)
         assert_correct_normalization(mpo, site, nr_sites)
         assert_array_almost_equal(op, mpo_to_global(mpo))
+        assert mpo.dtype == dtype
 
     for site in range(nr_sites - 1, 0, -1):
         mpo.normalize(right=site)
         assert_correct_normalization(mpo, site - 1, site)
         assert_array_almost_equal(op, mpo_to_global(mpo))
+        assert mpo.dtype == dtype
 
 
 # FIXME Add counter to normalization functions
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_normalization_jump(nr_sites, local_dim, bond_dim, rgen):
+def test_normalization_jump(nr_sites, local_dim, bond_dim, rgen, dtype):
     # This test assumes at least two sites.
     if nr_sites == 1:
         return
 
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, rgen)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen, dtype=dtype)
     op = mpo_to_global(mpo)
     assert_correct_normalization(mpo, 0, nr_sites)
     assert_array_almost_equal(op, mpo_to_global(mpo))
@@ -709,11 +717,14 @@ def test_normalization_jump(nr_sites, local_dim, bond_dim, rgen):
     mpo.normalize(left=center - 1, right=center)
     assert_correct_normalization(mpo, center - 1, center)
     assert_array_almost_equal(op, mpo_to_global(mpo))
+    assert mpo.dtype == dtype
 
 
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_normalization_full(nr_sites, local_dim, bond_dim, rgen):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+def test_normalization_full(nr_sites, local_dim, bond_dim, rgen, dtype):
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen, dtype=dtype)
     op = mpo_to_global(mpo)
     assert_correct_normalization(mpo, 0, nr_sites)
     assert_array_almost_equal(op, mpo_to_global(mpo))
@@ -721,9 +732,11 @@ def test_normalization_full(nr_sites, local_dim, bond_dim, rgen):
     mpo.normalize(right=1)
     assert_correct_normalization(mpo, 0, 1)
     assert_array_almost_equal(op, mpo_to_global(mpo))
+    assert mpo.dtype == dtype
 
     ###########################################################################
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen, dtype=dtype)
     op = mpo_to_global(mpo)
     assert_correct_normalization(mpo, 0, nr_sites)
     assert_array_almost_equal(op, mpo_to_global(mpo))
@@ -731,6 +744,7 @@ def test_normalization_full(nr_sites, local_dim, bond_dim, rgen):
     mpo.normalize(left=len(mpo) - 1)
     assert_correct_normalization(mpo, len(mpo) - 1, len(mpo))
     assert_array_almost_equal(op, mpo_to_global(mpo))
+    assert mpo.dtype == dtype
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
@@ -904,7 +918,8 @@ def call_compression(mpa, comparg, bonddim, rgen, call_compress=False):
     """
     if not ('relerr' in comparg) and (comparg.get('startmpa') == 'fillbelow'):
         startmpa = factory.random_mpa(len(mpa), mpa.pdims[0], bonddim,
-                                      normalized=True, randstate=rgen)
+                                      normalized=True, randstate=rgen,
+                                      dtype=mpa.dtype)
         comparg = update_copy_of(comparg, {'startmpa': startmpa})
     else:
         comparg = update_copy_of(comparg, {'bdim': bonddim})
@@ -953,9 +968,10 @@ def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize, com
     assert_mpa_identical(compr, compr2, decimal=12)
 
 
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @compr_test_params
 def test_compression_result_properties(nr_sites, local_dims, bond_dim,
-                                        normalize, comparg, rgen):
+                                        normalize, comparg, rgen, dtype):
     """Test general properties of the MPA coming from a compression.
 
     * Compare SVD compression against simpler implementation
@@ -969,6 +985,8 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
       prescribed
 
     * Check that the normalization advertised in the result is correct
+
+    * Check that compression doesnt change the dtype
 
     TODO: The worst case for compression is that all singular values
     have the same size.  This gives a fidelity lower bound for the
@@ -988,7 +1006,7 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
         comparg = update_copy_of(comparg, {'num_sweeps': 20 // comparg['var_sites']})
 
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2,
-                                   normalized=True, randstate=rgen)
+                                   normalized=True, randstate=rgen, dtype=dtype)
     if not normalize_if_applicable(mpa, normalize):
         return
     compr, overlap = call_compression(mpa.copy(), comparg, bond_dim, rgen)
@@ -1011,6 +1029,7 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
 
     # Check the content of .normal_form is correct.
     assert_correct_normalization(compr)
+    assert compr.dtype == dtype
 
     # SVD: compare with alternative implementation
     if comparg['method'] == 'svd' and 'relerr' not in comparg:
