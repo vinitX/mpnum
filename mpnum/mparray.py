@@ -30,6 +30,7 @@ from __future__ import absolute_import, division, print_function
 
 import functools as ft
 import itertools as it
+import collections
 
 import numpy as np
 from numpy.linalg import qr, svd
@@ -243,14 +244,16 @@ class MPArray(object):
             array[(i1), ..., (iN)], i.e. the legs which are factorized into
             the same factor are already adjacent. (For me details see
             :func:`_tools.global_to_local`)
-        :param int plegs: Number of physical legs per site (default array.ndim)
+        :param plegs: Number of physical legs per site (default array.ndim)
+            or iterable over number of physical legs
         :param bool has_bond: True if array already has indices for
             the left and right bond
 
         """
+
         plegs = plegs if plegs is not None else array.ndim
-        assert array.ndim % plegs == 0, \
-            "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
+        plegs = iter(plegs) if isinstance(plegs, collections.Iterable) else plegs
+
         if not has_bond:
             array = array[None, ..., None]
         ltens = _extract_factors(array, plegs=plegs)
@@ -1453,20 +1456,22 @@ def _extract_factors(tens, plegs):
     legs by a qr-decomposition
 
     :param np.ndarray tens: Full tensor to be factorized
-    :param int plegs: Number of physical legs per site
+    :param plegs: Number of physical legs per site or iterator over number of
+        physical legs
     :returns: List of local tensors with given number of legs yielding a
         factorization of tens
     """
-    if tens.ndim == plegs + 2:
+    current = next(plegs) if isinstance(plegs, collections.Iterator) else plegs
+    if tens.ndim == current + 2:
         return [tens]
-    elif tens.ndim < plegs + 2:
+    elif tens.ndim < current + 2:
         raise AssertionError("Number of remaining legs insufficient.")
     else:
-        unitary, rest = qr(tens.reshape((np.prod(tens.shape[:plegs + 1]),
-                                         np.prod(tens.shape[plegs + 1:]))))
+        unitary, rest = qr(tens.reshape((np.prod(tens.shape[:current + 1]),
+                                         np.prod(tens.shape[current + 1:]))))
 
-        unitary = unitary.reshape(tens.shape[:plegs + 1] + rest.shape[:1])
-        rest = rest.reshape(rest.shape[:1] + tens.shape[plegs + 1:])
+        unitary = unitary.reshape(tens.shape[:current + 1] + rest.shape[:1])
+        rest = rest.reshape(rest.shape[:1] + tens.shape[current + 1:])
 
         return [unitary] + _extract_factors(rest, plegs)
 

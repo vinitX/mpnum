@@ -52,6 +52,14 @@ def test_from_full(nr_sites, local_dim, _, rgen, dtype):
     assert mpo.dtype == dtype
 
 
+def test_from_inhomogenous(rgen):
+    array = rgen.randn(4, 3, 3, 3)
+    mpa = mp.MPArray.from_array(array, plegs=(2, 1, 1))
+    assert_array_almost_equal(array, mpa.to_array())
+    assert mpa.plegs == (2, 1, 1)
+    assert mpa.pdims == ((4, 3), (3,), (3,))
+
+
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_from_kron(nr_sites, local_dim, bond_dim, dtype):
