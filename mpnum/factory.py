@@ -5,6 +5,7 @@ from __future__ import division, print_function
 
 import functools as ft
 import itertools as it
+import collections
 
 import numpy as np
 from scipy.linalg import qr
@@ -143,14 +144,14 @@ def _generate(sites, ldim, bdim, func):
 
     """
     # If ldim is passed as scalar, make it 1-element tuple.
-    ldim = tuple(ldim) if hasattr(ldim, '__iter__') else (ldim,)
+    ldim = tuple(ldim) if isinstance(ldim, collections.Iterable) else (ldim,)
     # If ldim[0] is not iterable, we want the same physical legs on
     # all sites.
-    if not hasattr(ldim[0], '__iter__'):
+    if not isinstance(ldim[0], collections.Iterable):
         ldim = (ldim,) * sites
     # If bdim is not iterable, we want the same bond dimension
     # everywhere.
-    if not hasattr(bdim, '__iter__'):
+    if not isinstance(bdim, collections.Iterable):
         bdim = (bdim,) * (sites - 1)
     else:
         bdim = tuple(bdim)

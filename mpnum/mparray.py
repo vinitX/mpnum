@@ -319,7 +319,7 @@ class MPArray(object):
         :returns: Iterator over MPArray
 
         """
-        if not hasattr(axes, '__iter__'):
+        if not isinstance(axes, collections.Iterable):
             axes = it.repeat(axes, len(self))
 
         ltens_iter = it.product(*(iter(np.rollaxis(lten, i + 1))
@@ -425,7 +425,7 @@ class MPArray(object):
 
         """
         newshapes = tuple(newshapes)
-        if not hasattr(newshapes[0], '__iter__'):
+        if not isinstance(newshapes[0], collections.Iterable):
             newshapes = it.repeat(newshapes, times=len(self))
 
         return MPArray([_local_reshape(lten, newshape)
@@ -988,7 +988,7 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
         "Length is not equal: {} != {}".format(len(mpa1), len(mpa2))
 
     # adapt the axes from physical to true legs
-    if hasattr(axes[0], '__len__'):
+    if isinstance(axes[0], collections.Sequence):
         axes = tuple(tuple(ax + 1 if ax >= 0 else ax - 1 for ax in axes2)
                      for axes2 in axes)
     else:
@@ -1016,7 +1016,7 @@ def partialdot(mpa1, mpa2, start_at, axes=(-1, 0)):
 
     """
     # adapt the axes from physical to true legs
-    if hasattr(axes[0], '__len__'):
+    if isinstance(axes[0], collections.Sequence):
         axes = tuple(tuple(ax + 1 if ax >= 0 else ax - 1 for ax in axes2)
                      for axes2 in axes)
     else:
@@ -1232,7 +1232,7 @@ def partialtrace(mpa, axes=(0, 1)):
     :returns: An MPArray (possibly one site with zero physical legs)
 
     """
-    if axes[0] is not None and not hasattr(axes[0], '__iter__'):
+    if axes[0] is not None and not isinstance(axes[0], collections.Iterable):
         axes = it.repeat(axes)
     axes = (None if axesitem is None else tuple(ax + 1 if ax >= 0 else ax - 1
                                                 for ax in axesitem)
@@ -1491,8 +1491,8 @@ def _local_dot(ltens_l, ltens_r, axes):
 
     """
     # number of contracted legs need to be the same
-    clegs_l = len(axes[0]) if hasattr(axes[0], '__len__') else 1
-    clegs_r = len(axes[1]) if hasattr(axes[0], '__len__') else 1
+    clegs_l = len(axes[0]) if isinstance(axes[0], collections.Sequence) else 1
+    clegs_r = len(axes[1]) if isinstance(axes[0], collections.Sequence) else 1
     assert clegs_l == clegs_r, \
         "Number of contracted legs differ: {} != {}".format(clegs_l, clegs_r)
     res = np.tensordot(ltens_l, ltens_r, axes=axes)
@@ -1576,7 +1576,7 @@ def _ltens_to_array(ltens):
     :returns: numpy.ndarray representing the contracted MPA
 
     """
-    ltens = ltens if hasattr(ltens, '__next__') else iter(ltens)
+    ltens = ltens if isinstance(ltens, collections.Iterator) else iter(ltens)
     res = next(ltens)
     for tens in ltens:
         res = matdot(res, tens)
