@@ -25,6 +25,15 @@ class MPPovm(mp.MPArray):
 
     Here, we choose the second.
 
+    .. todo:: This class should provide a function which returns
+        expectation values as full array. (Even though computing
+        expectation values using the POVM struture brings advantages,
+        we usually need the result as full array.) This function
+        should also replace small negative probabilities by zero and
+        normalize the sum of all probabilities to unity (if the
+        deviation is non-zero but small). The same checks should also
+        be implemented in localpovm.POVM.
+
     .. todo:: Right now we use this class for multi-site POVMs with
         elements obtained from every possible combination of the
         elements of single-site POVMs: The POVM index is split across
