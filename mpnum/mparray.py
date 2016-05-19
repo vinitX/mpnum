@@ -1631,7 +1631,7 @@ def _adapt_to_add_r(rightvec, compr_lten, tgt_lten):
     :param tgt_lten: Local tensor of the target MPS
 
     Construct R from [Sch11_, Fig. 27, p. 48]. See comments in
-    _variational_compression_leftvec_add() for further details.
+    :func:`_adapt_to_add_l()` for further details.
 
     """
     rightvec_names = ('compr_bond', 'tgt_bond')
