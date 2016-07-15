@@ -196,6 +196,36 @@ class MPArray(object):
         """Tensors which are currently in left/right-canonical form."""
         return self._lnormalized or 0, self._rnormalized or len(self)
 
+    def dump(self, target):
+        """Serializes MPArray to :code:`h5py.Group`. Recover using
+        :func:`MPArray.load`.
+
+        :param target: :code:`h5py.Group` the instance should be saved to
+
+        """
+        for prop in ('bdims', 'pdims'):
+            # these are only saved for convenience
+            target.attrs[prop] = str(getattr(self, prop))
+
+        # these are actually used in MPArray.load
+        target.attrs['len'] = len(self)
+        target.attrs['normal_form'] = self.normal_form
+
+        for site, lten in enumerate(self._ltens):
+            target[str(site)] = lten
+
+    @classmethod
+    def load(cls, source):
+        """Deserializes MPArray from :code:`h5py.Group`. Serialize using
+        :func:`MPArray.dump`.
+
+        :param target: :code:`h5py.Group` containing serialized MPArray
+
+        """
+        ltens = [source[str(i)].value for i in range(source.attrs['len'])]
+        lnorm, rnorm = source.attrs['normal_form']
+        return cls(ltens, _lnormalized=lnorm, _rnormalized=rnorm)
+
     #FIXME Where is this used? Does it really have to be in here?
     @classmethod
     def from_array_global(cls, array, plegs=None, has_bond=False):

@@ -174,7 +174,7 @@ def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
     :param ldim: Depending on the type passed (checked in the following order)
 
         * iterable of iterable: Detailed list of physical dimensions,
-          retured mpa will have exactly this for mpa.plegs
+          retured mpa will have exactly this for mpa.pdims
         * iterable of scalar: Same physical dimension for each site
         * scalar: Single physical leg for each site with given
           dimension
@@ -214,7 +214,7 @@ def zero(sites, ldim, bdim):
     :param ldim: Depending on the type passed (checked in the following order)
 
         * iterable of iterable: Detailed list of physical dimensions,
-          retured mpa will have exactly this for mpa.plegs
+          retured mpa will have exactly this for mpa.pdims
         * iterable of scalar: Same physical dimension for each site
         * scalar: Single physical leg for each site with given
           dimension

@@ -12,6 +12,11 @@ python:
     - '3.4'
     - '3.5'
 
+addons:
+    apt:
+        packages:
+            - libhdf5-serial-dev
+
 before_install:
     # conda setup stolen from https://github.com/Jorge-C/ordination/blob/master/.travis.yml
     - wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
