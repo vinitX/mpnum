@@ -11,6 +11,7 @@ from numpy.linalg import svd
 from numpy.testing import assert_array_almost_equal, assert_array_equal, \
     assert_almost_equal, assert_equal
 from six.moves import range, zip
+import h5py as h5
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
@@ -124,6 +125,20 @@ def test_transpose_axes(rgen):
     mpa_t_to_tensor = mpa_t.to_array()
     assert mpa_t.pdims == (new_ldim,) * nr_sites
     assert_array_almost_equal(mpa_t_to_tensor, tensor_t)
+
+
+def test_dump_and_load(tmpdir):
+    mpa = factory.random_mpa(5, [(4,), (2, 3), (1,), (4,), (4, 3)],
+                             (4, 7, 1, 3))
+    mpa.normalize(left=1, right=3)
+    with h5.File(str(tmpdir / 'dump_load_test.h5'), 'w') as buf:
+        newgroup = buf.create_group('mpa')
+        mpa.dump(newgroup)
+
+    with h5.File(str(tmpdir / 'dump_load_test.h5'), 'r') as buf:
+        mpa_loaded = mp.MPArray.load(buf['mpa'])
+
+    assert_mpa_identical(mpa, mpa_loaded)
 
 
 ###############################################################################
