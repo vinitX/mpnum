@@ -72,7 +72,7 @@ _install_requires = [
 ]
 
 
-def _get_install_requires(req, not_on_rtd=['scipy', 'numpy']):
+def _get_install_requires(req, not_on_rtd=['scipy', 'numpy', 'h5py']):
     """Remove packages which cannot be installed on readthedocs.org
 
     scipy and numpy are available on readthedocs as system packages,
