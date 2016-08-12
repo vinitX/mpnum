@@ -597,7 +597,7 @@ def test_louter(nr_sites, local_dim, bond_dim, rgen):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, local_width',
-                     [(6, 2, 4, 3), (4, 3, 5, 2)])
+                     [(5, 2, 3, 1), (6, 2, 4, 3), (4, 3, 5, 2)])
 def test_local_sum(nr_sites, local_dim, bond_dim, local_width, rgen):
     eye_mpa = factory.eye(1, local_dim)
 

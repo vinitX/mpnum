@@ -1421,7 +1421,12 @@ def local_sum(mpas, embed_tensor=None, length=None, slices=None):
         if all(s == t for s, t in zip_longest(slices, reg)):
             slices = None
     if slices is None:
-        return local_sum_simple(tuple(mpas), embed_tensor)
+        mpas = tuple(mpas)
+        # local_sum_simple does not work (yet) for width = 1.
+        if len(mpas[0]) > 1:
+            return local_sum_simple(mpas, embed_tensor)
+        length = len(mpas) + len(mpas[0]) - 1
+        slices = regular_slices(length, len(mpas[0]), 1)
     mpas = (embed_slice(length, slice_, mpa, embed_tensor)
             for mpa, slice_ in zip(mpas, slices))
     return ft.reduce(MPArray.__add__, mpas)
@@ -1452,6 +1457,7 @@ def local_sum_simple(mpas, embed_tensor=None):
     nr_sites = len(mpas) + width - 1
     ltens = []
     embed_ltens = default_embed_ltens(mpas[0], embed_tensor)
+    assert width > 1, "not supported yet, use local_sum()"
 
     for pos in range(nr_sites):
         # At this position, we local summands mpas[i] starting at the
