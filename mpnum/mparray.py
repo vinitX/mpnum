@@ -1413,8 +1413,6 @@ def local_sum(mpas, embed_tensor=None, length=None, slices=None):
         optional.
     :returns: An MPA.
 
-    If `slices` is omitted, assume
-
     """
     if slices is not None:
         assert length is not None
