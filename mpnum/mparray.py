@@ -1421,12 +1421,7 @@ def local_sum(mpas, embed_tensor=None, length=None, slices=None):
         if all(s == t for s, t in zip_longest(slices, reg)):
             slices = None
     if slices is None:
-        mpas = tuple(mpas)
-        # local_sum_simple does not work (yet) for width = 1.
-        if len(mpas[0]) > 1:
-            return local_sum_simple(mpas, embed_tensor)
-        length = len(mpas) + len(mpas[0]) - 1
-        slices = regular_slices(length, len(mpas[0]), 1)
+        return local_sum_simple(tuple(mpas), embed_tensor)
     mpas = (embed_slice(length, slice_, mpa, embed_tensor)
             for mpa, slice_ in zip(mpas, slices))
     return ft.reduce(MPArray.__add__, mpas)
@@ -1457,8 +1452,22 @@ def local_sum_simple(mpas, embed_tensor=None):
     nr_sites = len(mpas) + width - 1
     ltens = []
     embed_ltens = default_embed_ltens(mpas[0], embed_tensor)
-    assert width > 1, "not supported yet, use local_sum()"
+    assert all(len(mpa) == width for mpa in mpas)
 
+    # The following ASCII art tries to illustrate the
+    # construction. The first shows a sum of three width 2 MPAs with
+    # local tensors A, B, C. The second shows a sum of four width 1
+    # MPAs with local tensors A, B, C, D. The embedding tensor is
+    # denoted by `1` (identity matrix). The physical legs of all local
+    # tensors have been omitted for simplicity.
+    # width == 2:
+    #
+    #               / A_2         \  /  1       \  /  1  \
+    #   ( A_1  1 )  \      B_1  1 /  | B_2      |  | C_2 |
+    #                                \      C_1 /  \     /
+    # width == 1:
+    #               /  1     \  /  1     \  /  1  \
+    #   ( A_1  1 )  \ B_1  1 /  \ C_1  1 /  \ D_1 /
     for pos in range(nr_sites):
         # At this position, we local summands mpas[i] starting at the
         # following startsites are present:
@@ -1471,9 +1480,17 @@ def local_sum_simple(mpas, embed_tensor=None):
         # - we need an embedding tensor on the left of an mpas[i]
         #   (pos is small enough)
         if pos >= width:
+            # Construct (1 \\ B_2), (1 \\ C_2), etc.
             mpas_ltens[0] = np.concatenate((embed_ltens, mpas_ltens[0]), axis=0)
         if pos < len(mpas) - 1:
-            mpas_ltens[-1] = np.concatenate((mpas_ltens[-1], embed_ltens), axis=-1)
+            right_embed = embed_ltens
+            if width == 1 and pos >= width:
+                assert len(mpas_ltens) == 1
+                # Special case: We need (0 \\ 1) instead of just (1).
+                right_embed = np.concatenate(
+                    (np.zeros_like(embed_ltens), embed_ltens), axis=0)
+            # Construct (A_1 1), (B_1 1), etc.
+            mpas_ltens[-1] = np.concatenate((mpas_ltens[-1], right_embed), axis=-1)
 
         lten = block_diag(mpas_ltens, axes=(0, -1))
         ltens.append(lten)
