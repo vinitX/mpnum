@@ -622,7 +622,11 @@ def test_local_sum(nr_sites, local_dim, bond_dim, local_width, rgen):
     # dimension.
     mpa_local_sum = mp.local_sum(mpas)
 
+    # Check that local_sum() is no worse than naive sum
     assert all(d1 <= d2 for d1, d2 in zip(mpa_local_sum.bdims, mpa_sum.bdims))
+    # Check that local_sum() is actually better than naive sum because
+    # it calls local_sum_simple().
+    assert any(d1 < d2 for d1, d2 in zip(mpa_local_sum.bdims, mpa_sum.bdims))
     assert_array_almost_equal(mpa_local_sum.to_array(), mpa_sum.to_array())
 
 
