@@ -200,7 +200,8 @@ class MPArray(object):
         """Serializes MPArray to :code:`h5py.Group`. Recover using
         :func:`MPArray.load`.
 
-        :param target: :code:`h5py.Group` the instance should be saved to
+        :param target: :code:`h5py.Group` the instance should be saved to or
+            path to h5 file (it's then serialized to /)
 
         """
         if isinstance(target, str):
@@ -224,7 +225,8 @@ class MPArray(object):
         """Deserializes MPArray from :code:`h5py.Group`. Serialize using
         :func:`MPArray.dump`.
 
-        :param target: :code:`h5py.Group` containing serialized MPArray
+        :param target: :code:`h5py.Group` containing serialized MPArray or
+            path to a single h5 File containing serialized MPArray under /
 
         """
         if isinstance(source, str):
