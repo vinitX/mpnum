@@ -200,9 +200,15 @@ class MPArray(object):
         """Serializes MPArray to :code:`h5py.Group`. Recover using
         :func:`MPArray.load`.
 
-        :param target: :code:`h5py.Group` the instance should be saved to
+        :param target: :code:`h5py.Group` the instance should be saved to or
+            path to h5 file (it's then serialized to /)
 
         """
+        if isinstance(target, str):
+            import h5py
+            with h5py.File(target, 'w') as outfile:
+                return self.dump(outfile)
+
         for prop in ('bdims', 'pdims'):
             # these are only saved for convenience
             target.attrs[prop] = str(getattr(self, prop))
@@ -219,9 +225,15 @@ class MPArray(object):
         """Deserializes MPArray from :code:`h5py.Group`. Serialize using
         :func:`MPArray.dump`.
 
-        :param target: :code:`h5py.Group` containing serialized MPArray
+        :param target: :code:`h5py.Group` containing serialized MPArray or
+            path to a single h5 File containing serialized MPArray under /
 
         """
+        if isinstance(source, str):
+            import h5py
+            with h5py.File(source, 'r') as infile:
+                return cls.load(infile)
+
         ltens = [source[str(i)].value for i in range(source.attrs['len'])]
         lnorm, rnorm = source.attrs['normal_form']
         return cls(ltens, _lnormalized=lnorm, _rnormalized=rnorm)
