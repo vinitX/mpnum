@@ -35,7 +35,6 @@ import collections
 import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
-import h5py
 
 from six.moves import range, zip, zip_longest
 
@@ -204,6 +203,11 @@ class MPArray(object):
         :param target: :code:`h5py.Group` the instance should be saved to
 
         """
+        if isinstance(target, str):
+            import h5py
+            with h5py.File(target, 'w') as outfile:
+                return self.dump(outfile)
+
         for prop in ('bdims', 'pdims'):
             # these are only saved for convenience
             target.attrs[prop] = str(getattr(self, prop))
@@ -223,6 +227,11 @@ class MPArray(object):
         :param target: :code:`h5py.Group` containing serialized MPArray
 
         """
+        if isinstance(source, str):
+            import h5py
+            with h5py.File(source, 'r') as infile:
+                return cls.load(infile)
+
         ltens = [source[str(i)].value for i in range(source.attrs['len'])]
         lnorm, rnorm = source.attrs['normal_form']
         return cls(ltens, _lnormalized=lnorm, _rnormalized=rnorm)

@@ -131,14 +131,18 @@ def test_dump_and_load(tmpdir):
     mpa = factory.random_mpa(5, [(4,), (2, 3), (1,), (4,), (4, 3)],
                              (4, 7, 1, 3))
     mpa.normalize(left=1, right=3)
+
     with h5.File(str(tmpdir / 'dump_load_test.h5'), 'w') as buf:
         newgroup = buf.create_group('mpa')
         mpa.dump(newgroup)
-
     with h5.File(str(tmpdir / 'dump_load_test.h5'), 'r') as buf:
         mpa_loaded = mp.MPArray.load(buf['mpa'])
-
     assert_mpa_identical(mpa, mpa_loaded)
+
+    mpa.dump(str(tmpdir / 'dump_load_test_str.h5'))
+    mpa_loaded = mp.MPArray.load(str(tmpdir / 'dump_load_test_str.h5'))
+    assert_mpa_identical(mpa, mpa_loaded)
+
 
 
 ###############################################################################
