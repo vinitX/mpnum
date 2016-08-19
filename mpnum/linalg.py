@@ -306,10 +306,20 @@ def mineig(mpo,
         pdims = max(dim[0] for dim in mpo.pdims)
         if startvec_bonddim is None:
             startvec_bonddim = max(mpo.bdims)
+        if startvec_bonddim == 1:
+            raise ValueError('startvec_bonddim must be at least 2')
 
         startvec = random_mpa(nr_sites, pdims, startvec_bonddim,
                               randstate=randstate)
         startvec /= mp.norm(startvec)
+    # Can we avoid this overly complex check by improving
+    # _mineig_minimize_locally()? eigs() will fail under the excluded
+    # conditions because of too small matrices.
+    assert not any(bdim12 == (1, 1) for bdim12 in
+                   zip((1,) + startvec.bdims, startvec.bdims + (1,))), \
+        'startvec must not contain two consecutive bonds of dimension 1, ' \
+        'bdims including dummy bonds = (1,) + {!r} + (1,)' \
+            .format(startvec.bdims)
     # For
     #
     #   pos in range(nr_sites - minimize_sites),
