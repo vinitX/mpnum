@@ -492,6 +492,8 @@ class MPArray(object):
             if len(axes) == 0 or not (axes[0] is not None
                                       and hasattr(axes[0], '__iter__')):
                 axes = it.repeat(axes)  # Sum over same physical legs everywhere
+            else:
+                assert len(axes) == len(self)
         axes = (tuple(range(1, plegs + 1)) if ax is None
                 else tuple(a + 1 for a in ax)
                 for ax, plegs in zip(axes, self.plegs))
