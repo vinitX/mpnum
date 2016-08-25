@@ -407,7 +407,7 @@ class MPArray(object):
 
     def conj(self):
         """Complex conjugate"""
-        return type(self)(np.conjugate(self._ltens))
+        return type(self)(map(np.conjugate, self._ltens))
 
     def __add__(self, summand):
         assert len(self) == len(summand), \
