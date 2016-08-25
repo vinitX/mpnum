@@ -59,7 +59,7 @@ def test_mppovm_iter(nr_sites, nopovm):
     # Check that MPPovm.__iter__ returns the local tensors we expect
     # for an MPA.
     want_lt = nopovm._elements[None, ..., None]
-    mpp = mppovm.MPPovm.from_local_povm(nopovm, width=nr_sites)
+    mpp = povm.MPPovm.from_local_povm(nopovm, width=nr_sites)
     for lt in mpp:
         assert_array_equal(lt, want_lt)
 
@@ -121,10 +121,10 @@ def test_povm_probability_map(local_dim, nopovm, rgen):
 @pt.mark.parametrize('nr_sites, width, local_dim, bond_dim',
                      [(6, 3, 2, 5), (4, 2, 3, 4)])
 def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim, nopovm, rgen):
-    # Verify that :func:`mppovm.MPPovm.expectations()` produces
+    # Verify that :func:`povm.MPPovm.expectations()` produces
     # correct results.
     pmap = nopovm.probability_map
-    mpnopovm = mppovm.MPPovm.from_local_povm(nopovm, width)
+    mpnopovm = povm.MPPovm.from_local_povm(nopovm, width)
     # Use a random MPO rho for testing (instead of a positive MPO).
     rho = factory.random_mpa(nr_sites, (local_dim,) * 2, bond_dim, rgen)
     reductions = mpsmpo.reductions_mpo(rho, width)
@@ -159,7 +159,7 @@ def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim, nopovm, rgen):
                      [(6, 3, 2, 5), (4, 2, 3, 4)])
 def test_mppovm_expectation_pure(nr_sites, width, local_dim, bond_dim, rgen):
     paulis = povm.pauli_povm(local_dim)
-    mppaulis = mppovm.MPPovm.from_local_povm(paulis, width)
+    mppaulis = povm.MPPovm.from_local_povm(paulis, width)
     psi = factory.random_mps(nr_sites, local_dim, bond_dim, randstate=rgen)
     rho = mpsmpo.mps_to_mpo(psi)
     expect_psi = list(mppaulis.expectations(psi))
@@ -174,7 +174,7 @@ def test_mppovm_expectation_pure(nr_sites, width, local_dim, bond_dim, rgen):
                      [(6, 3, 2, 5), (4, 2, 3, 4)])
 def test_mppovm_expectation_pmps(nr_sites, width, local_dim, bond_dim, rgen):
     paulis = povm.pauli_povm(local_dim)
-    mppaulis = mppovm.MPPovm.from_local_povm(paulis, width)
+    mppaulis = povm.MPPovm.from_local_povm(paulis, width)
     psi = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                              randstate=rgen)
     rho = mpsmpo.pmps_to_mpo(psi)
