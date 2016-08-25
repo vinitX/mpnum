@@ -149,6 +149,37 @@ def test_dump_and_load(tmpdir):
 ###############################################################################
 #                            Algebraic operations                             #
 ###############################################################################
+
+
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_sum(nr_sites, local_dim, bond_dim, rgen, dtype):
+    """Compare mpa.sum() with full array computation"""
+    mpa = factory.random_mpa(nr_sites, local_dim, bond_dim, rgen, dtype)
+    array_sum = mpa.to_array().sum()
+    # Test summation over all indices and different argument values.
+    assert_almost_equal(mpa.sum(), array_sum)
+    assert_almost_equal(mpa.sum(0), array_sum)
+    assert_almost_equal(mpa.sum([0]), array_sum)
+    assert_almost_equal(mpa.sum([[0]] * nr_sites), array_sum)
+
+    # Test summation over site-dependent indices
+    n_plegs = 3 if nr_sites <= 4 and local_dim <= 2 else 2
+    mpa = factory.random_mpa(nr_sites, [local_dim] * n_plegs, bond_dim, rgen, dtype)
+    # Pseudo-randomly choose how many physical legs to sum over at each site.
+    num_sum = ((rgen.choice(range(plegs + 1)), plegs) for plegs in mpa.plegs)
+    # Pseudo-randomly choose which physical legs to sum over.
+    axes = tuple(
+        rgen.choice(range(plegs), num, replace=False) for num, plegs in num_sum)
+    array_axes = tuple(n_plegs * pos + a
+                       for pos, ax in enumerate(axes) for a in ax)
+    mpa_sum = mpa.sum(axes)
+    if hasattr(mpa_sum, 'to_array'):  # possibly, no physical legs are left
+        mpa_sum = mpa_sum.to_array()
+    array_sum = mpa.to_array().sum(array_axes)
+    assert_array_almost_equal(mpa_sum, array_sum)
+
+
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_dot(nr_sites, local_dim, bond_dim, rgen, dtype):

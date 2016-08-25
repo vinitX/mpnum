@@ -462,6 +462,44 @@ class MPArray(object):
             return self.__imul__(1 / divisor)
         raise NotImplementedError("Division by non-scalar not supported")
 
+    def sum(self, axes=None):
+        """Element-wise sum over physical legs
+
+        :param axes: Physical legs to sum over
+
+        axes can have the following values:
+
+        * Sequence of length zero: Sum over nothing
+
+        * Sequence of (sequences or None): `axes[i]` specifies the
+          physical legs to sum over at site `i`; `None` sums over all
+          physical legs at a site
+        * Sequence of integers: `axes` specifies the physical legs to
+          sum over at each site
+        * Single integer: Sum over physical leg `axes` at each site
+        * `None`: Sum over all physical legs at each site
+
+        To not sum over any axes at a certain site, specify the empty
+        sequence for that site.
+
+        """
+        if axes is None:
+            axes = it.repeat(axes)
+        else:
+            if not hasattr(axes, '__iter__'):
+                axes = (axes,)  # Single integer
+            axes = tuple(axes)
+            if len(axes) == 0 or not (axes[0] is not None
+                                      and hasattr(axes[0], '__iter__')):
+                axes = it.repeat(axes)  # Sum over same physical legs everywhere
+        axes = (tuple(range(1, plegs + 1)) if ax is None
+                else tuple(a + 1 for a in ax)
+                for ax, plegs in zip(axes, self.plegs))
+        out = type(self)(lt.sum(ax) for ax, lt in zip(axes, self))
+        if sum(out.plegs) == 0:
+            out = out.to_array()
+        return out
+
     ################################
     #  Shape changes, conversions  #
     ################################
