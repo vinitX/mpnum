@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 import itertools as it
+import numpy as np
 
 import mpnum.mparray as mp
 import mpnum.mpsmpo as mpsmpo
@@ -42,6 +43,13 @@ class MPPovm(mp.MPArray):
 
     """
 
+    def __init__(self, *args, **kwargs):
+        mp.MPArray.__init__(self, *args, **kwargs)
+        assert all(plegs == 3 for plegs in self.plegs), \
+            "Need 3 physical legs at each site: {!r}".format(self.pdims)
+        assert all(pdims[1] == pdims[2] for pdims in self.pdims), \
+            "Hilbert space dimension mismatch: {!r}".format(self.pdims)
+
     @classmethod
     def from_local_povm(cls, lelems, width):
         """Generates a product POVM on `width` sites.
@@ -53,6 +61,22 @@ class MPPovm(mp.MPArray):
 
         """
         return cls.from_kron(it.repeat(lelems, width))
+
+    @classmethod
+    def eye(cls, local_dims):
+        return cls.from_kron((np.eye(dim).reshape((1, dim, dim)) for dim in local_dims))
+
+    @property
+    def outdims(self):
+        """Tuple of outcome dimensions"""
+        # First physical leg dimension
+        return tuple(lt.shape[1] for lt in self._ltens)
+
+    @property
+    def hdims(self):
+        """Tuple of local Hilbert space dimensions"""
+        # Second physical leg dimension (equals third physical leg dimension)
+        return tuple(lt.shape[2] for lt in self._ltens)
 
     @property
     def elements(self):
