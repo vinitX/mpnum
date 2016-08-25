@@ -42,18 +42,6 @@ class MPPovm(mp.MPArray):
 
     """
 
-    @property
-    def elements(self):
-        """Returns an iterator over all POVM elements. The result is the i-th
-        POVM element in MPO form.
-
-        It would be nice to call this method `__iter__`, but this
-        breaks `mp.dot(mppovm, ...)`. In addition,
-        `next(iter(mppovm))` would not be equal to `mppovm[0]`.
-
-        """
-        return self.paxis_iter(axes=0)
-
     @classmethod
     def from_local_povm(cls, lelems, width):
         """Generates a product POVM on `width` sites.
@@ -65,6 +53,18 @@ class MPPovm(mp.MPArray):
 
         """
         return cls.from_kron(it.repeat(lelems, width))
+
+    @property
+    def elements(self):
+        """Returns an iterator over all POVM elements. The result is the i-th
+        POVM element in MPO form.
+
+        It would be nice to call this method `__iter__`, but this
+        breaks `mp.dot(mppovm, ...)`. In addition,
+        `next(iter(mppovm))` would not be equal to `mppovm[0]`.
+
+        """
+        return self.paxis_iter(axes=0)
 
     @property
     def probability_map(self):
