@@ -184,3 +184,133 @@ def test_mppovm_expectation_pmps(nr_sites, width, local_dim, bond_dim, rgen):
     assert len(expect_psi) == len(expect_rho)
     for e_rho, e_psi in zip(expect_rho, expect_psi):
         assert_array_almost_equal(e_rho.to_array(), e_psi.to_array())
+
+
+def _embed_povm(nr_sites, startsite, local_dim, mppovm):
+    left = povm.MPPovm.eye([local_dim] * startsite)
+    n_right = nr_sites - len(mppovm) - startsite
+    right = povm.MPPovm.eye([local_dim] * n_right)
+    return povm.MPPovm(mp.outer([left, mppovm, right]))
+
+
+@pt.mark.parametrize(
+    'nr_sites, n_small, small_startsite, local_dim',
+    [(5, 2, 1, 2), (5, 2, 0, 2), (5, 2, 3, 2),
+     (8, 3, 2, 2), (8, 3, 2, 3), (40, 3, 10, 2)])
+def test_mppovm_find_matching_local(
+        nr_sites, n_small, small_startsite, local_dim, eps=1e-10):
+    """Check that find_matching_elements() works for single- and
+    multi-Pauli MPPOVMs"""
+    n_right = nr_sites - n_small - small_startsite
+    assert n_right >= 0
+
+    # "Big" POVM: X on all sites, "small" POVM: X on `n_small` neighbours
+    x = povm.x_povm(local_dim)
+    big = povm.MPPovm.from_local_povm(x, nr_sites)
+    small = povm.MPPovm.from_local_povm(x, n_small)
+    small = _embed_povm(nr_sites, small_startsite, local_dim, small)
+    
+    sites, match, prefactors = small.find_matching_elements(big)
+    assert (sites == np.arange(n_small) + small_startsite).all()
+    assert match.shape == tuple([len(x)] * n_small * 2)
+    assert match.shape == prefactors.shape
+
+    # Verify the expected one-to-one correspondence between POVM elements.
+    want = np.eye(np.prod(small.outdims), dtype=bool).reshape(match.shape)
+    assert (match == want).all()
+    assert (abs(prefactors[match] - 1.0) <= eps).all()
+    assert np.isnan(prefactors[~match]).all()
+
+    # "Big" POVM: X on all sites, "small" POVM: Paulis on `n_small` neighbours
+    paulis = povm.pauli_povm(local_dim)
+    small = povm.MPPovm.from_local_povm(paulis, n_small)
+    small = _embed_povm(nr_sites, small_startsite, local_dim, small)
+    sites, match, prefactors = small.find_matching_elements(big)
+    assert (sites == np.arange(n_small) + small_startsite).all()
+    assert match.shape == tuple([len(paulis)] * n_small + [len(x)] * n_small)
+    assert match.shape == prefactors.shape
+
+    # Verify that the X POVM elements were found where we expect them
+    x_pos = tuple([slice(0, len(x))] * n_small)
+    want = np.zeros_like(match)
+    want[x_pos] = np.eye(len(x)**n_small, dtype=bool).reshape([len(x)] * 2 * n_small)
+    assert (match == want).all()
+    want = (2 if local_dim > 2 else 3)**-n_small
+    assert (abs(prefactors[match] - want) / want <= eps).all()
+    assert np.isnan(prefactors[~match]).all()
+
+    # "Big" POVM: Y on all sites, "small" POVM: Paulis on `n_small` neighbours
+    y = povm.y_povm(local_dim)
+    big = povm.MPPovm.from_local_povm(y, nr_sites)
+    sites, match, prefactors = small.find_matching_elements(big)
+    assert (sites == np.arange(n_small) + small_startsite).all()
+    assert match.shape == tuple([len(paulis)] * n_small + [len(y)] * n_small)
+    assert match.shape == prefactors.shape
+
+    # Verify that the Y POVM elements were found where we expect them
+    y_pos = tuple([slice(len(x), len(x) + len(y))] * n_small)
+    want = np.zeros_like(match)
+    want[y_pos] = np.eye(len(y)**n_small, dtype=bool).reshape([len(y)] * 2 * n_small)
+    assert (match == want).all()
+    want = (2 if local_dim > 2 else 3)**-n_small
+    assert (abs(prefactors[match] - want) / want <= eps).all()
+    assert np.isnan(prefactors[~match]).all()
+
+
+def test_mppovm_find_matching_bell(eps=1e-10):
+    """Test find_matching_elements() for a non-product MPPovm"""
+    # Four Bell states (basis: |00>, |01>, |10>, |11>)
+    bell = np.array((
+        [(1/3)**0.5, 0, 0, (1/3)**0.5],   # (0, 0):  |00> + |11>  (proj. weight 1/3)
+        [0, 1, 1, 0],                     # (0, 1):  |01> + |10>  (proj. weight 1)
+        [(2/3)**0.5, 0, 0, -(2/3)**0.5],  # (0, 2):  |00> - |11>  (proj. weight 2/3)
+        [0, 1, -1, 0],                    # (1, 0):  |01> - |10>  (proj. weight 1)
+        [(1/3)**0.5, 0, 0, -(1/3)**0.5],  # (1, 1):  |00> - |11>  (proj. weight 1/3)
+        [(2/3)**0.5, 0, 0, (2/3)**0.5],   # (1, 2):  |00> + |11>  (proj. weight 2/3)
+    )) / 2**0.5
+    bell_proj = np.einsum('ij, ik -> ijk', bell, bell.conj())
+    bell_proj = bell_proj.reshape((2, 3) + (2,) * 4)
+    # Four Bell states and two product states
+    vecs = np.array((
+        [0, 1, -1, 0],            # (0, 0):  |01> - |10>  (proj. weight 0.5)
+        [0, 2**0.5, 0, 0],        # (0, 1):  |01>         (proj. weight 0.5)
+        [0, 0, 2**0.5, 0],        # (1, 0):  |10>         (proj. weight 0.5)
+        [2**0.5, 0, 0, -2**0.5],  # (1, 1):  |00> - |11>  (proj. weight 1)
+        [0, 1, 1, 0],             # (2, 0):  |01> + |10>  (proj. weight 0.5)
+        [2**0.5, 0, 0, 2**0.5],   # (2, 1):  |00> + |11>  (proj. weight 1)
+    )) / 2
+    proj = np.einsum('ij, ik -> ijk', vecs, vecs.conj())
+    proj = proj.reshape((3,) + (2,) * 5)
+
+    # Big POVM: The four Bell states (repeated two times)
+    big = povm.MPPovm.from_array_global(bell_proj, plegs=3)
+    big = povm.MPPovm(mp.outer([big, big]))
+    # Small POVM: Two of the Bell states and four product states (on
+    # the last two sites)
+    small = povm.MPPovm.from_array_global(proj, plegs=3)
+    small = _embed_povm(4, 2, 2, small)
+
+    # Check that the POVM is normalized: elements must sum to the identity
+    for mppovm in big, small:
+        element_sum = sum(x.to_array_global().reshape(16, 16)
+                          for x in mppovm.elements)
+        assert_array_almost_equal(element_sum, np.eye(16))
+
+    sites, match, prefactors = small.find_matching_elements(big)
+    assert (sites == np.array([2, 3])).all()
+    # Verify the correspondence which can be read off above
+    want = np.zeros((3, 2, 2, 3), dtype=bool)
+    want[0, 0, 1, 0] = True  # |01> - |10>
+    want[2, 0, 0, 1] = True  # |01> + |10>
+    want[1, 1, 0, 2] = True  # |00> - |11>
+    want[1, 1, 1, 1] = True  # |00> - |11>
+    want[2, 1, 0, 0] = True  # |00> + |11>
+    want[2, 1, 1, 2] = True  # |00> + |11>
+    assert (match == want).all()
+    assert abs(prefactors[0, 0, 1, 0] - 0.5) <= eps
+    assert abs(prefactors[2, 0, 0, 1] - 0.5) <= eps
+    assert abs(prefactors[1, 1, 0, 2] - 1.5) <= eps
+    assert abs(prefactors[1, 1, 1, 1] - 3) <= eps
+    assert abs(prefactors[2, 1, 0, 0] - 3) <= eps
+    assert abs(prefactors[2, 1, 1, 2] - 1.5) <= eps
+    assert np.isnan(prefactors[~match]).all()

@@ -149,3 +149,82 @@ class MPPovm(mp.MPArray):
             return
         else:
             raise ValueError("Could not understand data dype.")
+
+    def find_matching_elements(self, other, eps=1e-10):
+        """Find POVM elements in `other` which have information on `self`
+
+        We find all POVM sites in `self` which have only one possible
+        outcome. We discard these outputs in `other` and afterwards
+        check `other` and `self` for any common POVM elements.
+
+        :param other: Another MPPovm
+        :param eps: Threshould for values which should be treated as zero
+
+        :returns: (`sites`, `matches`, `prefactors`)
+
+         `sites` contains the positions of all sites where `self`
+         performs measurements.
+
+        `matches[i1, ..., ik, j1, ..., jk]` specifies whether outcome
+         `(i1, ..., ik)` of `self` has the same POVM element as the
+         partial outcome `(j1, ..., jk)` of `other`; outcomes are
+         specified only on the sites mentioned in `sites` and `k =
+         len(sites)`.
+
+        `prefactors[i1, ..., ik]` specifies how samples from `other`
+        have to be weighted to correspond to samples for `self`.
+
+        """
+        if self.hdims != other.hdims:
+            raise ValueError('Incompatible input Hilbert space: {!r} vs {!r}'
+                             .format(self.hdims, other.hdims))
+        # Drop measurement outcomes in `other` if there is only one
+        # measurement outcome in `self`
+        support = tuple(outdim > 1 for outdim in self.outdims)
+        tr = mp.MPArray.from_kron([
+            np.eye(outdim, dtype=lt.dtype)
+            if keep else np.ones((1, outdim), dtype=lt.dtype)
+            for keep, lt, outdim in zip(support, other, other.outdims)
+        ])
+        other = MPPovm(mp.dot(tr, other))
+
+        # Compute all inner products between elements from self and other
+        inner = mp.dot(self.conj(), other, axes=((1, 2), (1, 2)))
+        # Compute squared norms of all elements from inner products
+        snormsq = mp.dot(self.conj(), self, axes=((1, 2), (1, 2)))
+        eye3d = mp.MPArray.from_kron(
+            # Drop inner products between different elements
+            np.fromfunction(lambda i, j, k: (i == j) & (j == k), [outdim] * 3)
+            for outdim in self.outdims
+        )
+        snormsq = mp.dot(eye3d, snormsq, axes=((1, 2), (0, 1)))
+        onormsq = mp.dot(other.conj(), other, axes=((1, 2), (1, 2)))
+        eye3d = mp.MPArray.from_kron(
+            # Drop inner products between different elements
+            np.fromfunction(lambda i, j, k: (i == j) & (j == k), [outdim] * 3)
+            for outdim in other.outdims
+        )
+        onormsq = mp.dot(eye3d, onormsq, axes=((1, 2), (0, 1)))
+        inner = abs(mp.prune(inner, True).to_array_global())**2
+        snormsq = mp.prune(snormsq, True).to_array().real
+        onormsq = mp.prune(onormsq, True).to_array().real
+        assert (snormsq > 0).all()
+        assert (onormsq > 0).all()
+        assert inner.shape == snormsq.shape + onormsq.shape
+        # Compute the product of the norms of each element from self and other
+        normprod = np.outer(snormsq, onormsq).reshape(inner.shape)
+        assert ((normprod - inner) / normprod >= -eps).all()
+        # Equality in the Cauchy-Schwarz inequality implies that the
+        # vectors are linearly dependent
+        match = abs(inner/normprod - 1) <= eps
+
+        # Compute the prefactors by which matching elements differ
+        snormsq_shape = snormsq.shape
+        snormsq = snormsq.reshape(snormsq_shape + (1,) * onormsq.ndim)
+        onormsq = onormsq.reshape((1,) * len(snormsq_shape) + onormsq.shape)
+        prefactors = (snormsq / onormsq)**0.5
+        assert prefactors.shape == match.shape
+        prefactors[~match] = np.nan
+
+        sites = np.nonzero(support)[0]
+        return sites, match, prefactors
