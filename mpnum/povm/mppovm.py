@@ -228,3 +228,70 @@ class MPPovm(mp.MPArray):
 
         sites = np.nonzero(support)[0]
         return sites, match, prefactors
+
+    def _sample_gibbslinke_single(self, rng, partial_p, n_group, groups_outcomes, out, eps):
+        n_sites = len(self)
+        cum_p = 1.0
+        for pos, outcomes in zip(range(0, n_sites, n_group), groups_outcomes):
+            n_gr = min(n_sites - pos, n_group)
+            p = partial_p[-1 - n_gr - pos]
+            if pos > 0:
+                p = p[tuple(out[:pos]) + (slice(None),) * (len(p) - pos)]
+            p = mp.prune(p).to_array() / cum_p
+            assert p.ndim == n_gr
+            assert (abs(p.imag) <= eps).all()
+            p = p.real.ravel()
+            assert (p >= -eps).all()
+            p[p < 0] = 0.0
+            assert abs(p.sum() - 1.0) <= eps
+            assert n_gr * p.size == outcomes.size
+            choice_i = rng.choice(p.size, p=p.ravel())
+            choice = outcomes[:, choice_i]
+            out[pos:pos + n_group] = choice
+            cum_p *= np.prod(p[choice_i])
+        p = partial_p[0][tuple(out)].to_array()
+        assert abs(p - cum_p) <= eps
+
+    def _sample_gibbslike(self, rng, probab, n_samples, n_group, eps):
+        partial_p = [probab]
+        for num_removed in range(1, len(probab) + 1): 
+            axes = [()] * (len(probab) - num_removed) + [(0,)]
+            p = partial_p[num_removed - 1].sum(axes)
+            if hasattr(p, 'plegs'):  # If no legs are left, p is an np.ndarray
+                p = mp.prune(p)
+            partial_p.append(p)
+        assert len(partial_p) == len(self) + 1
+        assert abs(partial_p[len(probab)] - 1.0) <= eps
+        assert all(dim < 255 for dim in self.outdims)
+        out = np.zeros((n_samples, len(probab)), dtype=np.uint8)
+        out[...] = 0xff
+        groups_outcomes = []
+        for pos in range(0, len(self), n_group):
+            outdims = self.outdims[pos:pos + n_group]
+            local_outcomes = (range(dim) for dim in outdims)
+            outcomes = np.array(np.meshgrid(*local_outcomes, indexing='ij'))
+            groups_outcomes.append(outcomes.copy().reshape((len(outdims), -1)))
+        for i in range(n_samples):
+            self._sample_gibbslinke_single(rng, partial_p, n_group, groups_outcomes, out[i, :], eps)
+        assert (out != 0xff).all()
+        return out
+
+    def sample(self, rng, rho_mpo, n_samples, direct_max_n_probab=1e7, eps=1e-10):
+        """Sample from `self` on state `rho_mpo`
+
+        :param mp.MPArray rho_mpo: A state
+        :param n_samples: Number of samples to create
+        :param direct_max_n_probab: Maximum number of probabilities
+            for direct sampling
+
+        """
+        probab = mp.dot(self.probability_map, rho_mpo.ravel())
+        probab_sum = probab.sum()
+        # For large numbers of sites, NaNs appear. Why?
+        assert abs(probab_sum.imag) <= eps
+        assert abs(1.0 - probab_sum.real) <= eps
+        n_probab = np.prod(probab.dims)
+        if n_probab <= direct_max_n_probab:
+            return self._sample_direct(rng, probab, n_samples, eps)
+        else:
+            return self._sample_gibbslike(rng, probab, n_samples, 6, eps)
