@@ -1239,13 +1239,17 @@ def _prune_ltens(mpa):
     yield last_lten
 
 
-def prune(mpa):
+def prune(mpa, singletons=False):
     """Contract sites with zero physical legs.
 
-    :param mpa: MPA or iterator over local tensors
+    :param MPArray mpa: MPA or iterator over local tensors
+    :param singletons: If True, also contract sites where all physical
+        legs have size 1
     :returns: An MPA of smaller length
 
     """
+    if singletons and any(np.prod(p) == 1 for p in mpa.pdims):
+        mpa = mpa.reshape(() if np.prod(p) == 1 else p for p in mpa.pdims)
     return MPArray(_prune_ltens(mpa))
 
 
