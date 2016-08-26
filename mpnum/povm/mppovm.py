@@ -165,10 +165,7 @@ class MPPovm(mp.MPArray):
         :param other: Another MPPovm
         :param eps: Threshould for values which should be treated as zero
 
-        :returns: (`sites`, `matches`, `prefactors`)
-
-         `sites` contains the positions of all sites where `self`
-         performs measurements.
+        :returns: (`matches`, `prefactors`)
 
         `matches[i1, ..., ik, j1, ..., jk]` specifies whether outcome
          `(i1, ..., ik)` of `self` has the same POVM element as the
@@ -185,11 +182,11 @@ class MPPovm(mp.MPArray):
                              .format(self.hdims, other.hdims))
         # Drop measurement outcomes in `other` if there is only one
         # measurement outcome in `self`
-        support = tuple(outdim > 1 for outdim in self.outdims)
+        keep_outdims = (outdim > 1 for outdim in self.outdims)
         tr = mp.MPArray.from_kron([
             np.eye(outdim, dtype=lt.dtype)
             if keep else np.ones((1, outdim), dtype=lt.dtype)
-            for keep, lt, outdim in zip(support, other, other.outdims)
+            for keep, lt, outdim in zip(keep_outdims, other, other.outdims)
         ])
         other = MPPovm(mp.dot(tr, other))
 
@@ -231,8 +228,7 @@ class MPPovm(mp.MPArray):
         assert prefactors.shape == match.shape
         prefactors[~match] = np.nan
 
-        sites = np.nonzero(support)[0]
-        return sites, match, prefactors
+        return match, prefactors
 
     @staticmethod
     def _sample_cond_single(rng, marginal_p, n_group, out, eps):

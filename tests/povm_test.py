@@ -209,9 +209,8 @@ def test_mppovm_find_matching_local(
     big = povm.MPPovm.from_local_povm(x, nr_sites)
     small = povm.MPPovm.from_local_povm(x, n_small)
     small = _embed_povm(nr_sites, small_startsite, local_dim, small)
-    
-    sites, match, prefactors = small.find_matching_elements(big)
-    assert (sites == np.arange(n_small) + small_startsite).all()
+
+    match, prefactors = small.find_matching_elements(big)
     assert match.shape == tuple([len(x)] * n_small * 2)
     assert match.shape == prefactors.shape
 
@@ -225,8 +224,7 @@ def test_mppovm_find_matching_local(
     paulis = povm.pauli_povm(local_dim)
     small = povm.MPPovm.from_local_povm(paulis, n_small)
     small = _embed_povm(nr_sites, small_startsite, local_dim, small)
-    sites, match, prefactors = small.find_matching_elements(big)
-    assert (sites == np.arange(n_small) + small_startsite).all()
+    match, prefactors = small.find_matching_elements(big)
     assert match.shape == tuple([len(paulis)] * n_small + [len(x)] * n_small)
     assert match.shape == prefactors.shape
 
@@ -242,8 +240,7 @@ def test_mppovm_find_matching_local(
     # "Big" POVM: Y on all sites, "small" POVM: Paulis on `n_small` neighbours
     y = povm.y_povm(local_dim)
     big = povm.MPPovm.from_local_povm(y, nr_sites)
-    sites, match, prefactors = small.find_matching_elements(big)
-    assert (sites == np.arange(n_small) + small_startsite).all()
+    match, prefactors = small.find_matching_elements(big)
     assert match.shape == tuple([len(paulis)] * n_small + [len(y)] * n_small)
     assert match.shape == prefactors.shape
 
@@ -296,8 +293,7 @@ def test_mppovm_find_matching_bell(eps=1e-10):
                           for x in mppovm.elements)
         assert_array_almost_equal(element_sum, np.eye(16))
 
-    sites, match, prefactors = small.find_matching_elements(big)
-    assert (sites == np.array([2, 3])).all()
+    match, prefactors = small.find_matching_elements(big)
     # Verify the correspondence which can be read off above
     want = np.zeros((3, 2, 2, 3), dtype=bool)
     want[0, 0, 1, 0] = True  # |01> - |10>
