@@ -274,7 +274,16 @@ class MPPovm(mp.MPArray):
             self._sample_cond_single(rng, marginal_p, n_group, out[i, :], eps)
 
     def _sample_direct(self, rng, probab, n_samples, out, eps):
-        assert False, "to be implemented"
+        """Sample from full probabilities (call :func:`self.sample`)"""
+        probab = mp.prune(probab, singletons=True).to_array()
+        assert (abs(probab.imag) <= eps).all()
+        probab = probab.real
+        assert (probab >= -eps).all()
+        probab[probab < 0] = 0.0
+        assert abs(probab.sum() - 1.0) <= eps
+        choices = rng.choice(probab.size, n_samples, p=probab.flat)
+        for pos, c in enumerate(np.unravel_index(choices, self.outdims)):
+            out[:, pos] = c
 
     def sample(self, rng, state, n_samples, method='cond', n_group=1,
                mode='auto', eps=1e-10):
