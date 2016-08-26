@@ -234,7 +234,8 @@ class MPPovm(mp.MPArray):
         sites = np.nonzero(support)[0]
         return sites, match, prefactors
 
-    def _sample_cond_single(self, rng, marginal_p, n_group, out, eps):
+    @staticmethod
+    def _sample_cond_single(rng, marginal_p, n_group, out, eps):
         """Single sample from conditional probab. (call :func:`self.sample`)"""
         n_sites = len(marginal_p[-1])
         # Probability of the incomplete output. Empty output has unit probab.
@@ -262,7 +263,8 @@ class MPPovm(mp.MPArray):
         p = marginal_p[-1][tuple(out)].to_array()
         assert abs(p - out_p) <= eps
 
-    def _sample_cond(self, rng, probab, n_samples, n_group, out, eps):
+    @classmethod
+    def _sample_cond(cls, rng, probab, n_samples, n_group, out, eps):
         """Sample using conditional probabilities (call :func:`self.sample`)"""
         # marginal_p[k] will contain the marginal probability
         # distribution p(i_1, ..., i_k) for outcomes on sites 1, ..., k.
@@ -276,7 +278,7 @@ class MPPovm(mp.MPArray):
             marginal_p[n_sites] = p
         assert abs(marginal_p[0] - 1.0) <= eps
         for i in range(n_samples):
-            self._sample_cond_single(rng, marginal_p, n_group, out[i, :], eps)
+            cls._sample_cond_single(rng, marginal_p, n_group, out[i, :], eps)
 
     def _sample_direct(self, rng, probab, n_samples, out, eps):
         """Sample from full probabilities (call :func:`self.sample`)"""
