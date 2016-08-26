@@ -350,11 +350,8 @@ def test_mppovm_sample(
     else:
         n_gr = 3
     samples = mpp.sample(rgen, mps, n_samples, method, n_gr, 'mps', eps)
-    p_est = np.zeros(p_exact.shape, int)
-    for out_num in range(p_exact.size):
-        out = np.unravel_index(out_num, p_exact.shape)
-        p_est[out] = (samples == np.array(out)[None, :]).all(1).sum()
-    assert p_est.sum() == n_samples
-    p_est = p_est / n_samples
+
+    counts = mpp.count_samples(samples)
+    p_est = counts / n_samples
 
     assert (abs(p_exact - p_est) <= p_maxdiff).all()
