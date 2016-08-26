@@ -73,6 +73,11 @@ class MPPovm(mp.MPArray):
         return tuple(lt.shape[1] for lt in self._ltens)
 
     @property
+    def nsoutdims(self):
+        """Tuple of non-singleton outcome dimensions (dimension larger one)"""
+        return tuple(lt.shape[1] for lt in self._ltens if lt.shape[1] > 1)
+
+    @property
     def hdims(self):
         """Tuple of local Hilbert space dimensions"""
         # Second physical leg dimension (equals third physical leg dimension)
@@ -231,7 +236,7 @@ class MPPovm(mp.MPArray):
 
     def _sample_cond_single(self, rng, marginal_p, n_group, out, eps):
         """Single sample from conditional probab. (call :func:`self.sample`)"""
-        n_sites = len(self)
+        n_sites = len(marginal_p[-1])
         # Probability of the incomplete output. Empty output has unit probab.
         out_p = 1.0
         # `n_out` sites of the output have been sampled. We will add
@@ -261,9 +266,9 @@ class MPPovm(mp.MPArray):
         """Sample using conditional probabilities (call :func:`self.sample`)"""
         # marginal_p[k] will contain the marginal probability
         # distribution p(i_1, ..., i_k) for outcomes on sites 1, ..., k.
-        marginal_p = [None] * (len(self) + 1)
-        marginal_p[len(self)] = probab
-        for n_sites in reversed(range(len(self))):
+        marginal_p = [None] * (len(probab) + 1)
+        marginal_p[len(probab)] = probab
+        for n_sites in reversed(range(len(probab))):
             # Sum over outcomes on the last site
             p = marginal_p[n_sites + 1].sum([()] * (n_sites) + [(0,)])
             if n_sites > 0:  # p will be np.ndarray if no legs are left
@@ -282,7 +287,7 @@ class MPPovm(mp.MPArray):
         probab[probab < 0] = 0.0
         assert abs(probab.sum() - 1.0) <= eps
         choices = rng.choice(probab.size, n_samples, p=probab.flat)
-        for pos, c in enumerate(np.unravel_index(choices, self.outdims)):
+        for pos, c in enumerate(np.unravel_index(choices, probab.shape)):
             out[:, pos] = c
 
     def sample(self, rng, state, n_samples, method='cond', n_group=1,
@@ -312,11 +317,13 @@ class MPPovm(mp.MPArray):
           measurements which act on large parts of a system
           (e.g. Pauli X on each spin).
 
-        :returns:
+        :returns: `(n_samples, len(self.nsoutdims))` ndarray; position
+            `[i, j]` has the outcome on site `j` in the `i`-th sample.
 
         """
         assert len(self) == len(state)
         probab = next(self.expectations(state, mode))
+        probab = mp.prune(probab, singletons=True)
         probab_sum = probab.sum()
         # For large numbers of sites, NaNs appear. Why?
         assert abs(probab_sum.imag) <= eps
@@ -333,5 +340,5 @@ class MPPovm(mp.MPArray):
             self._sample_direct(rng, probab, n_samples, out, eps)
         else:
             raise ValueError('Unknown method {!r}'.format(method))
-        assert (out < np.array(self.outdims)[None, :]).all()
+        assert (out < np.array(self.nsoutdims)[None, :]).all()
         return out
