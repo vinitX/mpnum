@@ -314,3 +314,51 @@ def test_mppovm_find_matching_bell(eps=1e-10):
     assert abs(prefactors[2, 1, 0, 0] - 3) <= eps
     assert abs(prefactors[2, 1, 1, 2] - 1.5) <= eps
     assert np.isnan(prefactors[~match]).all()
+
+
+# It is not guaranteed that probabilities will be estimated to within
+# `p_maxdiff`. Exceptions have a low probability.
+@pt.mark.parametrize('n_samples, p_maxdiff',
+                     [(100, 0.3), pt.mark.long((1000, 0.1))])
+@pt.mark.parametrize('method', ['cond', 'direct'])
+@pt.mark.parametrize(
+    'nr_sites, startsite, local_dim',
+    [(4, 0, 2), (5, 0, 2), (5, 1, 2), (6, 1, 2), (7, 1, 2), (8, 2, 2),
+     (6, 1, 3)])
+def test_mppovm_sample(
+        method, n_samples, p_maxdiff, nr_sites, startsite, local_dim, rgen):
+    """Check that probability estimates from samples are reasonable accurate"""
+    bond_dim = 3
+    eps = 1e-10
+    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
+    mps.normalize()
+
+    local_x = povm.x_povm(local_dim)
+    local_y = povm.y_povm(local_dim)
+    xx = povm.MPPovm.from_local_povm(local_x, 2)
+    y = povm.MPPovm.from_local_povm(local_y, 1)
+    mpp = mp.outer([xx, povm.MPPovm.eye([local_dim]), y])
+    mpp = _embed_povm(nr_sites, startsite, local_dim, mpp)
+
+    p_exact = next(mpp.expectations(mps, 'mps'))
+    p_exact = mp.prune(p_exact, singletons=True).to_array()
+
+    if n_samples > 100:
+        n_gr = 5
+    elif local_dim == 3:
+        n_gr = 2
+    else:
+        n_gr = 3
+    samples = mpp.sample(rgen, mps, n_samples, method, n_gr, 'mps', eps)
+    has_output = np.fromiter((dim > 1 for dim in mpp.outdims), bool)
+
+    assert (samples[:, ~has_output] == 0).all()
+    samples = samples[:, has_output]
+    p_est = np.zeros(p_exact.shape, int)
+    for out_num in range(p_exact.size):
+        out = np.unravel_index(out_num, p_exact.shape)
+        p_est[out] = (samples == np.array(out)[None, :]).all(1).sum()
+    assert p_est.sum() == n_samples
+    p_est = p_est / n_samples
+
+    assert (abs(p_exact - p_est) <= p_maxdiff).all()
