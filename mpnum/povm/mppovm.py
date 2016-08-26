@@ -319,8 +319,12 @@ class MPPovm(mp.MPArray):
           measurements which act on large parts of a system
           (e.g. Pauli X on each spin).
 
-        :returns: `(n_samples, len(self.nsoutdims))` ndarray; position
-            `[i, j]` has the outcome on site `j` in the `i`-th sample.
+        :returns: ndarray `samples` with shape `(n_samples,
+            len(self.nsoutdims))`
+
+        The `i`-th sample is given by `samples[i, :]`. `samples[i, j]`
+        is the outcome for the `j`-th non-singleton output dimension
+        of `self`.
 
         """
         assert len(self) == len(state)
