@@ -229,69 +229,96 @@ class MPPovm(mp.MPArray):
         sites = np.nonzero(support)[0]
         return sites, match, prefactors
 
-    def _sample_gibbslinke_single(self, rng, partial_p, n_group, groups_outcomes, out, eps):
+    def _sample_cond_single(self, rng, marginal_p, n_group, out, eps):
+        """Single sample from conditional probab. (call :func:`self.sample`)"""
         n_sites = len(self)
-        cum_p = 1.0
-        for pos, outcomes in zip(range(0, n_sites, n_group), groups_outcomes):
-            n_gr = min(n_sites - pos, n_group)
-            p = partial_p[-1 - n_gr - pos]
-            if pos > 0:
-                p = p[tuple(out[:pos]) + (slice(None),) * (len(p) - pos)]
-            p = mp.prune(p).to_array() / cum_p
-            assert p.ndim == n_gr
+        # Probability of the incomplete output. Empty output has unit probab.
+        out_p = 1.0
+        # `n_out` sites of the output have been sampled. We will add
+        # at most `n_group` sites to the output at a time.
+        for n_out in range(0, n_sites, n_group):
+            # Select marginal probability distribution on (at most)
+            # `n_out + n_group` sites.
+            p = marginal_p[min(n_sites, n_out + n_group)]
+            # Obtain conditional probab. from joint `p` and marginal `out_p`
+            p = p[tuple(out[:n_out]) + (slice(None),) * (len(p) - n_out)]
+            p = mp.prune(p).to_array() / out_p
             assert (abs(p.imag) <= eps).all()
-            p = p.real.ravel()
+            p = p.real
             assert (p >= -eps).all()
             p[p < 0] = 0.0
             assert abs(p.sum() - 1.0) <= eps
-            assert n_gr * p.size == outcomes.size
-            choice_i = rng.choice(p.size, p=p.ravel())
-            choice = outcomes[:, choice_i]
-            out[pos:pos + n_group] = choice
-            cum_p *= np.prod(p[choice_i])
-        p = partial_p[0][tuple(out)].to_array()
-        assert abs(p - cum_p) <= eps
+            # Sample from conditional probab. for next `n_group` sites
+            choice = rng.choice(p.size, p=p.flat)
+            out[n_out:n_out + n_group] = np.unravel_index(choice, p.shape)
+            # Update probability of the partial output
+            out_p *= np.prod(p.flat[choice])
+        # Verify we have the correct partial output probability
+        p = marginal_p[-1][tuple(out)].to_array()
+        assert abs(p - out_p) <= eps
 
-    def _sample_gibbslike(self, rng, probab, n_samples, n_group, eps):
-        partial_p = [probab]
-        for num_removed in range(1, len(probab) + 1): 
-            axes = [()] * (len(probab) - num_removed) + [(0,)]
-            p = partial_p[num_removed - 1].sum(axes)
-            if hasattr(p, 'plegs'):  # If no legs are left, p is an np.ndarray
+    def _sample_cond(self, rng, probab, n_samples, n_group, eps):
+        """Sample using conditional probabilities (call :func:`self.sample`)"""
+        # marginal_p[k] will contain the marginal probability
+        # distribution p(i_1, ..., i_k) for outcomes on sites 1, ..., k.
+        marginal_p = [None] * (len(self) + 1)
+        marginal_p[len(self)] = probab
+        for n_sites in reversed(range(len(self))):
+            # Sum over outcomes on the last site
+            p = marginal_p[n_sites + 1].sum([()] * (n_sites) + [(0,)])
+            if n_sites > 0:  # p will be np.ndarray if no legs are left
                 p = mp.prune(p)
-            partial_p.append(p)
-        assert len(partial_p) == len(self) + 1
-        assert abs(partial_p[len(probab)] - 1.0) <= eps
+            marginal_p[n_sites] = p
+        assert abs(marginal_p[0] - 1.0) <= eps
+        # The value 255 means "data missing". The values 0..254 are
+        # available for measurement outcomes.
         assert all(dim < 255 for dim in self.outdims)
         out = np.zeros((n_samples, len(probab)), dtype=np.uint8)
         out[...] = 0xff
-        groups_outcomes = []
-        for pos in range(0, len(self), n_group):
-            outdims = self.outdims[pos:pos + n_group]
-            local_outcomes = (range(dim) for dim in outdims)
-            outcomes = np.array(np.meshgrid(*local_outcomes, indexing='ij'))
-            groups_outcomes.append(outcomes.copy().reshape((len(outdims), -1)))
         for i in range(n_samples):
-            self._sample_gibbslinke_single(rng, partial_p, n_group, groups_outcomes, out[i, :], eps)
+            self._sample_cond_single(rng, marginal_p, n_group, out[i, :], eps)
         assert (out != 0xff).all()
         return out
 
-    def sample(self, rng, rho_mpo, n_samples, direct_max_n_probab=1e7, eps=1e-10):
+    def _sample_direct(self, rng, probab, n_samples, eps):
+        assert False, "to be implemented"
+
+    def sample(self, rng, state, n_samples, method='cond', n_group=1,
+               mode='auto', eps=1e-10):
         """Sample from `self` on state `rho_mpo`
 
-        :param mp.MPArray rho_mpo: A state
+        :param mp.MPArray state: A quantum state as MPA (see `mode`)
         :param n_samples: Number of samples to create
-        :param direct_max_n_probab: Maximum number of probabilities
-            for direct sampling
+        :param method: Sampling method (`'cond'` or `'direct'`, see below)
+        :param n_group: Number of sites to sample at a time in
+            conditional sampling.
+        :param mode: Passed to :func:`self.expectations`
+        :param eps: Threshold for small values to be treated as zero.
+
+        Two different sampling methods are available:
+
+        * Direct sampling (`method='direct'`): Compute probabilities
+          for all outcomes and sample from the full probability
+          distribution. Usually faster than conditional sampling for
+          measurements on a small number of sites. Requires memory
+          linear in the number of possible outcomes.
+
+        * Conditional sampling (`method='cond'`): Sample outcomes on
+          all sites by sampling from conditional outcome probabilities
+          on at most `n_group` sites at a time. Requires memory linear
+          in the number of outcomes on `n_group` sites. Useful for
+          measurements which act on large parts of a system
+          (e.g. Pauli X on each spin).
+
+        :returns:
 
         """
-        probab = mp.dot(self.probability_map, rho_mpo.ravel())
+        probab = next(self.expectations(state, mode))
         probab_sum = probab.sum()
         # For large numbers of sites, NaNs appear. Why?
         assert abs(probab_sum.imag) <= eps
         assert abs(1.0 - probab_sum.real) <= eps
-        n_probab = np.prod(probab.dims)
-        if n_probab <= direct_max_n_probab:
+        if method == 'cond':
+            return self._sample_cond(rng, probab, n_samples, n_group, eps)
+        elif method == 'direct':
             return self._sample_direct(rng, probab, n_samples, eps)
-        else:
-            return self._sample_gibbslike(rng, probab, n_samples, 6, eps)
