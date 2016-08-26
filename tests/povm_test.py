@@ -350,10 +350,6 @@ def test_mppovm_sample(
     else:
         n_gr = 3
     samples = mpp.sample(rgen, mps, n_samples, method, n_gr, 'mps', eps)
-    has_output = np.fromiter((dim > 1 for dim in mpp.outdims), bool)
-
-    assert (samples[:, ~has_output] == 0).all()
-    samples = samples[:, has_output]
     p_est = np.zeros(p_exact.shape, int)
     for out_num in range(p_exact.size):
         out = np.unravel_index(out_num, p_exact.shape)
