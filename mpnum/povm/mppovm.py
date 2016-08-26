@@ -257,7 +257,7 @@ class MPPovm(mp.MPArray):
         p = marginal_p[-1][tuple(out)].to_array()
         assert abs(p - out_p) <= eps
 
-    def _sample_cond(self, rng, probab, n_samples, n_group, eps):
+    def _sample_cond(self, rng, probab, n_samples, n_group, out, eps):
         """Sample using conditional probabilities (call :func:`self.sample`)"""
         # marginal_p[k] will contain the marginal probability
         # distribution p(i_1, ..., i_k) for outcomes on sites 1, ..., k.
@@ -270,17 +270,10 @@ class MPPovm(mp.MPArray):
                 p = mp.prune(p)
             marginal_p[n_sites] = p
         assert abs(marginal_p[0] - 1.0) <= eps
-        # The value 255 means "data missing". The values 0..254 are
-        # available for measurement outcomes.
-        assert all(dim < 255 for dim in self.outdims)
-        out = np.zeros((n_samples, len(probab)), dtype=np.uint8)
-        out[...] = 0xff
         for i in range(n_samples):
             self._sample_cond_single(rng, marginal_p, n_group, out[i, :], eps)
-        assert (out != 0xff).all()
-        return out
 
-    def _sample_direct(self, rng, probab, n_samples, eps):
+    def _sample_direct(self, rng, probab, n_samples, out, eps):
         assert False, "to be implemented"
 
     def sample(self, rng, state, n_samples, method='cond', n_group=1,
@@ -313,12 +306,23 @@ class MPPovm(mp.MPArray):
         :returns:
 
         """
+        assert len(self) == len(state)
         probab = next(self.expectations(state, mode))
         probab_sum = probab.sum()
         # For large numbers of sites, NaNs appear. Why?
         assert abs(probab_sum.imag) <= eps
         assert abs(1.0 - probab_sum.real) <= eps
+
+        # The value 255 means "data missing". The values 0..254 are
+        # available for measurement outcomes.
+        assert all(dim <= 255 for dim in self.outdims)
+        out = np.zeros((n_samples, len(probab)), dtype=np.uint8)
+        out[...] = 0xff
         if method == 'cond':
-            return self._sample_cond(rng, probab, n_samples, n_group, eps)
+            self._sample_cond(rng, probab, n_samples, n_group, out, eps)
         elif method == 'direct':
-            return self._sample_direct(rng, probab, n_samples, eps)
+            self._sample_direct(rng, probab, n_samples, out, eps)
+        else:
+            raise ValueError('Unknown method {!r}'.format(method))
+        assert (out < np.array(self.outdims)[None, :]).all()
+        return out
