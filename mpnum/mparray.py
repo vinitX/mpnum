@@ -1291,32 +1291,57 @@ def diag(mpa, axis=0):
 
 
 #FXIME Why is outer not a special case of this?
-def inject(mpa, pos, num, inject_ten=None):
+def inject(mpa, pos, num=None, inject_ten=None):
     """Like outer(), but place second factor somewhere inside mpa.
 
-    Return the outer product between mpa and 'num' copies of the local
-    tensor 'inject_ten', but place the copies of 'inject_ten' before
-    site 'pos' inside 'mpa'. Placing at the edges of 'mpa' is not
+    Return the outer product between mpa and `num` copies of the local
+    tensor `inject_ten`, but place the copies of `inject_ten` before
+    site `pos` inside `mpa`. Placing at the edges of `mpa` is not
     supported (use outer() for that).
 
     If 'inject_ten' is omitted, use a square identity matrix of size
     mpa.pdims[pos][0].
 
     :param mpa: An MPA.
-    :param pos: Inject sites into the MPA before site 'pos'.
-    :param num: Inject 'num' copies.
-    :param inject_ten: Inject this physical tensor (if None use
-       np.eye(mpa.pdims[pos][0]))
+    :param pos: Inject sites into the MPA before site `pos`.
+    :param num: Inject `num` copies. Can be `None`; in this case
+        `inject_ten` must be a sequence of values.
+    :param inject_ten: Physical tensor to inject (if `None` use
+       `np.eye(mpa.pdims[pos][0])`)
     :returns: An MPA of length len(mpa) + num
 
+    `pos` can also be a sequence of positions. In this case, `num` and
+    `inject_ten` must either sequences or `None`, where `None` is
+    interpreted as `len(pos) * [None]`. If `num[i]` is `None`, then
+    `inject_ten[i]` must be a sequence of values.
+
     """
-    if inject_ten is None:
-        inject_ten = np.eye(mpa.pdims[pos][0])
-    bdim = mpa.bdims[pos - 1]
-    inject_lten = np.tensordot(np.eye(bdim), inject_ten, axes=((), ()))
-    inject_lten = np.rollaxis(inject_lten, 1, inject_lten.ndim)
-    ltens = it.chain(
-        mpa[:pos], it.repeat(inject_lten, times=num), mpa[pos:])
+    if isinstance(pos, collections.Iterable):
+        pos = tuple(pos)
+        num = (None,) * len(pos) if num is None else tuple(num)
+        inject_ten = (None,) * len(pos) if inject_ten is None else tuple(inject_ten)
+    else:
+        pos, num, inject_ten = (pos,), (num,), (inject_ten,)
+    assert len(pos) == len(num) == len(inject_ten)
+    assert not any(n is None and hasattr(tens, 'shape')
+                   for n, tens in zip(num, inject_ten)), \
+        """num[i] is None requires a list of tensors at inject_ten[i]"""
+    
+    pos = (0,) + pos + (len(mpa),)
+    assert all(begin < end for begin, end in zip(pos[:-1], pos[1:]))
+    pieces = tuple(mpa[begin:end] for begin, end in zip(pos[:-1], pos[1:]))
+    inject_ten = (
+        (
+            np.rollaxis(np.tensordot(
+                np.eye(left[-1].shape[1]) if ten is None else ten,
+                np.eye(left[-1].shape[-1]), axes=((), ())), -1)
+            for ten in (inj if n is None else (inj,) * n)
+        )
+        for left, n, inj in zip(pieces[:-1], num, inject_ten)
+    )
+    ltens = (lt for ltens in zip(pieces, inject_ten) for lten in ltens
+             for lt in lten)
+    ltens = it.chain(ltens, pieces[-1])
     return MPArray(ltens)
 
 

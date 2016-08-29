@@ -26,6 +26,8 @@ from six.moves import range, zip
 # nr_sites, local_dim, bond_dim
 MP_TEST_PARAMETERS = [(1, 7, np.nan), (2, 3, 3), (3, 2, 4), (6, 2, 4),
                       (4, 3, 5), (5, 2, 1)]
+# local_dim, bond_dim
+MP_TEST_PARAMETERS_INJECT = [(2, 4), (3, 3), (2, 5), (2, 1), (1, 2)]
 # nr_sites, local_dim, bond_dim, sites_per_group
 MP_TEST_PARAMETERS_GROUPS = [(6, 2, 4, 3), (6, 2, 4, 2), (4, 3, 5, 2)]
 
@@ -560,8 +562,8 @@ def test_outer(nr_sites, local_dim, bond_dim, rgen, dtype):
     assert mp.norm(diff) < 1e-6
 
 
-@pt.mark.parametrize('_, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_inject(_, local_dim, bond_dim):
+@pt.mark.parametrize('local_dim, bond_dim', MP_TEST_PARAMETERS_INJECT)
+def test_inject(local_dim, bond_dim):
     # bond_dim is np.nan for nr_sites = 1 (first argument,
     # ignored). We require a value for bond_dim.
     if np.isnan(bond_dim):
@@ -585,8 +587,11 @@ def test_inject(_, local_dim, bond_dim):
     ac = (ac0 + ac1).reshape(2 * local_dim)
     ac_mpo = mp.MPArray.from_array(global_to_local(ac, sites=2), plegs)
     abbc_mpo = mp.inject(ac_mpo, pos=1, num=2, inject_ten=b)
-    abbc_from_mpo = mpo_to_global(abbc_mpo)
-    assert_array_almost_equal(abbc, abbc_from_mpo)
+    abbc_mpo2 = mp.inject(ac_mpo, pos=[1], num=[2], inject_ten=[b])
+    abbc_mpo3 = mp.inject(ac_mpo, pos=[1], num=None, inject_ten=[[b, b]])
+    assert_array_almost_equal(abbc, mpo_to_global(abbc_mpo))
+    assert_array_almost_equal(abbc, mpo_to_global(abbc_mpo2))
+    assert_array_almost_equal(abbc, mpo_to_global(abbc_mpo3))
 
     # Here, only local order.
     ac = factory._zrandn(local_dim * 2)
@@ -616,8 +621,11 @@ def test_inject(_, local_dim, bond_dim):
     ac = (ac0 + ac1).reshape(2 * local_dim)
     ac_mpo = mp.MPArray.from_array(global_to_local(ac, sites=2), plegs)
     abbc_mpo = mp.inject(ac_mpo, pos=1, num=2, inject_ten=None)
-    abbc_from_mpo = mpo_to_global(abbc_mpo)
-    assert_array_almost_equal(abbc, abbc_from_mpo)
+    abbc_mpo2 = mp.inject(ac_mpo, pos=[1], num=[2])
+    abbc_mpo3 = mp.inject(ac_mpo, pos=[1], inject_ten=[[None, None]])
+    assert_array_almost_equal(abbc, mpo_to_global(abbc_mpo))
+    assert_array_almost_equal(abbc, mpo_to_global(abbc_mpo2))
+    assert_array_almost_equal(abbc, mpo_to_global(abbc_mpo3))
 
     # Here, only local order.
     ac = factory._zrandn(local_dim * 2)
@@ -629,6 +637,31 @@ def test_inject(_, local_dim, bond_dim):
     # Keep local order
     abc_from_mpo = abc_mpo.to_array()
     assert_array_almost_equal(abc, abc_from_mpo)
+
+
+@pt.mark.parametrize('local_dim, bond_dim', MP_TEST_PARAMETERS_INJECT)
+def test_inject_many(local_dim, bond_dim, rgen):
+    # bond_dim is np.nan for nr_sites = 1 (first argument,
+    # ignored). We require a value for bond_dim.
+    if np.isnan(bond_dim):
+        return
+
+    mpa = factory.random_mpa(3, local_dim, bond_dim, rgen, normalized=True)
+    inj_lt = [factory._zrandn(s, rgen) for s in [(2, 3), (1,), (2, 2), (3, 2)]]
+
+    mpa_inj1 = mp.inject(mpa, 1, None, [inj_lt[0]])
+    mpa_inj1 = mp.inject(mpa_inj1, 2, 1, inj_lt[0])
+    mpa_inj1 = mp.inject(mpa_inj1, 4, None, [inj_lt[2]])
+    mpa_inj2 = mp.inject(mpa, [1, 2], [2, None], [inj_lt[0], [inj_lt[2]]])
+    mpa_inj3 = mp.inject(mpa, [1, 2], [2, 1], [inj_lt[0], inj_lt[2]])
+    assert_mpa_almost_equal(mpa_inj1, mpa_inj2, True)
+    assert_mpa_almost_equal(mpa_inj1, mpa_inj3, True)
+
+    inj_lt = [inj_lt[:2], inj_lt[2:]]
+    mpa_inj1 = mp.inject(mpa, 1, None, inj_lt[0])
+    mpa_inj1 = mp.inject(mpa_inj1, 4, inject_ten=inj_lt[1])
+    mpa_inj2 = mp.inject(mpa, [1, 2], None, inj_lt)
+    assert_mpa_almost_equal(mpa_inj1, mpa_inj2, True)
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
