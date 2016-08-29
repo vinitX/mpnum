@@ -564,6 +564,7 @@ def test_outer(nr_sites, local_dim, bond_dim, rgen, dtype):
 
 @pt.mark.parametrize('local_dim, bond_dim', MP_TEST_PARAMETERS_INJECT)
 def test_inject(local_dim, bond_dim):
+    """mp.inject() vs. computation with full arrays"""
     # bond_dim is np.nan for nr_sites = 1 (first argument,
     # ignored). We require a value for bond_dim.
     if np.isnan(bond_dim):
@@ -641,11 +642,7 @@ def test_inject(local_dim, bond_dim):
 
 @pt.mark.parametrize('local_dim, bond_dim', MP_TEST_PARAMETERS_INJECT)
 def test_inject_many(local_dim, bond_dim, rgen):
-    # bond_dim is np.nan for nr_sites = 1 (first argument,
-    # ignored). We require a value for bond_dim.
-    if np.isnan(bond_dim):
-        return
-
+    """Calling mp.inject() repeatedly vs. calling it with sequence arguments"""
     mpa = factory.random_mpa(3, local_dim, bond_dim, rgen, normalized=True)
     inj_lt = [factory._zrandn(s, rgen) for s in [(2, 3), (1,), (2, 2), (3, 2)]]
 
@@ -662,6 +659,35 @@ def test_inject_many(local_dim, bond_dim, rgen):
     mpa_inj1 = mp.inject(mpa_inj1, 4, inject_ten=inj_lt[1])
     mpa_inj2 = mp.inject(mpa, [1, 2], None, inj_lt)
     assert_mpa_almost_equal(mpa_inj1, mpa_inj2, True)
+
+
+def test_inject_pdim(rgen):
+    """Check that mp.inject() picks up the correct physical dimension"""
+    bond_dim = 3
+    mpa = factory.random_mpa(3, ([1], [2], [3]), 3, rgen, normalized=True)
+    print(mpa.pdims)
+    mpa_inj = mp.inject(mpa, [0, 2], [1, 1])
+    assert mpa_inj.pdims == ((1, 1), (1,), (2,), (3, 3), (3,))
+    mpa_inj = mp.inject(mpa, [1, 3], [1, 1], None)
+    assert mpa_inj.pdims == ((1,), (2, 2), (2,), (3,), (3, 3))
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_inject_outer(nr_sites, local_dim, bond_dim, rgen):
+    """Compare mp.inject() with mp.outer()"""
+    if nr_sites == 1:
+        return
+    mpa = factory.random_mpa(nr_sites // 2, local_dim, bond_dim, rgen, True)
+    pten = [factory._zrandn((local_dim,) * 2) for _ in range(nr_sites // 2)]
+    pten_mpa = mp.MPArray.from_kron(pten)
+
+    outer1 = mp.outer((pten_mpa, mpa))
+    outer2 = mp.inject(mpa, 0, inject_ten=pten)
+    assert_mpa_almost_equal(outer1, outer2, True)
+
+    outer1 = mp.outer((mpa, pten_mpa))
+    outer2 = mp.inject(mpa, [len(mpa)], [None], inject_ten=[pten])
+    assert_mpa_almost_equal(outer1, outer2, True)
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
