@@ -20,6 +20,15 @@ from mpnum import _tools
 
 ALL_POVMS = {name: constructor for name, constructor in povm.__dict__.items()
              if name.endswith('_povm') and isfunction(constructor)}
+# nr_sites, startsite, local_dim
+MPPOVM_PARAM = [
+    (4, 0, 2), (5, 0, 3), (5, 1, 2), (6, 1, 2),
+    pt.mark.long((7, 1, 2)), pt.mark.long((8, 2, 2)), pt.mark.long((6, 1, 3))
+]
+# It is not guaranteed that probabilities will be estimated to within
+# `p_maxdiff`. Exceptions have a low probability.
+# n_samples, p_maxdiff
+MPPOVM_SAMPLE_PARAM = [(100, 0.3), pt.mark.long((1000, 0.1))]
 
 
 def mp_from_array_repeat(array, nr_sites):
@@ -312,15 +321,9 @@ def test_mppovm_find_matching_bell(eps=1e-10):
     assert np.isnan(prefactors[~match]).all()
 
 
-# It is not guaranteed that probabilities will be estimated to within
-# `p_maxdiff`. Exceptions have a low probability.
-@pt.mark.parametrize('n_samples, p_maxdiff',
-                     [(100, 0.3), pt.mark.long((1000, 0.1))])
+@pt.mark.parametrize('n_samples, p_maxdiff', MPPOVM_SAMPLE_PARAM)
 @pt.mark.parametrize('method', ['cond', 'direct'])
-@pt.mark.parametrize(
-    'nr_sites, startsite, local_dim',
-    [(4, 0, 2), (5, 0, 2), (5, 1, 2), (6, 1, 2), (7, 1, 2), (8, 2, 2),
-     (6, 1, 3)])
+@pt.mark.parametrize('nr_sites, startsite, local_dim', MPPOVM_PARAM)
 def test_mppovm_sample(
         method, n_samples, p_maxdiff, nr_sites, startsite, local_dim, rgen):
     """Check that probability estimates from samples are reasonable accurate"""
@@ -351,3 +354,54 @@ def test_mppovm_sample(
     p_est = counts / n_samples
 
     assert (abs(p_exact - p_est) <= p_maxdiff).all()
+
+
+@pt.mark.parametrize('n_samples, p_maxdiff', MPPOVM_SAMPLE_PARAM)
+@pt.mark.parametrize('method', ['cond', 'direct'])
+@pt.mark.parametrize('nr_sites, startsite, local_dim', MPPOVM_PARAM)
+def test_mppovm_counts_from(
+        method, n_samples, p_maxdiff, nr_sites, startsite, local_dim, rgen):
+    """Check that probability estimates from samples are reasonable accurate"""
+    bond_dim = 3
+    eps = 1e-10
+    nr_small = 4
+    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
+    mps.normalize()
+
+    lx = povm.x_povm(local_dim)
+    ly = povm.y_povm(local_dim)
+    lp = povm.pauli_povm(local_dim)
+    x = povm.MPPovm.from_local_povm(lx, 1)
+    y = povm.MPPovm.from_local_povm(ly, 1)
+    pauli = povm.MPPovm.from_local_povm(lp, 1)
+    xy = mp.outer((x, y))
+    mpp = mp.outer((xy,) * (nr_sites // 2))
+    if (nr_sites % 2) == 1:
+        mpp = mp.outer((mpp, x))
+    mpp = povm.MPPovm(mpp)
+    small_mpp = mp.outer((pauli, povm.MPPovm.eye([local_dim]), pauli, pauli))
+    small_mpp = _embed_povm(nr_sites, startsite, local_dim, small_mpp)
+
+    x_given = np.arange(len(lp)) < len(lx)
+    y_given = (np.arange(len(lp)) >= len(lx)) \
+              & (np.arange(len(lp)) < len(lx) + len(ly))
+    given_sites = [x_given if ((startsite + i) % 2) == 0 else y_given
+                   for i in (0, 2, 3)]
+    given_expected = np.einsum('i, j, k -> ijk', *given_sites)
+    p_exact = next(small_mpp.expectations(mps, 'mps'))
+    p_exact = mp.prune(p_exact, singletons=True).to_array()
+
+    if n_samples > 100:
+        n_gr = 5
+    elif local_dim == 3:
+        n_gr = 2
+    else:
+        n_gr = 3
+
+    samples = mpp.sample(rgen, mps, n_samples, method, n_gr, 'mps', eps)
+    counts = small_mpp.counts_from(mpp, samples)
+    given = ~np.isnan(counts)
+    assert (given == given_expected).all()
+
+    p_est = counts / n_samples
+    assert (abs(p_exact[given] - p_est[given]) <= p_maxdiff).all()

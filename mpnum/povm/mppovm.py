@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 import itertools as it
 import numpy as np
 
+import mpnum.factory as factory
 import mpnum.mparray as mp
 import mpnum.mpsmpo as mpsmpo
 
@@ -345,7 +346,81 @@ class MPPovm(mp.MPArray):
         assert (out < np.array(self.nsoutdims)[None, :]).all()
         return out
 
-    def count_samples(self, samples, eps=1e-10):
+    def counts_from(self, other, samples, eps=1e-10):
+        """Obtain counts from samples of another MPPovm `other`
+
+        If `other` does not provide information on all elements in
+        `self`, we require that the elements in `self` for which
+        information is provided sum to a multiple of the identity. 
+
+        Example: If we consider the MPPovm
+        :func:`MPPovm.from_local_povm(x, n) <MPPovm.from_local_povm>`
+        for given local POVMs `x`, it is possible to obtain counts for
+        the Pauli X part of :func:`pauli_povm()
+        <mpnum.povm.localpovm.pauli_povm>` from samples for
+        :func:`x_povm() <mpnum.povm.localpovm.x_povm>`; this is also
+        true if the latter is supported on a larger part of the chain.
+
+        :param MPPovm other: Another MPPovm
+        :param np.ndarray samples: `(n_samples, len(other.nsoutdims))`
+            array of samples for `other`
+
+        :returns: Array of outcome `counts`
+        :rtype: np.ndarray
+
+        """
+        assert len(self) == len(other)
+        n_samples = samples.shape[0]
+        assert samples.shape[1] == len(other.nsoutdims)
+        match, prefactors = self.find_matching_elements(other)
+        support = tuple(pos for pos, dim in enumerate(self.outdims) if dim > 1)
+        other_outdims = tuple(other.outdims[i] for i in support)
+        assert match.shape == self.nsoutdims + other_outdims
+        n_nsout = len(self.nsoutdims)
+        given = match.any(tuple(range(n_nsout, match.ndim)))
+        missing = ~given
+
+        # Given POVM elements must sum to part of the identity
+        given = mp.MPArray.from_array(given, plegs=1)
+        if n_nsout < len(self):
+            # `self` does not have outcomes on the entire chain. Need
+            # to inject sites into `given` accordingly.
+            one = np.ones(1)
+            hole_pos, hole_fill = zip(*(
+                (pos, [one] * (r - l - 1))
+                for pos, l, r in zip(it.count(), (-1,) + support,
+                                     support + (len(other),))
+                if r - l > 1
+            ))
+            given = mp.inject(given, hole_pos, None, hole_fill)
+        elem_sum = mp.dot(given, self)
+        eye = factory.eye(len(self), self.hdims)
+        sum_norm, eye_norm = mp.norm(elem_sum), mp.norm(eye)
+        norm_prod, inner = sum_norm * eye_norm, abs(mp.inner(elem_sum, eye))
+        # Cauchy-Schwarz inequality must be satisfied
+        assert (norm_prod - inner) / norm_prod >= -eps, "invalid value"
+        # Equality in the Cauchy-Schwarz inequality implies linear dependence
+        assert (norm_prod - inner) / norm_prod <= eps, (
+            "Given subset of elements does not sum to multiple of identity; "
+            "conversion not possible")
+        all_prefactor = sum_norm / eye_norm
+        if missing.any():
+            assert all_prefactor < 1.0 + eps
+        else:
+            assert abs(all_prefactor - 1.0) <= eps
+
+        samples = samples[:, support]
+        counts = np.zeros(self.nsoutdims, float)
+        for outcomes in np.argwhere(match):
+            my_out, out = tuple(outcomes[:n_nsout]), outcomes[n_nsout:]
+            count = (samples == out[None, :]).all(1).sum()
+            counts[my_out] += prefactors[tuple(outcomes)] * count / n_samples
+
+        assert abs(counts.sum() - all_prefactor) <= eps
+        counts[missing] = np.nan
+        return counts
+
+    def count_samples(self, samples, weights=None, eps=1e-10):
         """Count number of outcomes in samples
 
         :param np.ndarray samples: `(n_samples, len(self.nsoutdims))`
