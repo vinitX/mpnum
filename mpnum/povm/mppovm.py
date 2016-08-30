@@ -405,12 +405,80 @@ class MPPovm(mp.MPArray):
             var_est = 0
         return est, var_est
 
+    def _fill_out_holes(self, support, outcome_mpa):
+        """Fill holes in an MPA on some of the outcome physical legs
+
+        The dot product of `outcome_mpa` and `self` provides a sum
+        over some or all elements of the POVM. The way sites are added
+        to `outcome_mpa` implements the selection rule described in
+        :func:`self._elemsum_identity()`.
+
+        :param np.ndarray support: List of sites where `outcome_mpa`
+            lives
+        :param mp.MPArray outcome_mpa: An MPA with physical legs in
+            agreement with `self.outdims` with some sites omitted
+
+        :returns: An MPA with physical legs given by `self.outdims`
+
+        """
+        outdims = self.outdims
+        assert len(support) == len(outcome_mpa)
+        assert all(dim[0] == outdims[pos]
+                   for pos, dim in zip(support, outcome_mpa.pdims))
+        if len(support) == len(self):
+            return outcome_mpa  # Nothing to do
+        # `self` does not have outcomes on the entire chain. Need
+        # to inject sites into `outcome_mpa` accordingly.
+        hole_pos, hole_fill = zip(*(
+            (pos, map(np.ones, outdims[l + 1:r]))
+            for pos, l, r in zip(it.count(), (-1,) + support,
+                                 support + (len(self),))
+            if r - l > 1
+        ))
+        return mp.inject(outcome_mpa, hole_pos, None, hole_fill)
+
+    def _elemsum_identity(self, support, given, eps):
+        """Check whether a given subset of POVM elements sums to a multiple of
+        the identity
+
+        :param np.ndarray support: List of sites on which POVM
+            elements are selected by `given`
+        :param np.ndarray given: Whether a POVM element with a given
+            index should be included (bool array)
+
+        A POVM element specified by the compound index `(i_1, ...,
+        i_n)` with `n = len(self` is included if
+        `given[i_(support[0]), ..., i_(support[k])]` is `True`.
+
+        :returns: If the POVM elements sum to a fraction of the
+            identity, return the fraction. Otherwise return `None`.
+
+        """
+        any_missing = not given.all()
+        given = self._fill_out_holes(
+            support, mp.MPArray.from_array(given, plegs=1))
+        elem_sum = mp.dot(given, self)
+        eye = factory.eye(len(self), self.hdims)
+        sum_norm, eye_norm = mp.norm(elem_sum), mp.norm(eye)
+        norm_prod, inner = sum_norm * eye_norm, abs(mp.inner(elem_sum, eye))
+        # Cauchy-Schwarz inequality must be satisfied
+        assert (norm_prod - inner) / norm_prod >= -eps, "invalid value"
+        if (norm_prod - inner) / norm_prod > eps:
+            return None
+        # Equality in the Cauchy-Schwarz inequality implies linear dependence
+        all_prefactor = sum_norm / eye_norm
+        if any_missing:
+            assert all_prefactor < 1.0 + eps
+        else:
+            assert abs(all_prefactor - 1.0) <= eps
+        return all_prefactor
+
     def counts_from(self, other, samples, eps=1e-10):
         """Obtain counts from samples of another MPPovm `other`
 
         If `other` does not provide information on all elements in
         `self`, we require that the elements in `self` for which
-        information is provided sum to a multiple of the identity. 
+        information is provided sum to a multiple of the identity.
 
         Example: If we consider the MPPovm
         :func:`MPPovm.from_local_povm(x, n) <MPPovm.from_local_povm>`
@@ -424,8 +492,12 @@ class MPPovm(mp.MPArray):
         :param np.ndarray samples: `(n_samples, len(other.nsoutdims))`
             array of samples for `other`
 
-        :returns: Array of outcome `counts`
-        :rtype: np.ndarray
+        :returns: `(counts, eff_n_samples)`. `counts`: Array of
+            normalized outcome counts; the sum over the available
+            counts is equal to the fraction of the identity given by
+            the corresponding POVM elements. `eff_n_samples`:
+            Effective number of samples which have contributed to
+            `counts` or `None` if not available (see source).
 
         """
         assert len(self) == len(other)
@@ -435,38 +507,21 @@ class MPPovm(mp.MPArray):
         support = tuple(pos for pos, dim in enumerate(self.outdims) if dim > 1)
         other_outdims = tuple(other.outdims[i] for i in support)
         assert match.shape == self.nsoutdims + other_outdims
-        n_nsout = len(self.nsoutdims)
-        given = match.any(tuple(range(n_nsout, match.ndim)))
-        missing = ~given
 
-        # Given POVM elements must sum to part of the identity
-        given = mp.MPArray.from_array(given, plegs=1)
-        if n_nsout < len(self):
-            # `self` does not have outcomes on the entire chain. Need
-            # to inject sites into `given` accordingly.
-            one = np.ones(1)
-            hole_pos, hole_fill = zip(*(
-                (pos, [one] * (r - l - 1))
-                for pos, l, r in zip(it.count(), (-1,) + support,
-                                     support + (len(other),))
-                if r - l > 1
-            ))
-            given = mp.inject(given, hole_pos, None, hole_fill)
-        elem_sum = mp.dot(given, self)
-        eye = factory.eye(len(self), self.hdims)
-        sum_norm, eye_norm = mp.norm(elem_sum), mp.norm(eye)
-        norm_prod, inner = sum_norm * eye_norm, abs(mp.inner(elem_sum, eye))
-        # Cauchy-Schwarz inequality must be satisfied
-        assert (norm_prod - inner) / norm_prod >= -eps, "invalid value"
-        # Equality in the Cauchy-Schwarz inequality implies linear dependence
-        assert (norm_prod - inner) / norm_prod <= eps, (
+        n_nsout = len(self.nsoutdims)
+        other_used = match.any(tuple(range(n_nsout)))
+        other_prefactor = other._elemsum_identity(support, other_used, eps)
+        # If the elements from the other POVM we have used do not sum
+        # to the identity, we cannot provide an effective number of
+        # samples.
+        effective_n_samples = None if other_prefactor is None \
+                              else n_samples * other_prefactor
+
+        given = match.any(tuple(range(n_nsout, match.ndim)))
+        all_prefactor = self._elemsum_identity(support, given, eps)
+        assert all_prefactor is not None, (
             "Given subset of elements does not sum to multiple of identity; "
             "conversion not possible")
-        all_prefactor = sum_norm / eye_norm
-        if missing.any():
-            assert all_prefactor < 1.0 + eps
-        else:
-            assert abs(all_prefactor - 1.0) <= eps
 
         samples = samples[:, support]
         counts = np.zeros(self.nsoutdims, float)
@@ -476,8 +531,8 @@ class MPPovm(mp.MPArray):
             counts[my_out] += prefactors[tuple(outcomes)] * count / n_samples
 
         assert abs(counts.sum() - all_prefactor) <= eps
-        counts[missing] = np.nan
-        return counts
+        counts[~given] = np.nan
+        return counts, effective_n_samples
 
     def count_samples(self, samples, weights=None, eps=1e-10):
         """Count number of outcomes in samples
