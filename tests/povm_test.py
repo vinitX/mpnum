@@ -308,7 +308,7 @@ def test_mppovm_find_matching_bell(eps=1e-10):
                           for x in mppovm.elements)
         assert_array_almost_equal(element_sum, np.eye(16))
 
-    match, prefactors = small.find_matching_elements(big)
+    match, prefactors = small.find_matching_elements(big, eps=eps)
     # Verify the correspondence which can be read off above
     want = np.zeros((3, 2, 2, 3), dtype=bool)
     want[0, 0, 1, 0] = True  # |01> - |10>

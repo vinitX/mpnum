@@ -305,7 +305,7 @@ class MPPovm(mp.MPArray):
 
     def sample(self, rng, state, n_samples, method='cond', n_group=1,
                mode='auto', eps=1e-10):
-        """Sample from `self` on state `rho_mpo`
+        """Sample from `self` on a quantum state
 
         :param mp.MPArray state: A quantum state as MPA (see `mode`)
         :param n_samples: Number of samples to create
