@@ -346,6 +346,65 @@ class MPPovm(mp.MPArray):
         assert (out < np.array(self.nsoutdims)[None, :]).all()
         return out
 
+    def est_fun(self, coeff, funs, samples, weights=None, eps=1e-10):
+        """Estimate a linear combination of functions of the POVM outcomes
+
+        :param np.ndarray coeff: A length `n_funs` array with the
+            coefficients of the linear combination
+        :param np.ndarray funs: A length `n_funs` sequence of functions
+        :param np.ndarray samples: A shape `(n_samples,
+            len(self.nsoutdims))` with samples from `self`
+        :param weights: A length `n_samples` array for weighted
+            samples. You can submit counts by passing them as
+            weights. The number of samples used in average and
+            variance estimation is determined by `weights.sum()` if
+            `weights` is given.
+
+        :returns: `(est, var)`: Estimated value and estimated variance
+            of the estimated value
+
+        """
+        n_funs = len(funs)
+        if coeff is not None:
+            assert coeff.ndim == 1
+            assert coeff.dtype.kind == 'f'
+            assert coeff.shape[0] == n_funs
+        assert samples.ndim == 2
+        n_samples = n_avg_samples = samples.shape[0]
+        assert samples.shape[1] == len(self.nsoutdims)
+        if weights is not None:
+            assert weights.dtype.kind in 'fiu'
+            assert weights.shape == (n_samples,)
+            assert (weights >= 0).all()
+            # Number of samples used for taking averages -- may be
+            # different from `n_samples = samples.shape[0]` e.g. if
+            # counts have been put into the shape of samples.
+            n_avg_samples = weights.sum()
+        fun_out = np.zeros((n_funs, n_samples), float)
+        fun_out[:] = np.nan
+        for pos, fun in enumerate(funs):
+            fun_out[pos, :] = fun(samples)
+        # Expectation value of each function
+        w_fun_out = fun_out if weights is None else fun_out * weights[None, :]
+        ept = w_fun_out.sum(1) / n_avg_samples
+        # Covariance matrix of the functions
+        cov = np.dot(fun_out, w_fun_out.T) / n_avg_samples
+        cov -= np.outer(ept, ept)
+        # - Has the unbiased estimator larger MSE?
+        # - Switch from function covariance to function estimate covariance
+        cov *= (n_avg_samples / (n_avg_samples - 1)) / n_avg_samples
+        if coeff is None:
+            return ept, cov
+
+        # Expectation value / estimate of the linear combination
+        est = np.inner(coeff, ept)
+        # Estimated variance
+        var_est = np.inner(coeff, np.dot(cov, coeff))
+        assert var_est >= -eps
+        if var_est < 0:
+            var_est = 0
+        return est, var_est
+
     def counts_from(self, other, samples, eps=1e-10):
         """Obtain counts from samples of another MPPovm `other`
 
