@@ -497,3 +497,59 @@ def test_mppovm_est_fun(
     sum_ept2, sum_var2 = mpp.est_fun(coeff, funs, count_samples, weights, eps)
     assert abs(sum_ept - sum_ept2) <= eps
     assert abs(sum_var - sum_var2) <= eps
+
+
+@pt.mark.parametrize(
+    'method, n_samples', [
+        ('direct', 1000), ('direct', 10000),
+        pt.mark.long(('direct', 100000)), pt.mark.long(('cond', 100))
+    ])
+@pt.mark.parametrize(
+    'nr_sites, local_dim, bond_dim, measure_width, local_width', [
+        (4, 2, 3, 2, 2),
+        pt.mark.long((5, 2, 2, 3, 2)),
+        pt.mark.long((4, 3, 2, 2, 2)),
+    ])
+@pt.mark.parametrize('nonuniform', [False, True])
+def test_mppovm_list_counts_from(
+        method, n_samples, nr_sites, local_dim, bond_dim, measure_width,
+        local_width, nonuniform, rgen, eps=1e-10):
+    """Verify that estimated probabilities from MPPovmList.estprob_from()
+    are reasonable accurate"""
+
+    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
+    mps.normalize()
+
+    local_xyz = (povm.x_povm(local_dim), povm.y_povm(local_dim))
+    if local_dim == 2:
+        local_xyz += (povm.z_povm(local_dim),)
+    xyz = [povm.MPPovm.from_local_povm(x, 1) for x in local_xyz]
+    x, y = xyz[:2]
+    local_pauli = povm.pauli_povm(local_dim)
+    pauli = povm.MPPovm.from_local_povm(local_pauli, local_width)
+    # POVM list with global support
+    g_povm = povm.MPPovmList(it.chain(
+        (mp.outer(factor for _, factor in zip(
+            range(nr_sites), it.chain.from_iterable(it.repeat(obs))))
+         for obs in it.product(xyz, repeat=measure_width)),
+        (mp.outer((x,) * (nr_sites - 1) + (y,)),) if nonuniform else ()
+    ))
+    # POVM list with local support
+    l_povm = povm.MPPovmList(
+        _embed_povm(nr_sites, startsite, local_dim, pauli)
+        for startsite in range(nr_sites - local_width + 1)
+    )
+    samples = tuple(g_povm.sample(
+        rgen, mps, n_samples, method, mode='mps', eps=eps))
+    est_prob, n_samples = zip(*l_povm.estprob_from(g_povm, samples, eps))
+    exact_prob = tuple(l_povm.expectations(mps, 'mps'))
+    for n_sam, est, exact, mpp in zip(
+            n_samples, est_prob, exact_prob, l_povm.mpps):
+        assert est.shape == mpp.nsoutdims
+        assert est.shape == exact.shape
+        assert n_sam.shape == exact.shape
+        # Consistency check on n_samples_est: All entries should be
+        # equal unless `nonuniform` is True.
+        assert (not (n_sam == n_sam.flat[0]).all()) == nonuniform
+        # Compare against exact probabilities
+        assert (abs(est - exact) / (3 / n_sam**0.5)).max() <= 1

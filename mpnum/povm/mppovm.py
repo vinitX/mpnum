@@ -561,3 +561,108 @@ class MPPovm(mp.MPArray):
             counts[out] = (samples == np.array(out)[None, :]).all(1).sum()
         assert counts.sum() == n_samples
         return counts
+
+    def estprob_from_mpplist(self, other, samples, eps=1e-10):
+        """Estimate POVM probabilities from MPPovmList samples
+
+        :param MPPovmList other: An :class:`MPPovmList` instance
+        :param samples: Iterable of samples (e.g. from
+            :func:`MPPovmList.samples()`)
+
+        :returns: `(p_est, n_samples_used)`, both are shape
+            `self.nsoutdims` ndarrays. `p_est` provides estimated
+            probabilities and `eff_n_samples` provides the effective
+            number of samples used for each probability.
+
+        """
+        counts = np.zeros((len(other.mpps),) + self.nsoutdims, float)
+        n_samples = np.zeros(len(other.mpps), int)
+        for pos, other_mpp, other_samples in zip(it.count(), other.mpps, samples):
+            counts[pos, ...], n_samples[pos] = self.counts_from(
+                other_mpp, other_samples, eps)
+        n_out = np.prod(self.nsoutdims)
+        counts = counts.reshape((len(other.mpps), n_out))
+        given = ~np.isnan(counts)
+        n_samples_used = (given * n_samples[:, None]).sum(0)
+        # Probabilities without any estimates produce 0.0 / 0 = nan.
+        p_est = np.nansum(counts * n_samples[:, None], 0) / n_samples_used
+        return p_est.reshape(self.nsoutdims), \
+            n_samples_used.reshape(self.nsoutdims)
+
+
+class MPPovmList:
+
+    """A list of :class:`Matrix Product POVMs <MPPovm>`
+
+    This class allows you to
+
+    - Conveniently obtain samples and estimated or exact probabilities
+      for a list of :class:`MPPovms <MPPovm>`
+    - Estimate probabilities from samples for a different
+      :class:`MPPovmList`
+
+    .. automethod:: __init__
+
+    """
+
+    def __init__(self, mppseq):
+        """Construct a MPPovmList
+
+        :param mppseq: An iterable of :class:`MPPovm` objects
+
+        All MPPovms must have the same number of sites.
+
+        """
+        self.mpps = tuple(mppseq)
+        assert all(len(mpp) == len(self.mpps[0]) for mpp in self.mpps)
+        self.mpps = tuple(mpp if isinstance(mpp, MPPovm) else MPPovm(mpp)
+                          for mpp in self.mpps)
+
+    def sample(self, rng, state, n_samples, method, n_group=1, mode='auto',
+               eps=1e-10):
+        """Sample from MPPovms on state
+
+        Parameters: See :func:`MPPovm.sample()`.
+
+        Return value: Iterable of return values from
+        :func:`MPPovm.sample()`.
+
+        """
+        for mpp in self.mpps:
+            yield mpp.sample(rng, state, n_samples, method, n_group, mode, eps)
+
+    def estprob_from(self, other, samples, eps=1e-10):
+        """Estimate POVM probabilities from MPPovmList samples
+
+        :param MPPovmList other: A different MPPovmList
+        :param samples: Samples from `other`
+
+        :returns: Iterator over `(p_est, n_samples_used)` from
+            :func:`MPPovm.estprob_from_mpplist()`.
+
+        .. todo:: Add a separate method to estimate from samples for
+            `self`. This method should not be used if `other` is equal
+            to `self`!
+
+        """
+        assert len(self.mpps[0]) == len(other.mpps[0])
+        for mpp in self.mpps:
+            yield mpp.estprob_from_mpplist(other, samples, eps)
+
+    def expectations(self, state, mode='auto'):
+        """Compute exact probabilities as full arrays
+
+        :param state: A quantum state as MPA
+        :param mode: Passed to :func:`MPPovm.expectations()`
+
+        :returns: Iterator over shape `self.mpps[i].nsoutdims`
+            ndarrays
+
+        .. todo:: Rename either this method or
+            :func:`MPPovm.expectations()` to reduce confusion.
+
+        """
+        assert len(state) == len(self.mpps[0])
+        for mpp in self.mpps:
+            # TODO Add real/non-negative/unit sum check.
+            yield mp.prune(next(mpp.expectations(state, mode)), True).to_array()
