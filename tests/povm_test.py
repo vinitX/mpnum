@@ -412,3 +412,86 @@ def test_mppovm_counts_from(
     p_est = counts
     assert abs(p_exact[given].sum() - p_est[given].sum()) <= eps
     assert abs(p_exact[given] - p_est[given]).max() <= 1 / n_samples**0.5
+
+
+@pt.mark.parametrize('method, n_samples', MPPOVM_SAMPLE_PARAM)
+@pt.mark.parametrize('nr_sites, startsite, local_dim', MPPOVM_PARAM)
+def test_mppovm_est_fun(
+        method, n_samples, nr_sites, startsite, local_dim, rgen):
+    """Check that .est_fun() probability estimates are reasonably accurate"""
+    bond_dim = 3
+    eps = 1e-10
+    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
+    mps.normalize()
+
+    local_x = povm.x_povm(local_dim)
+    local_y = povm.y_povm(local_dim)
+    xx = povm.MPPovm.from_local_povm(local_x, 2)
+    y = povm.MPPovm.from_local_povm(local_y, 1)
+    mpp = mp.outer([xx, povm.MPPovm.eye([local_dim]), y])
+    mpp = _embed_povm(nr_sites, startsite, local_dim, mpp)
+
+    p_exact = next(mpp.expectations(mps, 'mps'))
+    p_exact = mp.prune(p_exact, singletons=True).to_array()
+    assert (abs(p_exact.imag) <= eps).all()
+    p_exact = p_exact.real
+    assert (p_exact >= -eps).all()
+    assert (p_exact <= 1 + eps).all()
+    p_exact[p_exact <= 0] = 0
+    assert abs(p_exact.sum() - 1) <= eps
+    p_exact /= p_exact.sum()
+    assert abs(p_exact.sum() - 1) <= eps
+
+    cov_p_exact = np.diag(p_exact.flat) - np.outer(p_exact.flat, p_exact.flat)
+    samples = mpp.sample(rgen, mps, n_samples, method, 4, 'mps', eps)
+
+    funs = []
+    nsoutdims = mpp.nsoutdims
+    out = np.unravel_index(range(np.prod(nsoutdims)), nsoutdims)
+    out = np.array(out).T[:, None, :].copy()
+    for ind in range(np.prod(nsoutdims)):
+        funs.append(lambda s, ind=ind: (s == out[ind]).all(1))
+
+    ept, cov = mpp.est_fun(None, funs, samples, None, eps)
+
+    counts = mpp.count_samples(samples)
+    p_est = counts / n_samples
+
+    assert (ept == p_est.ravel()).all()
+    assert abs(p_exact - p_est).max() <= 3 / n_samples**0.5
+
+    cov_ex = cov_p_exact / n_samples
+    diff = cov - cov_ex
+    # FIXME: It is unclear what statistical meaning the following
+    # tests have, if any at all.
+    #
+    # The covariances of the sample means (which we estimate here)
+    # decrease by 1/n_samples, so we multiply with n_samples before
+    # comparing to the rule-of-thumb for the estimation error.
+    assert abs(diff).max() * n_samples <= 1 / n_samples**0.5
+
+    # All probabilities sum to one, and we can estimate that well.
+    coeff = np.ones(len(funs), dtype=float)
+    # Test with dummy weights
+    weights = np.ones(n_samples, dtype=float)
+    sum_ept, sum_var = mpp.est_fun(coeff, funs, samples, weights, eps)
+    assert abs(sum_ept - 1.0) <= eps
+    assert sum_var <= eps
+
+    # Check a sum of probabilities with varying signs.
+    coeff = ((-1)**rgen.choice(2, len(funs))).astype(float)
+    sum_ept, sum_var = mpp.est_fun(coeff, funs, samples, None, eps)
+    ex_sum = np.inner(coeff, p_exact.flat)
+    ex_var = np.inner(coeff, np.dot(cov_ex, coeff))
+    assert abs(sum_ept - ex_sum) <= 3 / n_samples**0.5
+    assert abs(sum_var - ex_var) * n_samples <= 3 / n_samples**0.5
+
+    # Convert samples to counts and test again
+    counts = mpp.count_samples(samples, eps=eps)
+    assert counts.sum() == n_samples
+    count_samples = np.array(np.unravel_index(range(np.prod(mpp.nsoutdims)),
+                                              mpp.nsoutdims)).T
+    weights = counts.ravel()
+    sum_ept2, sum_var2 = mpp.est_fun(coeff, funs, count_samples, weights, eps)
+    assert abs(sum_ept - sum_ept2) <= eps
+    assert abs(sum_var - sum_var2) <= eps
