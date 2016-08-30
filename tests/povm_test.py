@@ -26,9 +26,15 @@ MPPOVM_PARAM = [
     pt.mark.long((7, 1, 2)), pt.mark.long((8, 2, 2)), pt.mark.long((6, 1, 3))
 ]
 # It is not guaranteed that probabilities will be estimated to within
-# `p_maxdiff`. Exceptions have a low probability.
-# n_samples, p_maxdiff
-MPPOVM_SAMPLE_PARAM = [(100, 0.3), pt.mark.long((1000, 0.1))]
+# the thresholds used in the tests. Exceptions should have a low
+# probability.
+#
+# method, n_samples
+MPPOVM_SAMPLE_PARAM = [
+    ('direct', 100), ('cond', 100), pt.mark.long(('cond', 1000)),
+    ('direct', 2500), pt.mark.long(('direct', 10000)),
+    pt.mark.long(('direct', 40000)), pt.mark.long(('direct', 80000))
+]
 
 
 def mp_from_array_repeat(array, nr_sites):
@@ -321,11 +327,11 @@ def test_mppovm_find_matching_bell(eps=1e-10):
     assert np.isnan(prefactors[~match]).all()
 
 
-@pt.mark.parametrize('n_samples, p_maxdiff', MPPOVM_SAMPLE_PARAM)
-@pt.mark.parametrize('method', ['cond', 'direct'])
+@pt.mark.parametrize('method, n_samples',
+                     MPPOVM_SAMPLE_PARAM + [pt.mark.long(('cond', 10000))])
 @pt.mark.parametrize('nr_sites, startsite, local_dim', MPPOVM_PARAM)
 def test_mppovm_sample(
-        method, n_samples, p_maxdiff, nr_sites, startsite, local_dim, rgen):
+        method, n_samples, nr_sites, startsite, local_dim, rgen):
     """Check that probability estimates from samples are reasonable accurate"""
     bond_dim = 3
     eps = 1e-10
@@ -353,14 +359,14 @@ def test_mppovm_sample(
     counts = mpp.count_samples(samples)
     p_est = counts / n_samples
 
-    assert (abs(p_exact - p_est) <= p_maxdiff).all()
+    assert abs(p_est.sum() - 1.0) <= eps
+    assert abs(p_exact - p_est).max() <= 3 / n_samples**0.5
 
 
-@pt.mark.parametrize('n_samples, p_maxdiff', MPPOVM_SAMPLE_PARAM)
-@pt.mark.parametrize('method', ['cond', 'direct'])
+@pt.mark.parametrize('method, n_samples', MPPOVM_SAMPLE_PARAM)
 @pt.mark.parametrize('nr_sites, startsite, local_dim', MPPOVM_PARAM)
 def test_mppovm_counts_from(
-        method, n_samples, p_maxdiff, nr_sites, startsite, local_dim, rgen):
+        method, n_samples, nr_sites, startsite, local_dim, rgen):
     """Check that probability estimates from samples are reasonable accurate"""
     bond_dim = 3
     eps = 1e-10
