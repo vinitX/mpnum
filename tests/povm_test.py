@@ -405,7 +405,9 @@ def test_mppovm_counts_from(
         n_gr = 3
 
     samples = mpp.sample(rgen, mps, n_samples, method, n_gr, 'mps', eps)
-    counts = small_mpp.counts_from(mpp, samples)
+    counts, counts_n_samples = small_mpp.counts_from(mpp, samples)
+    # In this case, we use all the samples from `mpp`.
+    assert abs(counts_n_samples - n_samples) / n_samples <= eps
     given = ~np.isnan(counts)
     assert (given == given_expected).all()
 
