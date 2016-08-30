@@ -506,12 +506,11 @@ class MPPovm(mp.MPArray):
         :param np.ndarray samples: `(n_samples, len(other.nsoutdims))`
             array of samples for `other`
 
-        :returns: `(counts, eff_n_samples)`. `counts`: Array of
+        :returns: `(counts, n_samples_used)`. `counts`: Array of
             normalized outcome counts; the sum over the available
             counts is equal to the fraction of the identity given by
-            the corresponding POVM elements. `eff_n_samples`:
-            Effective number of samples which have contributed to
-            `counts` or `None` if not available (see source).
+            the corresponding POVM elements. `eff_n_samples`: Number
+            of samples which have contributed to `counts`.
 
         """
         assert len(self) == len(other)
@@ -523,14 +522,6 @@ class MPPovm(mp.MPArray):
         assert match.shape == self.nsoutdims + other_outdims
 
         n_nsout = len(self.nsoutdims)
-        other_used = match.any(tuple(range(n_nsout)))
-        other_prefactor = other._elemsum_identity(support, other_used, eps)
-        # If the elements from the other POVM we have used do not sum
-        # to the identity, we cannot provide an effective number of
-        # samples.
-        effective_n_samples = None if other_prefactor is None \
-                              else n_samples * other_prefactor
-
         given = match.any(tuple(range(n_nsout, match.ndim)))
         all_prefactor = self._elemsum_identity(support, given, eps)
         assert all_prefactor is not None, (
@@ -538,6 +529,9 @@ class MPPovm(mp.MPArray):
             "conversion not possible")
 
         samples = samples[:, support]
+        n_samples_used = \
+            match.reshape((np.prod(self.nsoutdims),) + other_outdims) \
+            [(slice(None),) + tuple(samples.T)].any(0).sum()
         counts = np.zeros(self.nsoutdims, float)
         for outcomes in np.argwhere(match):
             my_out, out = tuple(outcomes[:n_nsout]), outcomes[n_nsout:]
@@ -546,7 +540,7 @@ class MPPovm(mp.MPArray):
 
         assert abs(counts.sum() - all_prefactor) <= eps
         counts[~given] = np.nan
-        return counts, effective_n_samples
+        return counts, n_samples_used
 
     def count_samples(self, samples, weights=None, eps=1e-10):
         """Count number of outcomes in samples
