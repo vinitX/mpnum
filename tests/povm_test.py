@@ -20,14 +20,27 @@ from mpnum import _tools
 
 ALL_POVMS = {name: constructor for name, constructor in povm.__dict__.items()
              if name.endswith('_povm') and isfunction(constructor)}
+
 # nr_sites, startsite, local_dim
 MPPOVM_PARAM = [
     (4, 0, 2), (5, 0, 3), (5, 1, 2), (6, 1, 2),
     pt.mark.long((7, 1, 2)), pt.mark.long((8, 2, 2)), pt.mark.long((6, 1, 3))
 ]
+
+# --------------------------------------------------------------
+# Many tests in this module have a NON-ZERO FAILURE PROBABILITY.
+# --------------------------------------------------------------
+# 
 # It is not guaranteed that probabilities will be estimated to within
 # the thresholds used in the tests. Exceptions should have a low
-# probability.
+# probability. 
+#
+# TODO: Many tests in this module basically check that "estimation
+# error becomes smaller as the number of samples increases". Usually,
+# we check that the estimation error is smaller than a constant times
+# 1/sqrt(number of samples) (cf. e.g. central limit theorem or
+# variance of the estimator). This is a basic consistency check but
+# far from a statistical correctness check, which would be desirable.
 #
 # method, n_samples
 MPPOVM_SAMPLE_PARAM = [
@@ -464,9 +477,6 @@ def test_mppovm_est_fun(
 
     cov_ex = cov_p_exact / n_samples
     diff = cov - cov_ex
-    # FIXME: It is unclear what statistical meaning the following
-    # tests have, if any at all.
-    #
     # The covariances of the sample means (which we estimate here)
     # decrease by 1/n_samples, so we multiply with n_samples before
     # comparing to the rule-of-thumb for the estimation error.
