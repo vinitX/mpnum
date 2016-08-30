@@ -403,5 +403,6 @@ def test_mppovm_counts_from(
     given = ~np.isnan(counts)
     assert (given == given_expected).all()
 
-    p_est = counts / n_samples
-    assert (abs(p_exact[given] - p_est[given]) <= p_maxdiff).all()
+    p_est = counts
+    assert abs(p_exact[given].sum() - p_est[given].sum()) <= eps
+    assert abs(p_exact[given] - p_est[given]).max() <= 1 / n_samples**0.5
