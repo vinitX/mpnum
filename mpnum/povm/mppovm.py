@@ -156,7 +156,7 @@ class MPPovm(mp.MPArray):
         else:
             raise ValueError("Could not understand data dype.")
 
-    def find_matching_elements(self, other, eps=1e-10):
+    def find_matching_elements(self, other, exclude_dup=(), eps=1e-10):
         """Find POVM elements in `other` which have information on `self`
 
         We find all POVM sites in `self` which have only one possible
@@ -164,6 +164,9 @@ class MPPovm(mp.MPArray):
         check `other` and `self` for any common POVM elements.
 
         :param other: Another MPPovm
+        :param exclude_duplicates: Sequence which can include `'self'`
+            or `'other'` (or both) to assert that there are no
+            linearly dependent pairs of elements in `self` or `other`.
         :param eps: Threshould for values which should be treated as zero
 
         :returns: (`matches`, `prefactors`)
@@ -181,6 +184,8 @@ class MPPovm(mp.MPArray):
         if self.hdims != other.hdims:
             raise ValueError('Incompatible input Hilbert space: {!r} vs {!r}'
                              .format(self.hdims, other.hdims))
+        if len(exclude_dup) > 0:
+            assert {'self', 'other'}.issuperset(exclude_duplicates)
         # Drop measurement outcomes in `other` if there is only one
         # measurement outcome in `self`
         keep_outdims = (outdim > 1 for outdim in self.outdims)
@@ -220,6 +225,15 @@ class MPPovm(mp.MPArray):
         # Equality in the Cauchy-Schwarz inequality implies that the
         # vectors are linearly dependent
         match = abs(inner/normprod - 1) <= eps
+
+        n_sout = len(self.nsoutdims)
+        # The two checks are quite indirect
+        if 'self' in exclude_dup:
+            assert (match.sum(tuple(range(n_sout))) <= 1).all(), \
+                "Pair of linearly dependent POVM elements in `self`"
+        if 'other' in exclude_dup:
+            assert (match.sum(tuple(range(n_sout, match.ndim))) <= 1).all(), \
+                "Pair of linearly dependent POVM elements in `other`"
 
         # Compute the prefactors by which matching elements differ
         snormsq_shape = snormsq.shape
