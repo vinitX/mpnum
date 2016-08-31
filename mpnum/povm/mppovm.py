@@ -685,8 +685,9 @@ class MPPovmList:
 
     - Conveniently obtain samples and estimated or exact probabilities
       for a list of :class:`MPPovms <MPPovm>`
-    - Estimate probabilities from samples for a different
-      :class:`MPPovmList`
+    - Estimate probabilities from samples for a different MPPovmList
+    - Estimate linear functions of probabilities of an MPPovmList from
+      samples for a different MPPovmList
 
     .. automethod:: __init__
 
