@@ -30,10 +30,10 @@ MPPOVM_PARAM = [
 # --------------------------------------------------------------
 # Many tests in this module have a NON-ZERO FAILURE PROBABILITY.
 # --------------------------------------------------------------
-# 
+#
 # It is not guaranteed that probabilities will be estimated to within
 # the thresholds used in the tests. Exceptions should have a low
-# probability. 
+# probability.
 #
 # TODO: Many tests in this module basically check that "estimation
 # error becomes smaller as the number of samples increases". Usually,
