@@ -498,6 +498,7 @@ class MPPovm(mp.MPArray):
             and `est_fun`)
 
         """
+        assert coeff.shape == self.nsoutdims
         support = tuple(pos for pos, dim in enumerate(self.outdims) if dim > 1)
         n_nsout = len(self.nsoutdims)
         myout_n_samples = np.zeros(self.nsoutdims, int)
