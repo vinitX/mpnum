@@ -65,7 +65,16 @@ class MPPovm(mp.MPArray):
 
     @classmethod
     def eye(cls, local_dims):
-        return cls.from_kron((np.eye(dim).reshape((1, dim, dim)) for dim in local_dims))
+        """Construct MP-POVM with no output or measurement
+
+        Corresponds to taking the partial trace of the quantum state
+        and a shorter MP-POVM.
+
+        :param local_dims: Iterable of local dimensions
+
+        """
+        return cls.from_kron(
+            (np.eye(dim).reshape((1, dim, dim)) for dim in local_dims))
 
     @property
     def outdims(self):
