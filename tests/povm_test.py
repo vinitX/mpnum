@@ -563,3 +563,106 @@ def test_mppovm_list_counts_from(
         assert (not (n_sam == n_sam.flat[0]).all()) == nonuniform
         # Compare against exact probabilities
         assert (abs(est - exact) / (3 / n_sam**0.5)).max() <= 1
+
+
+@pt.mark.parametrize(
+    'method, n_samples', [
+        pt.mark.long(('cond', 100)),
+        ('direct', 1000),
+        pt.mark.long(('direct', 100000)),
+    ])
+@pt.mark.parametrize(
+    'nr_sites, local_dim, bond_dim, measure_width, local_width', [
+        (3, 2, 3, 2, 2),
+        pt.mark.long((4, 2, 3, 3, 2)),
+        pt.mark.long((5, 2, 3, 2, 2)),
+    ])
+@pt.mark.parametrize('nonuniform', [True, pt.mark.long(False)])
+@pt.mark.parametrize('function', ['randn', 'ones', 'signs', pt.mark.long('rand')])
+def test_mppovm_list_estfun_from(
+        method, n_samples, nr_sites, local_dim, bond_dim, measure_width,
+        local_width, nonuniform, function, rgen, eps=1e-10):
+    """Verify that estimated probabilities from MPPovmList.estprob_from()
+    are reasonable accurate"""
+
+    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
+    mps.normalize()
+
+    local_xyz = (povm.x_povm(local_dim), povm.y_povm(local_dim))
+    if local_dim == 2:
+        local_xyz += (povm.z_povm(local_dim),)
+    xyz = [povm.MPPovm.from_local_povm(x, 1) for x in local_xyz]
+    x, y = xyz[:2]
+    local_pauli = povm.pauli_povm(local_dim)
+    pauli = povm.MPPovm.from_local_povm(local_pauli, local_width)
+    # POVM list with global support
+    g_povm = povm.MPPovmList(it.chain(
+        (mp.outer(factor for _, factor in zip(
+            range(nr_sites), it.chain.from_iterable(it.repeat(obs))))
+         for obs in it.product(xyz, repeat=measure_width)),
+        (mp.outer((x,) * (nr_sites - 1) + (y,)),) if nonuniform else ()
+    ))
+    # POVM list with local support
+    l_povm = povm.MPPovmList(
+        _embed_povm(nr_sites, startsite, local_dim, pauli)
+        for startsite in range(nr_sites - local_width + 1)
+    )
+    if function == 'rand':
+        coeff = lambda x: rgen.rand(*x)
+    elif function == 'randn':
+        coeff = lambda x: rgen.randn(*x)
+    elif function == 'ones':
+        coeff = lambda x: np.ones(x)
+    elif function == 'signs':
+        coeff = lambda x: rgen.choice([1., -1.], x)
+    else:
+        raise ValueError('Unknown function {!r}'.format(function))
+    coeff = [coeff(mpp.nsoutdims) for mpp in l_povm.mpps]
+    samples = tuple(g_povm.sample(
+        rgen, mps, n_samples, method, mode='mps', eps=eps))
+    exact_prob = tuple(l_povm.expectations(mps, 'mps'))
+
+    est, var = l_povm.estfun_from(g_povm, coeff, samples, eps)
+
+    # The final estimator is based on the samples for
+    # `g_povm`. Therefore, it is correct to use `n_samples` below (and
+    # not the "effective samples" for the `l_povm` probability
+    # estimation returned by :func:`l_povm.estprob_from()`.
+    exact_est = sum(np.inner(c.flat, p.flat) for c, p in zip(coeff, exact_prob))
+    assert abs(est - exact_est) <= 3 / n_samples**0.5
+    if function == 'ones':
+        assert abs(exact_est - (nr_sites - local_width + 1)) <= eps
+        assert abs(est - exact_est) <= eps
+
+    # The following code will only work for small systems. Probably
+    # nr_sites = 16 will work, but let's stay safe.
+    assert nr_sites <= 8, "Larger systems will require a lot of memory"
+    # Use the estimator from `l_povm._estfun_from_estimator()` to
+    # compute the exact variance of the estimate. We can assume that
+    # estimator to be mostly correct because above, we have checked
+    # the it produces accurate estimates (for large numbers of
+    # samples).
+    n_samples2 = [s.shape[0] for s in samples]
+    # Convert from matching functions + coefficients to coefficients
+    # for each probability.
+    est_coeff, est_funs = l_povm._estfun_from_estimator(g_povm, coeff,
+                                                        n_samples2, eps)
+    est_p_coeff = [np.zeros(mpp.nsoutdims, float) for mpp in g_povm.mpps]
+    for fun_coeff, funs, p_coeff, mpp in zip(
+            est_coeff, est_funs, est_p_coeff, g_povm.mpps):
+        out = np.unravel_index(range(np.prod(mpp.nsoutdims)), mpp.nsoutdims)
+        out = np.array(out).T.copy()
+        for c, fun in zip(fun_coeff, funs):
+            match = fun(out)
+            p_coeff.flat[match] += c
+    exact_prob = tuple(g_povm.expectations(mps, 'mps'))
+    exact_p_cov = (np.diag(p.flat) - np.outer(p.flat, p.flat) for p in exact_prob)
+    exact_var = sum(np.inner(c.flat, np.dot(cov, c.flat))
+                    for c, cov in zip(est_p_coeff, exact_p_cov))
+    # Convert variance to variance of the estimator (=average)
+    exact_var /= n_samples
+
+    assert n_samples * abs(var - exact_var) <= 1 / n_samples**0.5
+    if function == 'ones':
+        assert abs(exact_var) <= eps
+        assert abs(var - exact_var) <= eps
