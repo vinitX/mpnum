@@ -201,10 +201,10 @@ class MPPovm(mp.MPArray):
         :returns: (`matches`, `prefactors`)
 
         `matches[i1, ..., ik, j1, ..., jk]` specifies whether outcome
-         `(i1, ..., ik)` of `self` has the same POVM element as the
-         partial outcome `(j1, ..., jk)` of `other`; outcomes are
-         specified only on the sites mentioned in `sites` and `k =
-         len(sites)`.
+        `(i1, ..., ik)` of `self` has the same POVM element as the
+        partial outcome `(j1, ..., jk)` of `other`; outcomes are
+        specified only on the sites mentioned in `sites` and `k =
+        len(sites)`.
 
         `prefactors[i1, ..., ik]` specifies how samples from `other`
         have to be weighted to correspond to samples for `self`.
