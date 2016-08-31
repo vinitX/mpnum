@@ -7,6 +7,7 @@ import numpy as np
 import mpnum.factory as factory
 import mpnum.mparray as mp
 import mpnum.mpsmpo as mpsmpo
+from mpnum import povm as mpp
 
 
 class MPPovm(mp.MPArray):
@@ -819,3 +820,52 @@ class MPPovmList:
         assert len(state) == len(self.mpps[0])
         for mpp in self.mpps:
             yield mpp.probab(state, mode)
+
+
+def block_pauli_povmlist(nr_sites, local_dim, block_width):
+    """Pauli POVM on local blocks
+
+    The returned :class:`MPPovmList` will have :class:`MPPovms
+    <MPPovm>` with the tensor product Pauli POVM on `block_width`
+    neighbouring sites placed at every possible position on `nr_sites`
+    sites. The remaining sites are not measured
+    (:func:`MPPovm.eye()`).
+
+    """
+    pauli_block = MPPovm.from_local_povm(mpp.pauli_povm(local_dim), block_width)
+    return MPPovmList(
+        pauli_block.embed(nr_sites, startsite, local_dim)
+        for startsite in range(nr_sites - block_width + 1)
+    )
+
+
+def tiled_pauli_povmlist(nr_sites, local_dim, block_width):
+    """Local block Pauli observables tiled across the chain
+
+    We start with all tensor products of the three Pauli observables
+    :func:`x_povm <mpnum.povm.localpovm.x_povm>`, :func:`y_povm
+    <mpnum.povm.localpovm.y_povm>` and :func:`z_povm
+    <mpnum.povm.localpovm.z_povm>` on `block_width` neighbours. (For
+    `local_dim > 2`, :func:`z_povm <mpnum.povm.localpovm.z_povm>` is
+    not included.) We take these observables and repeat them across
+    the entire chain of `nr_sites` and return the result as an
+    :class:`MPPovmList`.
+
+    For example, for `local_dim > 2` (i.e. no Z), `block_width = 2`
+    and `nr_sites = 5`, the POVMs of the following observables will be
+    returned::
+
+        XX,XX,X
+        XY,XY,X
+        YX,YX,Y
+        YY,YY,Y
+
+    The commas have been added emphasize the block structure.
+
+    """
+    mpps = [MPPovm.from_local_povm(x, 1) for x in mpp.pauli_parts(local_dim)]
+    return MPPovmList(
+        MPPovm(mp.outer(factor for _, factor in zip(
+            range(nr_sites), it.chain.from_iterable(it.repeat(factors)))))
+        for factors in it.product(mpps, repeat=block_width)
+    )
