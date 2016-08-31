@@ -200,14 +200,15 @@ class MPPovm(mp.MPArray):
 
         :returns: (`matches`, `prefactors`)
 
-        `matches[i1, ..., ik, j1, ..., jk]` specifies whether outcome
-        `(i1, ..., ik)` of `self` has the same POVM element as the
-        partial outcome `(j1, ..., jk)` of `other`; outcomes are
-        specified only on the sites mentioned in `sites` and `k =
-        len(sites)`.
+        `matches[i_1, ..., i_k, j_1, ..., j_k]` specifies whether
+        outcome `(i_1, ..., i_k)` of `self` has the same POVM element
+        as the partial outcome `(j_1, ..., j_k)` of `other`; outcomes
+        are specified only on the sites mentioned in `sites` such that
+        `k = len(sites)`.
 
-        `prefactors[i1, ..., ik]` specifies how samples from `other`
-        have to be weighted to correspond to samples for `self`.
+        `prefactors[i_1, ..., i_k, j_1, ..., j_k]` specifies how samples
+        from `other` have to be weighted to correspond to samples for
+        `self`.
 
         """
         if self.hdims != other.hdims:
@@ -595,7 +596,7 @@ class MPPovm(mp.MPArray):
         :returns: `(counts, n_samples_used)`. `counts`: Array of
             normalized outcome counts; the sum over the available
             counts is equal to the fraction of the identity given by
-            the corresponding POVM elements. `eff_n_samples`: Number
+            the corresponding POVM elements. `n_samples_used`: Number
             of samples which have contributed to `counts`.
 
         """
@@ -657,7 +658,7 @@ class MPPovm(mp.MPArray):
 
         :returns: `(p_est, n_samples_used)`, both are shape
             `self.nsoutdims` ndarrays. `p_est` provides estimated
-            probabilities and `eff_n_samples` provides the effective
+            probabilities and `n_samples_used` provides the effective
             number of samples used for each probability.
 
         """
