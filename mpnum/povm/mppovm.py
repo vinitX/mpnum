@@ -76,6 +76,28 @@ class MPPovm(mp.MPArray):
         return cls.from_kron(
             (np.eye(dim).reshape((1, dim, dim)) for dim in local_dims))
 
+    def embed(self, nr_sites, startsite, local_dim):
+        """Embed MP-POVM into larger system
+
+        Applying the resulting embedded MP-POVM to a state `rho` gives
+        the same result as applying the original MP-POVM `self` on the
+        reduced state of sites `range(startsite, startsite +
+        len(self))` of `rho`.
+
+        :param nr_sites: Number of sites of the resulting MP-POVM
+        :param startsite: Position of the first site of `self` in the
+            resulting MP-POVM
+        :param local_dim: Local dimension of sites to be added
+
+        :returns: MP-POVM with `self` on sites `range(startsite,
+            startsite + len(self))` and :func:`MPPovm.eye()` elsewhere
+
+        """
+        left = MPPovm.eye([local_dim] * startsite)
+        n_right = nr_sites - len(self) - startsite
+        right = MPPovm.eye([local_dim] * n_right)
+        return MPPovm(mp.outer([left, self, right]))
+
     @property
     def outdims(self):
         """Tuple of outcome dimensions"""
