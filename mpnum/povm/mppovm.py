@@ -109,8 +109,9 @@ class MPPovm(mp.MPArray):
     def probability_map(self):
         """Map that takes a raveled MPDO to the POVM probabilities
 
-        You can use :func:`MPPovm.expectations()` as a convenient
-        wrapper around this map.
+        You can use :func:`MPPovm.expectations()` or
+        :func:`MPPovm.probab()` as convenient wrappers around this
+        map.
 
         If `rho` is a matrix product density operator (MPDO), then
 
@@ -164,6 +165,25 @@ class MPPovm(mp.MPArray):
             return
         else:
             raise ValueError("Could not understand data dype.")
+
+
+    def probab(self, state, mode='auto'):
+        """Compute probabilities of `state`
+
+        If you want to compute the probabilities for reduced states of
+        `state`, you can use :func:`self.expectations()` instead of
+        this function.
+
+        :param mp.MPArray state: A quantum state as MPA. Must have the
+            same length as `self`.
+        :param mode: `'mps'`, `'mpdo'` or `'pmps'`. See
+            :func:`self.expectations()`.
+
+        :returns: Probabilities as MPArray
+
+        """
+        assert len(self) == len(state)
+        return next(self.expectations(state, mode))
 
     def find_matching_elements(self, other, exclude_dup=(), eps=1e-10):
         """Find POVM elements in `other` which have information on `self`
@@ -348,8 +368,7 @@ class MPPovm(mp.MPArray):
 
         """
         assert len(self) == len(state)
-        probab = next(self.expectations(state, mode))
-        probab = mp.prune(probab, singletons=True)
+        probab = mp.prune(self.probab(state, mode), singletons=True)
         probab_sum = probab.sum()
         # For large numbers of sites, NaNs appear. Why?
         assert abs(probab_sum.imag) <= eps
@@ -764,20 +783,15 @@ class MPPovmList:
             for c, f, s, mpp in zip(est_coeff, funs, samples, other.mpps)))
         return sum(est), sum(var)
 
-    def expectations(self, state, mode='auto'):
-        """Compute exact probabilities as full arrays
+    def probab(self, state, mode='auto'):
+        """Compute probabilities
 
         :param state: A quantum state as MPA
         :param mode: Passed to :func:`MPPovm.expectations()`
 
-        :returns: Iterator over shape `self.mpps[i].nsoutdims`
-            ndarrays
-
-        .. todo:: Rename either this method or
-            :func:`MPPovm.expectations()` to reduce confusion.
+        :returns: Iterator over shape probabilities as MPArrays
 
         """
         assert len(state) == len(self.mpps[0])
         for mpp in self.mpps:
-            # TODO Add real/non-negative/unit sum check.
-            yield mp.prune(next(mpp.expectations(state, mode)), True).to_array()
+            yield mpp.probab(state, mode)

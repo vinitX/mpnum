@@ -358,8 +358,7 @@ def test_mppovm_sample(
     mpp = mp.outer([xx, povm.MPPovm.eye([local_dim]), y])
     mpp = _embed_povm(nr_sites, startsite, local_dim, mpp)
 
-    p_exact = next(mpp.expectations(mps, 'mps'))
-    p_exact = mp.prune(p_exact, singletons=True).to_array()
+    p_exact = mp.prune(mpp.probab(mps, 'mps'), singletons=True).to_array()
 
     if n_samples > 100:
         n_gr = 5
@@ -407,8 +406,7 @@ def test_mppovm_counts_from(
     given_sites = [x_given if ((startsite + i) % 2) == 0 else y_given
                    for i in (0, 2, 3)]
     given_expected = np.einsum('i, j, k -> ijk', *given_sites)
-    p_exact = next(small_mpp.expectations(mps, 'mps'))
-    p_exact = mp.prune(p_exact, singletons=True).to_array()
+    p_exact = mp.prune(small_mpp.probab(mps, 'mps'), singletons=True).to_array()
 
     if n_samples > 100:
         n_gr = 5
@@ -446,8 +444,7 @@ def test_mppovm_est_fun(
     mpp = mp.outer([xx, povm.MPPovm.eye([local_dim]), y])
     mpp = _embed_povm(nr_sites, startsite, local_dim, mpp)
 
-    p_exact = next(mpp.expectations(mps, 'mps'))
-    p_exact = mp.prune(p_exact, singletons=True).to_array()
+    p_exact = mp.prune(mpp.probab(mps, 'mps'), singletons=True).to_array()
     assert (abs(p_exact.imag) <= eps).all()
     p_exact = p_exact.real
     assert (p_exact >= -eps).all()
@@ -552,7 +549,8 @@ def test_mppovm_list_counts_from(
     samples = tuple(g_povm.sample(
         rgen, mps, n_samples, method, mode='mps', eps=eps))
     est_prob, n_samples = zip(*l_povm.estprob_from(g_povm, samples, eps))
-    exact_prob = tuple(l_povm.expectations(mps, 'mps'))
+    exact_prob = tuple(mp.prune(p, singletons=True).to_array()
+                       for p in l_povm.probab(mps, 'mps'))
     for n_sam, est, exact, mpp in zip(
             n_samples, est_prob, exact_prob, l_povm.mpps):
         assert est.shape == mpp.nsoutdims
@@ -620,7 +618,8 @@ def test_mppovm_list_estfun_from(
     coeff = [coeff(mpp.nsoutdims) for mpp in l_povm.mpps]
     samples = tuple(g_povm.sample(
         rgen, mps, n_samples, method, mode='mps', eps=eps))
-    exact_prob = tuple(l_povm.expectations(mps, 'mps'))
+    exact_prob = tuple(mp.prune(p, singletons=True).to_array()
+                       for p in l_povm.probab(mps, 'mps'))
 
     est, var = l_povm.estfun_from(g_povm, coeff, samples, eps)
 
@@ -655,7 +654,8 @@ def test_mppovm_list_estfun_from(
         for c, fun in zip(fun_coeff, funs):
             match = fun(out)
             p_coeff.flat[match] += c
-    exact_prob = tuple(g_povm.expectations(mps, 'mps'))
+    exact_prob = tuple(mp.prune(p, singletons=True).to_array()
+                       for p in g_povm.probab(mps, 'mps'))
     exact_p_cov = (np.diag(p.flat) - np.outer(p.flat, p.flat) for p in exact_prob)
     exact_var = sum(np.inner(c.flat, np.dot(cov, c.flat))
                     for c, cov in zip(est_p_coeff, exact_p_cov))
