@@ -214,13 +214,6 @@ def test_mppovm_expectation_pmps(nr_sites, width, local_dim, bond_dim, rgen):
         assert_array_almost_equal(e_rho.to_array(), e_psi.to_array())
 
 
-def _embed_povm(nr_sites, startsite, local_dim, mppovm):
-    left = povm.MPPovm.eye([local_dim] * startsite)
-    n_right = nr_sites - len(mppovm) - startsite
-    right = povm.MPPovm.eye([local_dim] * n_right)
-    return povm.MPPovm(mp.outer([left, mppovm, right]))
-
-
 @pt.mark.parametrize(
     'nr_sites, n_small, small_startsite, local_dim',
     [(5, 2, 1, 2), (5, 2, 0, 2), (5, 2, 3, 2),
@@ -235,8 +228,8 @@ def test_mppovm_find_matching_local(
     # "Big" POVM: X on all sites, "small" POVM: X on `n_small` neighbours
     x = povm.x_povm(local_dim)
     big = povm.MPPovm.from_local_povm(x, nr_sites)
-    small = povm.MPPovm.from_local_povm(x, n_small)
-    small = _embed_povm(nr_sites, small_startsite, local_dim, small)
+    small = povm.MPPovm.from_local_povm(x, n_small) \
+                       .embed(nr_sites, small_startsite, local_dim)
 
     match, prefactors = small.find_matching_elements(big)
     assert match.shape == tuple([len(x)] * n_small * 2)
@@ -250,8 +243,8 @@ def test_mppovm_find_matching_local(
 
     # "Big" POVM: X on all sites, "small" POVM: Paulis on `n_small` neighbours
     paulis = povm.pauli_povm(local_dim)
-    small = povm.MPPovm.from_local_povm(paulis, n_small)
-    small = _embed_povm(nr_sites, small_startsite, local_dim, small)
+    small = povm.MPPovm.from_local_povm(paulis, n_small) \
+                       .embed(nr_sites, small_startsite, local_dim)
     match, prefactors = small.find_matching_elements(big)
     assert match.shape == tuple([len(paulis)] * n_small + [len(x)] * n_small)
     assert match.shape == prefactors.shape
@@ -312,8 +305,7 @@ def test_mppovm_find_matching_bell(eps=1e-10):
     big = povm.MPPovm(mp.outer([big, big]))
     # Small POVM: Two of the Bell states and four product states (on
     # the last two sites)
-    small = povm.MPPovm.from_array_global(proj, plegs=3)
-    small = _embed_povm(4, 2, 2, small)
+    small = povm.MPPovm.from_array_global(proj, plegs=3).embed(4, 2, 2)
 
     # Check that the POVM is normalized: elements must sum to the identity
     for mppovm in big, small:
@@ -355,8 +347,8 @@ def test_mppovm_sample(
     local_y = povm.y_povm(local_dim)
     xx = povm.MPPovm.from_local_povm(local_x, 2)
     y = povm.MPPovm.from_local_povm(local_y, 1)
-    mpp = mp.outer([xx, povm.MPPovm.eye([local_dim]), y])
-    mpp = _embed_povm(nr_sites, startsite, local_dim, mpp)
+    mpp = povm.MPPovm(mp.outer([xx, povm.MPPovm.eye([local_dim]), y])) \
+              .embed(nr_sites, startsite, local_dim)
 
     p_exact = mp.prune(mpp.probab(mps, 'mps'), singletons=True).to_array()
 
@@ -398,7 +390,7 @@ def test_mppovm_counts_from(
         mpp = mp.outer((mpp, x))
     mpp = povm.MPPovm(mpp)
     small_mpp = mp.outer((pauli, povm.MPPovm.eye([local_dim]), pauli, pauli))
-    small_mpp = _embed_povm(nr_sites, startsite, local_dim, small_mpp)
+    small_mpp = povm.MPPovm(small_mpp).embed(nr_sites, startsite, local_dim)
 
     x_given = np.arange(len(lp)) < len(lx)
     y_given = (np.arange(len(lp)) >= len(lx)) \
@@ -441,8 +433,8 @@ def test_mppovm_est_fun(
     local_y = povm.y_povm(local_dim)
     xx = povm.MPPovm.from_local_povm(local_x, 2)
     y = povm.MPPovm.from_local_povm(local_y, 1)
-    mpp = mp.outer([xx, povm.MPPovm.eye([local_dim]), y])
-    mpp = _embed_povm(nr_sites, startsite, local_dim, mpp)
+    mpp = povm.MPPovm(mp.outer([xx, povm.MPPovm.eye([local_dim]), y])) \
+              .embed(nr_sites, startsite, local_dim)
 
     p_exact = mp.prune(mpp.probab(mps, 'mps'), singletons=True).to_array()
     assert (abs(p_exact.imag) <= eps).all()
@@ -543,7 +535,7 @@ def test_mppovm_list_counts_from(
     ))
     # POVM list with local support
     l_povm = povm.MPPovmList(
-        _embed_povm(nr_sites, startsite, local_dim, pauli)
+        pauli.embed(nr_sites, startsite, local_dim)
         for startsite in range(nr_sites - local_width + 1)
     )
     samples = tuple(g_povm.sample(
@@ -602,7 +594,7 @@ def test_mppovm_list_estfun_from(
     ))
     # POVM list with local support
     l_povm = povm.MPPovmList(
-        _embed_povm(nr_sites, startsite, local_dim, pauli)
+        pauli.embed(nr_sites, startsite, local_dim)
         for startsite in range(nr_sites - local_width + 1)
     )
     if function == 'rand':
