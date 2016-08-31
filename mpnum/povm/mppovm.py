@@ -419,6 +419,64 @@ class MPPovm(mp.MPArray):
             var_est = 0
         return est, var_est
 
+    def _estfun_from_estimator(self, est_coeff, est_funs, other, n_samples,
+                               coeff, eps):
+        """Compute the estimator used by :func:`MPPovmList.estfun_from()`
+
+        Used by :func:`MPPovmList._estfun_from_estimator()`.
+
+        `est_coeff[i]` and `est_funs[i]` will specify an estimator in
+        the format used by :func:`MPPovm.est_fun()` on
+        `other.mpps[i]`. This functions adds the coefficients and
+        functions necessary to estimate the linear function of `self`
+        probabilities specified by `coeff`.
+
+        :param est_coeff: Output parameter, tuple of lists
+        :param est_funs: Output parameter, tuple of lists
+        :param MPPovmList other: An MP-POVM list
+        :param n_samples: `n_samples[i]` specifies the number of
+            samples available for `other.mpps[i]`. They are used for a
+            weighted average if a given `self` probability can be
+            estimated from more than one MP-POVMs in
+            `other`.
+        :param coeff: A linear function of `self` probabilities is
+            specified by `coeff`
+
+        :returns: None (output is added to the parameters `est_coeff`
+            and `est_fun`)
+
+        """
+        support = tuple(pos for pos, dim in enumerate(self.outdims) if dim > 1)
+        n_nsout = len(self.nsoutdims)
+        myout_n_samples = np.zeros(self.nsoutdims, int)
+        fun_mpp = []
+        fun_myout = []
+        fun_coeff = []
+        for pos, mpp, n_sam in zip(it.count(), other.mpps, n_samples):
+            matches, prefactors = self.find_matching_elements(mpp, eps=eps)
+            for outcomes in np.argwhere(matches):
+                my_out, out = tuple(outcomes[:n_nsout]), outcomes[n_nsout:]
+                # Append a function which matches on the output `out`
+                # on sites specified by `support`.
+                est_funs[pos].append(
+                    lambda s, out=out[None, :]: (s[:, support] == out).all(1))
+                # To compute the final coefficient, we need to know
+                # how many samples from (possibly many) `mpp`s have
+                # contributed to a given probability specified by `my_out`.
+                myout_n_samples[my_out] += n_sam
+                fun_mpp.append(pos)
+                fun_myout.append(my_out)
+                # Coefficient:
+                # 1. Initial coefficient of probability `my_out`.
+                # 2. Weighted average, will be completed below
+                # 3. Possibly different POVM element prefactor
+                fun_coeff.append(coeff[my_out]                   # 1.
+                                 * n_sam                         # 2.
+                                 * prefactors[tuple(outcomes)])  # 3.
+        for pos, myout, c in zip(fun_mpp, fun_myout, fun_coeff):
+            # Complete the weighted average
+            est_coeff[pos].append(c / myout_n_samples[myout])
+
     def _fill_out_holes(self, support, outcome_mpa):
         """Fill holes in an MPA on some of the outcome physical legs
 
@@ -648,6 +706,54 @@ class MPPovmList:
         assert len(self.mpps[0]) == len(other.mpps[0])
         for mpp in self.mpps:
             yield mpp.estprob_from_mpplist(other, samples, eps)
+
+    def _estfun_from_estimator(self, other, coeff, n_samples, eps):
+        """Compute the estimator used by :func:`self.estfun_from()`
+
+        Parameters: See :func:`self.estfun_from()` for `other` and
+        `coeff`.  See :func:`MPPovm._estfun_from_estimator()` for
+        `n_samples`.
+
+        :returns: `(est_coeff, `est_funs`): `est_coeff[i]` and
+            `est_funs[i]` specify an estimator in the format used by
+            :func:`MPPovm.est_fun()` on `other.mpps[i]`.
+
+        This method aggregates the results from
+        :func:`MPPovm._estfun_from_estimator()` on each
+        `self.mpps[i]`.
+
+        """
+        assert len(n_samples) == len(other.mpps)
+        assert len(coeff) == len(self.mpps)
+        est_coeff = tuple([] for _ in range(len(other.mpps)))
+        est_funs = tuple([] for _ in range(len(other.mpps)))
+        for c, mpp in zip(coeff, self.mpps):
+            mpp._estfun_from_estimator(est_coeff, est_funs, other, n_samples, c,
+                                       eps=eps)
+        return est_coeff, est_funs
+
+    def estfun_from(self, other, coeff, samples, eps=1e-10):
+        """Estimate a linear function from samples for another MPPovmList
+
+        The function to estimate is a linear function of the
+        probabilities of `self` and is specified by `coeff`.
+
+        :param MPPovmList other: Another MP-POVM list
+        :param coeff: A sequence of shape `self.mpps[i].nsoutdims`
+            coefficients which specify the function to estimate
+        :param samples: A sequence of samples for `other`
+
+        :returns: `(est, var)`: Estimated value and estimated variance
+            of the estimated value
+
+        """
+        n_samples = [s.shape[0] for s in samples]
+        est_coeff, funs = self._estfun_from_estimator(other, coeff, n_samples,
+                                                      eps)
+        est, var = zip(*(
+            mpp.est_fun(np.array(c, float), f, s, eps=eps)
+            for c, f, s, mpp in zip(est_coeff, funs, samples, other.mpps)))
+        return sum(est), sum(var)
 
     def expectations(self, state, mode='auto'):
         """Compute exact probabilities as full arrays
