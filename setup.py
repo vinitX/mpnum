@@ -13,9 +13,9 @@ authors = [u"Daniel Suess", u"Milan Holzäpfel"]
 author_emails = ["daniel@dsuess.me", "mail@mjh.name"]
 name = "mpnum"
 description = "matrix product representation library"
-try:
+if os.path.isfile('README.txt'):
     long_description = open('README.txt').read()
-except FileNotFoundError:
+else:
     long_description = description
 year = "2016"
 
@@ -105,7 +105,7 @@ if __name__ == '__main__':
         description=description,
         long_description=long_description,
         install_requires=_get_install_requires(_install_requires),
-        keywords=[],
+        package_dir={'mpnum': 'mpnum'},
         classifiers=[
             "Development Status :: 4 - Beta",
             "Operating System :: OS Independent",
