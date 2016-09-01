@@ -186,7 +186,7 @@ def _mineig_local_op(leftvec, mpo_ltens, rightvec):
 
 
 def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
-                             eigs_opts=None):
+                             user_eigs_opts=None):
     """Perform the local eigenvalue minimization on one site on one site.
 
     Return a new (expectedly smaller) eigenvalue and a new local
@@ -213,11 +213,12 @@ def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
     Middle row: MPO matrices with row (column) indices to bottom (top)
 
     """
-    if eigs_opts is None:
-        eigs_opts = {'k': 1, 'which': 'SR', 'tol': 1e-6}
-    else:
-        eigs_opts = eigs_opts.copy()
-        eigs_opts['k'] = 1
+    eigs_opts = {'k': 1, 'which': 'SR', 'tol': 1e-6}
+    if user_eigs_opts is not None:
+        eigs_opts.update(user_eigs_opts)
+    if eigs_opts['k'] != 1:
+        raise ValueError('Supplying k != 1 in requires changes in the code, '
+                         'k={} was requested'.format(user_eigs_opts['k']))
     op = _mineig_local_op(leftvec, mpo_ltens, rightvec)
     eigvec_bonddim = max(lten.shape[0] for lten in eigvec_ltens)
     eigvec_lten = eigvec_ltens[0]
@@ -257,8 +258,9 @@ def mineig(mpo,
         no start vector is given. (default: Use the bond dimension of `mpo`)
     :param randstate: numpy.random.RandomState instance or None
     :param max_num_sweeps: Maximum number of sweeps to do (default 5)
-    :param eigs_opts: kwargs for scipy.sparse.linalg.eigs(), k is always set
-        equal to 1!
+    :param eigs_opts: kwargs for `scipy.sparse.linalg.eigs()`. If you
+        supple `which`, you will probably not obtain the minimal
+        eigenvalue. `k` different from one is not supported at the moment.
     :param int minimize_sites: Number of connected sites minimization should
         be performed on (default 1)
     :returns: mineigval, mineigval_eigvec_mpa
@@ -306,10 +308,20 @@ def mineig(mpo,
         pdims = max(dim[0] for dim in mpo.pdims)
         if startvec_bonddim is None:
             startvec_bonddim = max(mpo.bdims)
+        if startvec_bonddim == 1:
+            raise ValueError('startvec_bonddim must be at least 2')
 
         startvec = random_mpa(nr_sites, pdims, startvec_bonddim,
                               randstate=randstate)
         startvec /= mp.norm(startvec)
+    # Can we avoid this overly complex check by improving
+    # _mineig_minimize_locally()? eigs() will fail under the excluded
+    # conditions because of too small matrices.
+    assert not any(bdim12 == (1, 1) for bdim12 in
+                   zip((1,) + startvec.bdims, startvec.bdims + (1,))), \
+        'startvec must not contain two consecutive bonds of dimension 1, ' \
+        'bdims including dummy bonds = (1,) + {!r} + (1,)' \
+            .format(startvec.bdims)
     # For
     #
     #   pos in range(nr_sites - minimize_sites),

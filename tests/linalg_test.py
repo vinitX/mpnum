@@ -7,6 +7,7 @@ import numpy as np
 import pytest as pt
 from numpy.testing import assert_almost_equal
 
+import mpnum as mp
 import mpnum.linalg
 import mpnum.factory as factory
 
@@ -67,3 +68,30 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
     overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec_mp)
     assert_almost_equal(mineig, mineig_mp)
     assert_almost_equal(1, abs(overlap))
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_mineig_eigs_opts(nr_sites, local_dim, bond_dim, rgen):
+    """Verify correct operation if eigs_opts() is specified
+
+    This test mainly verifies correct operation if the user specifies
+    eigs_opts() but does not include which='SR' herself. It also tests
+    minimization on another example MPO (a rank-1 MPO in this case).
+
+    """
+    # Need at least two sites
+    if nr_sites < 2:
+        return
+
+    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
+    mpo = mp.mps_to_mpo(mps)
+    # mineig does not support startvec_bonddim = 1
+    bond_dim = 2 if bond_dim == 1 else bond_dim
+    eigval, eigvec = mpnum.linalg.mineig(
+        mpo, startvec_bonddim=bond_dim, randstate=rgen, max_num_sweeps=10,
+        eigs_opts=dict(tol=1e-5), minimize_sites=1)
+    # Check correct eigenvalue
+    assert_almost_equal(eigval, 0)
+    # Check for orthogonal eigenvectors and `eigvec` being in the
+    # kernel of `mpo`
+    assert_almost_equal(abs(mp.inner(eigvec, mps)), 0)

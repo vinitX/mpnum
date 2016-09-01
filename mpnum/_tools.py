@@ -13,7 +13,7 @@ import numpy as np
 from six.moves import range, zip
 
 
-def global_to_local(array, sites):
+def global_to_local(array, sites, left_skip=0, right_skip=0):
     """Converts a general `sites`-local array with fixed number p of physical
     legs per site from the global form
 
@@ -27,6 +27,8 @@ def global_to_local(array, sites):
 
     :param np.ndarray array: Array with ndim, such that ndim % sites = 0
     :param int sites: Number of distinct sites
+    :param int left_skip: Ignore that many axes on the left
+    :param int right_skip: Ignore that many axes on the right
     :returns: Array with same ndim as array, but reshaped
 
     >>> global_to_local(np.zeros((1, 2, 3, 4, 5, 6)), 3).shape
@@ -35,10 +37,14 @@ def global_to_local(array, sites):
     (1, 3, 5, 2, 4, 6)
 
     """
-    assert array.ndim % sites == 0, \
+    skip = left_skip + right_skip
+    ndim = array.ndim - skip
+    assert ndim % sites == 0, \
         "ndim={} is not a multiple of {}".format(array.ndim, sites)
-    plegs = array.ndim // sites
-    order = [i // plegs + sites * (i % plegs) for i in range(plegs * sites)]
+    plegs = ndim // sites
+    order = (left_skip + i + sites * j for i in range(sites) for j in range(plegs))
+    order = tuple(it.chain(
+        range(left_skip), order, range(array.ndim - right_skip, array.ndim)))
     return np.transpose(array, order)
 
 
@@ -73,7 +79,7 @@ def local_to_global(array, sites, left_skip=0, right_skip=0):
     plegs = ndim // sites
     order = (left_skip + plegs*i + j for j in range(plegs) for i in range(sites))
     order = tuple(it.chain(
-        range(left_skip), order, range(array.ndim-right_skip, array.ndim)))
+        range(left_skip), order, range(array.ndim - right_skip, array.ndim)))
     return np.transpose(array, order)
 
 
