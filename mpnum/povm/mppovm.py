@@ -867,7 +867,7 @@ class MPPovmList:
         :param samples: Samples from `other`
 
         :returns: Iterator over `(p_est, n_samples_used)` from
-            :func:`MPPovm.estprob_from_mpplist()`.
+            :func:`MPPovm.estprob_from_mpps()`.
 
         .. todo:: Add a separate method to estimate from samples for
             `self`. This method should not be used if `other` is equal
@@ -876,7 +876,7 @@ class MPPovmList:
         """
         assert len(self.mpps[0]) == len(other.mpps[0])
         for mpp in self.mpps:
-            yield mpp.estprob_from_mpplist(other, samples, eps)
+            yield mpp.estprob_from_mpps(other, samples, eps)
 
     def _estfun_from_estimator(self, other, coeff, n_samples, eps):
         """Compute the estimator used by :func:`self.estfun_from()`
