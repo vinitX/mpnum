@@ -498,6 +498,21 @@ def test_mppovm_est_fun(
     assert abs(sum_var - sum_var2) <= eps
 
 
+@pt.fixture(params=[False, True])
+def splitpauli(n_samples, nonuniform, request):
+    # We use this fixture to skip certain value combinations for
+    # non-long tests.
+    #
+    # FIXME: Is there a better way to select certain value
+    # combinations from the different pt.mark.parametrize() decorators
+    # except for writing down all combinatiosn by hand?
+    splitpauli = request.param
+    if (not splitpauli) or request.node.get_marker('long') \
+       or (n_samples >= 10000 and nonuniform):
+        return splitpauli
+    pt.skip("Save some runtime")
+    return None
+
 @pt.mark.parametrize(
     'method, n_samples', [
         ('direct', 1000), ('direct', 10000),
@@ -512,7 +527,7 @@ def test_mppovm_est_fun(
 @pt.mark.parametrize('nonuniform', [False, True])
 def test_mppovm_list_counts_from(
         method, n_samples, nr_sites, local_dim, bond_dim, measure_width,
-        local_width, nonuniform, rgen, eps=1e-10):
+        local_width, nonuniform, splitpauli, rgen, eps=1e-10):
     """Verify that estimated probabilities from MPPovmList.estprob_from()
     are reasonable accurate"""
 
@@ -532,20 +547,22 @@ def test_mppovm_list_counts_from(
         add_povm = mp.outer((nr_sites - 1) * (x,) + (y,))
         g_povm = povm.MPPovmList(g_povm.mpps + (add_povm,))
     # POVM list with local support
-    l_povm = povm.pauli_mpp(local_width, local_dim).block(nr_sites)
+    l_povm = povm.pauli_mpps if splitpauli else povm.pauli_mpp
+    l_povm = l_povm(local_width, local_dim).block(nr_sites)
     samples = tuple(g_povm.sample(
         rgen, mps, n_samples, method, mode='mps', eps=eps))
     est_prob, n_samples = zip(*l_povm.estprob_from(g_povm, samples, eps))
     exact_prob = tuple(mp.prune(p, singletons=True).to_array()
                        for p in l_povm.probab(mps, 'mps'))
+    # Consistency check on n_samples: All entries should be equal
+    # unless `nonuniform` is True.
+    all_n_sam = np.concatenate(n_samples)
+    assert (not (all_n_sam == all_n_sam[0]).all()) == nonuniform
     for n_sam, est, exact, mpp in zip(
             n_samples, est_prob, exact_prob, l_povm.mpps):
         assert est.shape == mpp.nsoutdims
         assert est.shape == exact.shape
         assert n_sam.shape == exact.shape
-        # Consistency check on n_samples_est: All entries should be
-        # equal unless `nonuniform` is True.
-        assert (not (n_sam == n_sam.flat[0]).all()) == nonuniform
         # Compare against exact probabilities
         assert (abs(est - exact) / (3 / n_sam**0.5)).max() <= 1
 
