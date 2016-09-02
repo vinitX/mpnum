@@ -5,21 +5,21 @@
 
 from __future__ import absolute_import, division, print_function
 
+import h5py as h5
 import numpy as np
 import pytest as pt
 from numpy.linalg import svd
-from numpy.testing import assert_array_almost_equal, assert_array_equal, \
-    assert_almost_equal, assert_equal
-from six.moves import range, zip
-import h5py as h5
+from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
+                           assert_array_equal, assert_equal)
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
 from mpnum import _tools
+from mpnum._testing import (assert_correct_normalization,
+                            assert_mpa_almost_equal, assert_mpa_identical,
+                            mpo_to_global)
 from mpnum._tools import global_to_local
-from mpnum._testing import assert_mpa_almost_equal, \
-    assert_mpa_identical, mpo_to_global
-
+from six.moves import range, zip
 
 # nr_sites, local_dim, bond_dim
 MP_TEST_PARAMETERS = [(1, 7, np.nan), (2, 3, 3), (3, 2, 4), (6, 2, 4),
@@ -656,6 +656,7 @@ def test_diag_2plegs(nr_sites, local_dim, bond_dim, rgen):
         assert a.plegs[0] == 1
         assert_array_almost_equal(a.to_array(), b)
 
+
 ###############################################################################
 #                         Shape changes, conversions                          #
 ###############################################################################
@@ -699,41 +700,6 @@ def test_iter_readonly():
 ###############################################################################
 #                         Normalization & Compression                         #
 ###############################################################################
-def assert_lcanonical(ltens, msg=''):
-    ltens = ltens.reshape((np.prod(ltens.shape[:-1]), ltens.shape[-1]))
-    prod = ltens.conj().T.dot(ltens)
-    assert_array_almost_equal(prod, np.identity(prod.shape[0]),
-                              err_msg=msg)
-
-
-def assert_rcanonical(ltens, msg=''):
-    ltens = ltens.reshape((ltens.shape[0], np.prod(ltens.shape[1:])))
-    prod = ltens.dot(ltens.conj().T)
-    assert_array_almost_equal(prod, np.identity(prod.shape[0]),
-                              err_msg=msg)
-
-
-def assert_correct_normalization(mpo, lnormal_target=None, rnormal_target=None):
-    lnormal, rnormal = mpo.normal_form
-
-    # If no targets are given, verify that the data matches the
-    # information in `mpo.normal_form`.
-    lnormal_target = lnormal_target or lnormal
-    rnormal_target = rnormal_target or rnormal
-
-    # If targets are given, verify that the information in
-    # `mpo.normal_form` matches the targets.
-    assert_equal(lnormal, lnormal_target)
-    assert_equal(rnormal, rnormal_target)
-
-    for n in range(lnormal):
-        assert_lcanonical(mpo[n], msg="Failure left canonical (n={}/{})"
-                          .format(n, lnormal_target))
-    for n in range(rnormal, len(mpo)):
-        assert_rcanonical(mpo[n], msg="Failure right canonical (n={}/{})"
-                          .format(n, rnormal_target))
-
-
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
 def test_normalization_from_full(nr_sites, local_dim, _, rgen):
     op = factory.random_op(nr_sites, local_dim, randstate=rgen)
