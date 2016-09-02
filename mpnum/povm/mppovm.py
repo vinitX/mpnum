@@ -459,6 +459,26 @@ class MPPovm(mp.MPArray):
         assert (out < np.array(self.nsoutdims)[None, :]).all()
         return out
 
+    def count_samples(self, samples, eps=1e-10):
+        """Count number of outcomes in samples
+
+        :param np.ndarray samples: `(n_samples, len(self.nsoutdims))`
+            array of samples
+        :returns: ndarray `counts` with shape `self.nsoutdims`
+
+        `counts[i1, ..., ik]` provides the number of occurences of
+        outcome `(i1, ..., ik)` in `samples`.
+
+        """
+        n_samples = samples.shape[0]
+        counts = np.zeros(self.nsoutdims, int)
+        assert samples.shape[1] == counts.ndim
+        for out_num in range(counts.size):
+            out = np.unravel_index(out_num, counts.shape)
+            counts[out] = (samples == np.array(out)[None, :]).all(1).sum()
+        assert counts.sum() == n_samples
+        return counts
+
     def est_fun(self, coeff, funs, samples, weights=None, eps=1e-10):
         """Estimate a linear combination of functions of the POVM outcomes
 
@@ -704,26 +724,6 @@ class MPPovm(mp.MPArray):
         assert abs(counts.sum() - all_prefactor) <= eps
         counts[~given] = np.nan
         return counts, n_samples_used
-
-    def count_samples(self, samples, weights=None, eps=1e-10):
-        """Count number of outcomes in samples
-
-        :param np.ndarray samples: `(n_samples, len(self.nsoutdims))`
-            array of samples
-        :returns: ndarray `counts` with shape `self.nsoutdims`
-
-        `counts[i1, ..., ik]` provides the number of occurences of
-        outcome `(i1, ..., ik)` in `samples`.
-
-        """
-        n_samples = samples.shape[0]
-        counts = np.zeros(self.nsoutdims, int)
-        assert samples.shape[1] == counts.ndim
-        for out_num in range(counts.size):
-            out = np.unravel_index(out_num, counts.shape)
-            counts[out] = (samples == np.array(out)[None, :]).all(1).sum()
-        assert counts.sum() == n_samples
-        return counts
 
     def estprob_from_mpplist(self, other, samples, eps=1e-10):
         """Estimate POVM probabilities from MPPovmList samples
