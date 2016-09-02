@@ -54,18 +54,23 @@ class MPPovm(mp.MPArray):
 
     @property
     def outdims(self):
-        """Tuple of outcome dimensions"""
+        """Outcome dimensions"""
         # First physical leg dimension
         return tuple(lt.shape[1] for lt in self._ltens)
 
     @property
     def nsoutdims(self):
-        """Tuple of non-singleton outcome dimensions (dimension larger one)"""
+        """Non-singleton outcome dimensions (dimension larger one)"""
         return tuple(lt.shape[1] for lt in self._ltens if lt.shape[1] > 1)
 
     @property
+    def nsoutpos(self):
+        """Sites with non-singleton outcome dimension (dimension larger one)"""
+        return tuple(k for k, lt in enumerate(self._ltens) if lt.shape[1] > 1)
+
+    @property
     def hdims(self):
-        """Tuple of local Hilbert space dimensions"""
+        """Local Hilbert space dimensions"""
         # Second physical leg dimension (equals third physical leg dimension)
         return tuple(lt.shape[2] for lt in self._ltens)
 
@@ -86,8 +91,7 @@ class MPPovm(mp.MPArray):
         """Map that takes a raveled MPDO to the POVM probabilities
 
         You can use :func:`MPPovm.expectations()` or
-        :func:`MPPovm.probab()` as convenient wrappers around this
-        map.
+        :func:`MPPovm.pmf()` as convenient wrappers around this map.
 
         If `rho` is a matrix product density operator (MPDO), then
 
@@ -237,8 +241,8 @@ class MPPovm(mp.MPArray):
         else:
             raise ValueError("Could not understand data dype.")
 
-    def probab(self, state, mode='auto'):
-        """Compute probabilities of `state`
+    def pmf(self, state, mode='auto'):
+        """Compute the POVM's probability mass function for `state`
 
         If you want to compute the probabilities for reduced states of
         `state`, you can use :func:`self.expectations()` instead of
@@ -255,7 +259,7 @@ class MPPovm(mp.MPArray):
         assert len(self) == len(state)
         return next(self.expectations(state, mode))
 
-    def find_matching_elements(self, other, exclude_dup=(), eps=1e-10):
+    def match_elems(self, other, exclude_dup=(), eps=1e-10):
         """Find POVM elements in `other` which have information on `self`
 
         We find all POVM sites in `self` which have only one possible
@@ -281,6 +285,7 @@ class MPPovm(mp.MPArray):
         `self`.
 
         """
+        # FIXME Refactor this method into shorter functions.
         if self.hdims != other.hdims:
             raise ValueError('Incompatible input Hilbert space: {!r} vs {!r}'
                              .format(self.hdims, other.hdims))
@@ -346,9 +351,9 @@ class MPPovm(mp.MPArray):
         return match, prefactors
 
     @staticmethod
-    def _sample_cond_single(rng, marginal_p, n_group, out, eps):
+    def _sample_cond_single(rng, marginal_pmf, n_group, out, eps):
         """Single sample from conditional probab. (call :func:`self.sample`)"""
-        n_sites = len(marginal_p[-1])
+        n_sites = len(marginal_pmf[-1])
         # Probability of the incomplete output. Empty output has unit probab.
         out_p = 1.0
         # `n_out` sites of the output have been sampled. We will add
@@ -356,7 +361,7 @@ class MPPovm(mp.MPArray):
         for n_out in range(0, n_sites, n_group):
             # Select marginal probability distribution on (at most)
             # `n_out + n_group` sites.
-            p = marginal_p[min(n_sites, n_out + n_group)]
+            p = marginal_pmf[min(n_sites, n_out + n_group)]
             # Obtain conditional probab. from joint `p` and marginal `out_p`
             p = p[tuple(out[:n_out]) + (slice(None),) * (len(p) - n_out)]
             p = mp.prune(p).to_array() / out_p
@@ -371,41 +376,41 @@ class MPPovm(mp.MPArray):
             # Update probability of the partial output
             out_p *= np.prod(p.flat[choice])
         # Verify we have the correct partial output probability
-        p = marginal_p[-1][tuple(out)].to_array()
+        p = marginal_pmf[-1][tuple(out)].to_array()
         assert abs(p - out_p) <= eps
 
     @classmethod
-    def _sample_cond(cls, rng, probab, n_samples, n_group, out, eps):
+    def _sample_cond(cls, rng, pmf, n_samples, n_group, out, eps):
         """Sample using conditional probabilities (call :func:`self.sample`)"""
-        # marginal_p[k] will contain the marginal probability
+        # marginal_pmf[k] will contain the marginal probability
         # distribution p(i_1, ..., i_k) for outcomes on sites 1, ..., k.
-        marginal_p = [None] * (len(probab) + 1)
-        marginal_p[len(probab)] = probab
-        for n_sites in reversed(range(len(probab))):
+        marginal_pmf = [None] * (len(pmf) + 1)
+        marginal_pmf[len(pmf)] = pmf
+        for n_sites in reversed(range(len(pmf))):
             # Sum over outcomes on the last site
-            p = marginal_p[n_sites + 1].sum([()] * (n_sites) + [(0,)])
+            p = marginal_pmf[n_sites + 1].sum([()] * (n_sites) + [(0,)])
             if n_sites > 0:  # p will be np.ndarray if no legs are left
                 p = mp.prune(p)
-            marginal_p[n_sites] = p
-        assert abs(marginal_p[0] - 1.0) <= eps
+            marginal_pmf[n_sites] = p
+        assert abs(marginal_pmf[0] - 1.0) <= eps
         for i in range(n_samples):
-            cls._sample_cond_single(rng, marginal_p, n_group, out[i, :], eps)
+            cls._sample_cond_single(rng, marginal_pmf, n_group, out[i, :], eps)
 
-    def _sample_direct(self, rng, probab, n_samples, out, eps):
-        """Sample from full probabilities (call :func:`self.sample`)"""
-        probab = mp.prune(probab, singletons=True).to_array()
-        assert (abs(probab.imag) <= eps).all()
-        probab = probab.real
-        assert (probab >= -eps).all()
-        probab[probab < 0] = 0.0
-        assert abs(probab.sum() - 1.0) <= eps
-        choices = rng.choice(probab.size, n_samples, p=probab.flat)
-        for pos, c in enumerate(np.unravel_index(choices, probab.shape)):
+    def _sample_direct(self, rng, pmf, n_samples, out, eps):
+        """Sample from full pmfilities (call :func:`self.sample`)"""
+        pmf = mp.prune(pmf, singletons=True).to_array()
+        assert (abs(pmf.imag) <= eps).all()
+        pmf = pmf.real
+        assert (pmf >= -eps).all()
+        pmf[pmf < 0] = 0.0
+        assert abs(pmf.sum() - 1.0) <= eps
+        choices = rng.choice(pmf.size, n_samples, p=pmf.flat)
+        for pos, c in enumerate(np.unravel_index(choices, pmf.shape)):
             out[:, pos] = c
 
     def sample(self, rng, state, n_samples, method='cond', n_group=1,
                mode='auto', eps=1e-10):
-        """Sample from `self` on a quantum state
+        """Random sample from `self` on a quantum state
 
         :param mp.MPArray state: A quantum state as MPA (see `mode`)
         :param n_samples: Number of samples to create
@@ -439,35 +444,38 @@ class MPPovm(mp.MPArray):
 
         """
         assert len(self) == len(state)
-        probab = mp.prune(self.probab(state, mode), singletons=True)
-        probab_sum = probab.sum()
+        pmf = mp.prune(self.pmf(state, mode), singletons=True)
+        pmf_sum = pmf.sum()
         # For large numbers of sites, NaNs appear. Why?
-        assert abs(probab_sum.imag) <= eps
-        assert abs(1.0 - probab_sum.real) <= eps
+        assert abs(pmf_sum.imag) <= eps
+        assert abs(1.0 - pmf_sum.real) <= eps
 
         # The value 255 means "data missing". The values 0..254 are
         # available for measurement outcomes.
         assert all(dim <= 255 for dim in self.outdims)
-        out = np.zeros((n_samples, len(probab)), dtype=np.uint8)
+        out = np.zeros((n_samples, len(pmf)), dtype=np.uint8)
         out[...] = 0xff
         if method == 'cond':
-            self._sample_cond(rng, probab, n_samples, n_group, out, eps)
+            self._sample_cond(rng, pmf, n_samples, n_group, out, eps)
         elif method == 'direct':
-            self._sample_direct(rng, probab, n_samples, out, eps)
+            self._sample_direct(rng, pmf, n_samples, out, eps)
         else:
             raise ValueError('Unknown method {!r}'.format(method))
         assert (out < np.array(self.nsoutdims)[None, :]).all()
         return out
 
-    def count_samples(self, samples, eps=1e-10):
-        """Count number of outcomes in samples
+    def est_pmf(self, samples, normalize=True, eps=1e-10):
+        """Estimate probability mass function from samples
 
         :param np.ndarray samples: `(n_samples, len(self.nsoutdims))`
             array of samples
-        :returns: ndarray `counts` with shape `self.nsoutdims`
+        :param bool normalize: True: Return normalized probability
+            estimates (default). False: Return integer outcome counts.
+        :returns: Estimated probabilities as ndarray `est_pmf` with
+            shape `self.nsoutdims`
 
-        `counts[i1, ..., ik]` provides the number of occurences of
-        outcome `(i1, ..., ik)` in `samples`.
+        `n_samples * est_pmf[i1, ..., ik]` provides the number of
+        occurences of outcome `(i1, ..., ik)` in `samples`.
 
         """
         n_samples = samples.shape[0]
@@ -477,7 +485,10 @@ class MPPovm(mp.MPArray):
             out = np.unravel_index(out_num, counts.shape)
             counts[out] = (samples == np.array(out)[None, :]).all(1).sum()
         assert counts.sum() == n_samples
-        return counts
+        if normalize:
+            return counts / n_samples
+        else:
+            return counts
 
     def est_fun(self, coeff, funs, samples, weights=None, eps=1e-10):
         """Estimate a linear combination of functions of the POVM outcomes
@@ -538,11 +549,11 @@ class MPPovm(mp.MPArray):
             var_est = 0
         return est, var_est
 
-    def _estfun_from_estimator(self, est_coeff, est_funs, other, n_samples,
-                               coeff, eps):
+    def _mppl_fun_estimator(self, est_coeff, est_funs, other, n_samples,
+                            coeff, eps):
         """Compute the estimator used by :func:`MPPovmList.estfun_from()`
 
-        Used by :func:`MPPovmList._estfun_from_estimator()`.
+        Used by :func:`MPPovmList._fun_estimator()`.
 
         `est_coeff[i]` and `est_funs[i]` will specify an estimator in
         the format used by :func:`MPPovm.est_fun()` on
@@ -566,14 +577,14 @@ class MPPovm(mp.MPArray):
 
         """
         assert coeff.shape == self.nsoutdims
-        support = tuple(pos for pos, dim in enumerate(self.outdims) if dim > 1)
+        support = self.nsoutpos
         n_nsout = len(self.nsoutdims)
         myout_n_samples = np.zeros(self.nsoutdims, int)
         fun_mpp = []
         fun_myout = []
         fun_coeff = []
         for pos, mpp, n_sam in zip(it.count(), other.mpps, n_samples):
-            matches, prefactors = self.find_matching_elements(mpp, eps=eps)
+            matches, prefactors = self.match_elems(mpp, eps=eps)
             for outcomes in np.argwhere(matches):
                 my_out, out = tuple(outcomes[:n_nsout]), outcomes[n_nsout:]
                 # Append a function which matches on the output `out`
@@ -597,7 +608,7 @@ class MPPovm(mp.MPArray):
             # Complete the weighted average
             est_coeff[pos].append(c / myout_n_samples[myout])
 
-    def _fill_out_holes(self, support, outcome_mpa):
+    def _fill_outcome_mpa_holes(self, support, outcome_mpa):
         """Fill holes in an MPA on some of the outcome physical legs
 
         The dot product of `outcome_mpa` and `self` provides a sum
@@ -639,16 +650,16 @@ class MPPovm(mp.MPArray):
             index should be included (bool array)
 
         A POVM element specified by the compound index `(i_1, ...,
-        i_n)` with `n = len(self` is included if
+        i_n)` with `n = len(self)` is included if
         `given[i_(support[0]), ..., i_(support[k])]` is `True`.
 
         :returns: If the POVM elements sum to a fraction of the
             identity, return the fraction. Otherwise return `None`.
 
         """
-        assert given.any(), "Some elements are required" 
+        assert given.any(), "Some elements are required"
         any_missing = not given.all()
-        given = self._fill_out_holes(
+        given = self._fill_outcome_mpa_holes(
             support, mp.MPArray.from_array(given, plegs=1))
         elem_sum = mp.dot(given, self)
         eye = factory.eye(len(self), self.hdims)
@@ -659,15 +670,15 @@ class MPPovm(mp.MPArray):
         if (norm_prod - inner) / norm_prod > eps:
             return None
         # Equality in the Cauchy-Schwarz inequality implies linear dependence
-        all_prefactor = sum_norm / eye_norm
+        fraction = sum_norm / eye_norm
         if any_missing:
-            assert all_prefactor < 1.0 + eps
+            assert fraction < 1.0 + eps
         else:
-            assert abs(all_prefactor - 1.0) <= eps
-        return all_prefactor
+            assert abs(fraction - 1.0) <= eps
+        return fraction
 
-    def counts_from(self, other, samples, eps=1e-10):
-        """Obtain counts from samples of another MPPovm `other`
+    def est_pmf_from(self, other, samples, eps=1e-10):
+        """Estimate PMF from samples of another MPPovm `other`
 
         If `other` does not provide information on all elements in
         `self`, we require that the elements in `self` for which
@@ -685,48 +696,49 @@ class MPPovm(mp.MPArray):
         :param np.ndarray samples: `(n_samples, len(other.nsoutdims))`
             array of samples for `other`
 
-        :returns: `(counts, n_samples_used)`. `counts`: Array of
-            normalized outcome counts; the sum over the available
-            counts is equal to the fraction of the identity given by
-            the corresponding POVM elements. `n_samples_used`: Number
-            of samples which have contributed to `counts`.
+        :returns: `(est_pmf, n_samples_used)`. `est_pmf`: Shape
+            `self.nsoutdims` ndarray of normalized probability
+            estimates; the sum over the available probability
+            estimates is equal to the fraction of the identity
+            obtained by summing the corresponding POVM
+            elements. `n_samples_used`: Number of samples which have
+            contributed to the PMF estimate.
 
         """
         assert len(self) == len(other)
         n_samples = samples.shape[0]
         assert samples.shape[1] == len(other.nsoutdims)
-        match, prefactors = self.find_matching_elements(other)
-        support = tuple(pos for pos, dim in enumerate(self.outdims) if dim > 1)
-        other_outdims = tuple(other.outdims[i] for i in support)
+        match, prefactors = self.match_elems(other)
+        other_outdims = tuple(other.outdims[i] for i in self.nsoutpos)
         assert match.shape == self.nsoutdims + other_outdims
 
         n_nsout = len(self.nsoutdims)
         given = match.any(tuple(range(n_nsout, match.ndim)))
         if not given.any():
-            counts = np.zeros(self.nsoutdims, float)
-            counts[:] = np.nan
-            return counts, 0
-        all_prefactor = self._elemsum_identity(support, given, eps)
+            est_pmf = np.zeros(self.nsoutdims, float)
+            est_pmf[:] = np.nan
+            return est_pmf, 0
+        all_prefactor = self._elemsum_identity(self.nsoutpos, given, eps)
         assert all_prefactor is not None, (
             "Given subset of elements does not sum to multiple of identity; "
             "conversion not possible")
 
-        samples = samples[:, support]
+        samples = samples[:, self.nsoutpos]
         n_samples_used = \
             match.reshape((np.prod(self.nsoutdims),) + other_outdims) \
             [(slice(None),) + tuple(samples.T)].any(0).sum()
-        counts = np.zeros(self.nsoutdims, float)
+        est_pmf = np.zeros(self.nsoutdims, float)
         for outcomes in np.argwhere(match):
             my_out, out = tuple(outcomes[:n_nsout]), outcomes[n_nsout:]
             count = (samples == out[None, :]).all(1).sum()
-            counts[my_out] += prefactors[tuple(outcomes)] * count / n_samples
+            est_pmf[my_out] += prefactors[tuple(outcomes)] * count / n_samples
 
-        assert abs(counts.sum() - all_prefactor) <= eps
-        counts[~given] = np.nan
-        return counts, n_samples_used
+        assert abs(est_pmf.sum() - all_prefactor) <= eps
+        est_pmf[~given] = np.nan
+        return est_pmf, n_samples_used
 
-    def estprob_from_mpps(self, other, samples, eps=1e-10):
-        """Estimate POVM probabilities from MPPovmList samples
+    def est_pmf_from_mpps(self, other, samples, eps=1e-10):
+        """Estimate probability mass function from MPPovmList samples
 
         :param MPPovmList other: An :class:`MPPovmList` instance
         :param samples: Iterable of samples (e.g. from
@@ -738,19 +750,21 @@ class MPPovm(mp.MPArray):
             number of samples used for each probability.
 
         """
-        counts = np.zeros((len(other.mpps),) + self.nsoutdims, float)
+        pmf_ests = np.zeros((len(other.mpps),) + self.nsoutdims, float)
         n_samples = np.zeros(len(other.mpps), int)
         for pos, other_mpp, other_samples in zip(it.count(), other.mpps, samples):
-            counts[pos, ...], n_samples[pos] = self.counts_from(
+            pmf_ests[pos, ...], n_samples[pos] = self.est_pmf_from(
                 other_mpp, other_samples, eps)
         n_out = np.prod(self.nsoutdims)
-        counts = counts.reshape((len(other.mpps), n_out))
-        given = ~np.isnan(counts)
+        pmf_ests = pmf_ests.reshape((len(other.mpps), n_out))
+        given = ~np.isnan(pmf_ests)
         n_samples_used = (given * n_samples[:, None]).sum(0)
-        # Probabilities without any estimates produce 0.0 / 0 = nan.
-        p_est = np.nansum(counts * n_samples[:, None], 0) / n_samples_used
-        return p_est.reshape(self.nsoutdims), \
-            n_samples_used.reshape(self.nsoutdims)
+        # Weighted average over available estimates according to the
+        # number of samples underlying each estimate. Probabilities
+        # without any estimates produce 0.0 / 0 = nan in `pmf_est`.
+        pmf_est = np.nansum(pmf_ests * n_samples[:, None], 0) / n_samples_used
+        return (pmf_est.reshape(self.nsoutdims),
+                n_samples_used.reshape(self.nsoutdims))
 
 
 class MPPovmList:
@@ -803,7 +817,7 @@ class MPPovmList:
         >>> exx = mpp.MPPovm(mp.outer((e, x, x)))
         >>> exy = mpp.MPPovm(mp.outer((e, x, y)))
         >>> expect = (xxe, xye, exx, exy)
-        >>> [abs(mp.norm(a - b)) <= 1e-10 
+        >>> [abs(mp.norm(a - b)) <= 1e-10
         ...  for a, b in zip(mppl.block(3).mpps, expect)]
         [True, True, True, True]
 
@@ -852,7 +866,7 @@ class MPPovmList:
         """
         return MPPovmList(m.repeat(nr_sites) for m in self.mpps)
 
-    def probab(self, state, mode='auto'):
+    def pmf(self, state, mode='auto'):
         """Compute the probability mass functions of all MP-POVMs
 
         :param state: A quantum state as MPA
@@ -867,7 +881,7 @@ class MPPovmList:
 
     def sample(self, rng, state, n_samples, method, n_group=1, mode='auto',
                eps=1e-10):
-        """Sample from MPPovms on state
+        """Random sample from all MP-POVMs on a quantum state
 
         Parameters: See :func:`MPPovm.sample()`.
 
@@ -878,14 +892,14 @@ class MPPovmList:
         for mpp in self.mpps:
             yield mpp.sample(rng, state, n_samples, method, n_group, mode, eps)
 
-    def estprob_from(self, other, samples, eps=1e-10):
-        """Estimate POVM probabilities from MPPovmList samples
+    def est_pmf_from(self, other, samples, eps=1e-10):
+        """Estimate PMF from samples of another MPPovmList
 
         :param MPPovmList other: A different MPPovmList
         :param samples: Samples from `other`
 
         :returns: Iterator over `(p_est, n_samples_used)` from
-            :func:`MPPovm.estprob_from_mpps()`.
+            :func:`MPPovm.est_pmf_from_mpps()`.
 
         .. todo:: Add a separate method to estimate from samples for
             `self`. This method should not be used if `other` is equal
@@ -894,13 +908,13 @@ class MPPovmList:
         """
         assert len(self.mpps[0]) == len(other.mpps[0])
         for mpp in self.mpps:
-            yield mpp.estprob_from_mpps(other, samples, eps)
+            yield mpp.est_pmf_from_mpps(other, samples, eps)
 
-    def _estfun_from_estimator(self, other, coeff, n_samples, eps):
+    def _fun_estimator(self, other, coeff, n_samples, eps):
         """Compute the estimator used by :func:`self.estfun_from()`
 
         Parameters: See :func:`self.estfun_from()` for `other` and
-        `coeff`.  See :func:`MPPovm._estfun_from_estimator()` for
+        `coeff`.  See :func:`MPPovm._mppl_fun_estimator()` for
         `n_samples`.
 
         :returns: `(est_coeff, `est_funs`): `est_coeff[i]` and
@@ -908,8 +922,7 @@ class MPPovmList:
             :func:`MPPovm.est_fun()` on `other.mpps[i]`.
 
         This method aggregates the results from
-        :func:`MPPovm._estfun_from_estimator()` on each
-        `self.mpps[i]`.
+        :func:`MPPovm._mppl_fun_estimator()` on each `self.mpps[i]`.
 
         """
         assert len(n_samples) == len(other.mpps)
@@ -917,15 +930,15 @@ class MPPovmList:
         est_coeff = tuple([] for _ in range(len(other.mpps)))
         est_funs = tuple([] for _ in range(len(other.mpps)))
         for c, mpp in zip(coeff, self.mpps):
-            mpp._estfun_from_estimator(est_coeff, est_funs, other, n_samples, c,
-                                       eps=eps)
+            mpp._mppl_fun_estimator(est_coeff, est_funs, other, n_samples, c,
+                                    eps=eps)
         return est_coeff, est_funs
 
-    def estfun_from(self, other, coeff, samples, eps=1e-10):
+    def est_fun_from(self, other, coeff, samples, eps=1e-10):
         """Estimate a linear function from samples for another MPPovmList
 
         The function to estimate is a linear function of the
-        probabilities of `self` and is specified by `coeff`.
+        probabilities of `self` and it is specified by `coeff`.
 
         :param MPPovmList other: Another MP-POVM list
         :param coeff: A sequence of shape `self.mpps[i].nsoutdims`
@@ -937,8 +950,7 @@ class MPPovmList:
 
         """
         n_samples = [s.shape[0] for s in samples]
-        est_coeff, funs = self._estfun_from_estimator(other, coeff, n_samples,
-                                                      eps)
+        est_coeff, funs = self._fun_estimator(other, coeff, n_samples, eps)
         est, var = zip(*(
             mpp.est_fun(np.array(c, float), f, s, eps=eps)
             for c, f, s, mpp in zip(est_coeff, funs, samples, other.mpps)))
