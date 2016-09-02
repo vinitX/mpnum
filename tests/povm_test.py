@@ -218,9 +218,9 @@ def test_mppovm_expectation_pmps(nr_sites, width, local_dim, bond_dim, rgen):
     'nr_sites, n_small, small_startsite, local_dim',
     [(5, 2, 1, 2), (5, 2, 0, 2), (5, 2, 3, 2),
      (8, 3, 2, 2), (8, 3, 2, 3), (40, 3, 10, 2)])
-def test_mppovm_find_matching_local(
+def test_mppovm_match_elems_local(
         nr_sites, n_small, small_startsite, local_dim, eps=1e-10):
-    """Check that find_matching_elements() works for single- and
+    """Check that match_elems() works for single- and
     multi-Pauli MPPOVMs"""
     n_right = nr_sites - n_small - small_startsite
     assert n_right >= 0
@@ -231,7 +231,7 @@ def test_mppovm_find_matching_local(
     small = povm.MPPovm.from_local_povm(x, n_small) \
                        .embed(nr_sites, small_startsite, local_dim)
 
-    match, prefactors = small.find_matching_elements(big)
+    match, prefactors = small.match_elems(big)
     assert match.shape == tuple([len(x)] * n_small * 2)
     assert match.shape == prefactors.shape
 
@@ -245,7 +245,7 @@ def test_mppovm_find_matching_local(
     paulis = povm.pauli_povm(local_dim)
     small = povm.MPPovm.from_local_povm(paulis, n_small) \
                        .embed(nr_sites, small_startsite, local_dim)
-    match, prefactors = small.find_matching_elements(big)
+    match, prefactors = small.match_elems(big)
     assert match.shape == tuple([len(paulis)] * n_small + [len(x)] * n_small)
     assert match.shape == prefactors.shape
 
@@ -261,7 +261,7 @@ def test_mppovm_find_matching_local(
     # "Big" POVM: Y on all sites, "small" POVM: Paulis on `n_small` neighbours
     y = povm.y_povm(local_dim)
     big = povm.MPPovm.from_local_povm(y, nr_sites)
-    match, prefactors = small.find_matching_elements(big)
+    match, prefactors = small.match_elems(big)
     assert match.shape == tuple([len(paulis)] * n_small + [len(y)] * n_small)
     assert match.shape == prefactors.shape
 
@@ -275,8 +275,8 @@ def test_mppovm_find_matching_local(
     assert np.isnan(prefactors[~match]).all()
 
 
-def test_mppovm_find_matching_bell(eps=1e-10):
-    """Test find_matching_elements() for a non-product MPPovm"""
+def test_mppovm_match_elems_bell(eps=1e-10):
+    """Test match_elems() for a non-product MPPovm"""
     # Four Bell states (basis: |00>, |01>, |10>, |11>)
     bell = np.array((
         [(1/3)**0.5, 0, 0, (1/3)**0.5],   # (0, 0):  |00> + |11>  (proj. weight 1/3)
@@ -313,7 +313,7 @@ def test_mppovm_find_matching_bell(eps=1e-10):
                           for x in mppovm.elements)
         assert_array_almost_equal(element_sum, np.eye(16))
 
-    match, prefactors = small.find_matching_elements(big, eps=eps)
+    match, prefactors = small.match_elems(big, eps=eps)
     # Verify the correspondence which can be read off above
     want = np.zeros((3, 2, 2, 3), dtype=bool)
     want[0, 0, 1, 0] = True  # |01> - |10>
@@ -350,7 +350,7 @@ def test_mppovm_sample(
     mpp = povm.MPPovm(mp.outer([xx, povm.MPPovm.eye([local_dim]), y])) \
               .embed(nr_sites, startsite, local_dim)
 
-    p_exact = mp.prune(mpp.probab(mps, 'mps'), singletons=True).to_array()
+    pmf_exact = mp.prune(mpp.pmf(mps, 'mps'), singletons=True).to_array()
 
     if n_samples > 100:
         n_gr = 5
@@ -360,16 +360,15 @@ def test_mppovm_sample(
         n_gr = 3
     samples = mpp.sample(rgen, mps, n_samples, method, n_gr, 'mps', eps)
 
-    counts = mpp.count_samples(samples)
-    p_est = counts / n_samples
+    pmf_est = mpp.est_pmf(samples)
 
-    assert abs(p_est.sum() - 1.0) <= eps
-    assert abs(p_exact - p_est).max() <= 3 / n_samples**0.5
+    assert abs(pmf_est.sum() - 1.0) <= eps
+    assert abs(pmf_exact - pmf_est).max() <= 3 / n_samples**0.5
 
 
 @pt.mark.parametrize('method, n_samples', MPPOVM_SAMPLE_PARAM)
 @pt.mark.parametrize('nr_sites, startsite, local_dim', MPPOVM_PARAM)
-def test_mppovm_counts_from(
+def test_mppovm_est_pmf_from(
         method, n_samples, nr_sites, startsite, local_dim, rgen):
     """Check that probability estimates from samples are reasonable accurate"""
     bond_dim = 3
@@ -398,7 +397,7 @@ def test_mppovm_counts_from(
     given_sites = [x_given if ((startsite + i) % 2) == 0 else y_given
                    for i in (0, 2, 3)]
     given_expected = np.einsum('i, j, k -> ijk', *given_sites)
-    p_exact = mp.prune(small_mpp.probab(mps, 'mps'), singletons=True).to_array()
+    pmf_exact = mp.prune(small_mpp.pmf(mps, 'mps'), singletons=True).to_array()
 
     if n_samples > 100:
         n_gr = 5
@@ -408,15 +407,14 @@ def test_mppovm_counts_from(
         n_gr = 3
 
     samples = mpp.sample(rgen, mps, n_samples, method, n_gr, 'mps', eps)
-    counts, counts_n_samples = small_mpp.counts_from(mpp, samples)
+    est_pmf, est_n_samples = small_mpp.est_pmf_from(mpp, samples)
     # In this case, we use all the samples from `mpp`.
-    assert counts_n_samples == n_samples
-    given = ~np.isnan(counts)
+    assert est_n_samples == n_samples
+    given = ~np.isnan(est_pmf)
     assert (given == given_expected).all()
 
-    p_est = counts
-    assert abs(p_exact[given].sum() - p_est[given].sum()) <= eps
-    assert abs(p_exact[given] - p_est[given]).max() <= 1 / n_samples**0.5
+    assert abs(pmf_exact[given].sum() - est_pmf[given].sum()) <= eps
+    assert abs(pmf_exact[given] - est_pmf[given]).max() <= 1 / n_samples**0.5
 
 
 @pt.mark.parametrize('method, n_samples', MPPOVM_SAMPLE_PARAM)
@@ -436,7 +434,7 @@ def test_mppovm_est_fun(
     mpp = povm.MPPovm(mp.outer([xx, povm.MPPovm.eye([local_dim]), y])) \
               .embed(nr_sites, startsite, local_dim)
 
-    p_exact = mp.prune(mpp.probab(mps, 'mps'), singletons=True).to_array()
+    p_exact = mp.prune(mpp.pmf(mps, 'mps'), singletons=True).to_array()
     assert (abs(p_exact.imag) <= eps).all()
     p_exact = p_exact.real
     assert (p_exact >= -eps).all()
@@ -458,8 +456,7 @@ def test_mppovm_est_fun(
 
     ept, cov = mpp.est_fun(None, funs, samples, None, eps)
 
-    counts = mpp.count_samples(samples)
-    p_est = counts / n_samples
+    p_est = mpp.est_pmf(samples)
 
     assert (ept == p_est.ravel()).all()
     assert abs(p_exact - p_est).max() <= 3 / n_samples**0.5
@@ -488,7 +485,7 @@ def test_mppovm_est_fun(
     assert abs(sum_var - ex_var) * n_samples <= 3 / n_samples**0.5
 
     # Convert samples to counts and test again
-    counts = mpp.count_samples(samples, eps=eps)
+    counts = mpp.est_pmf(samples, normalize=False, eps=eps)
     assert counts.sum() == n_samples
     count_samples = np.array(np.unravel_index(range(np.prod(mpp.nsoutdims)),
                                               mpp.nsoutdims)).T
@@ -525,11 +522,13 @@ def splitpauli(n_samples, nonuniform, request):
         pt.mark.long((4, 3, 2, 2, 2)),
     ])
 @pt.mark.parametrize('nonuniform', [False, True])
-def test_mppovm_list_counts_from(
+def test_mppovmlist_est_pmf_from(
         method, n_samples, nr_sites, local_dim, bond_dim, measure_width,
         local_width, nonuniform, splitpauli, rgen, eps=1e-10):
-    """Verify that estimated probabilities from MPPovmList.estprob_from()
-    are reasonable accurate"""
+    """Verify that estimated probabilities from MPPovmList.est_pmf_from()
+    are reasonable accurate
+
+    """
 
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
     mps.normalize()
@@ -551,9 +550,9 @@ def test_mppovm_list_counts_from(
     l_povm = l_povm(local_width, local_dim).block(nr_sites)
     samples = tuple(g_povm.sample(
         rgen, mps, n_samples, method, mode='mps', eps=eps))
-    est_prob, n_samples = zip(*l_povm.estprob_from(g_povm, samples, eps))
+    est_prob, n_samples = zip(*l_povm.est_pmf_from(g_povm, samples, eps))
     exact_prob = tuple(mp.prune(p, singletons=True).to_array()
-                       for p in l_povm.probab(mps, 'mps'))
+                       for p in l_povm.pmf(mps, 'mps'))
     # Consistency check on n_samples: All entries should be equal
     # unless `nonuniform` is True.
     all_n_sam = np.concatenate(n_samples)
@@ -581,10 +580,10 @@ def test_mppovm_list_counts_from(
     ])
 @pt.mark.parametrize('nonuniform', [True, pt.mark.long(False)])
 @pt.mark.parametrize('function', ['randn', 'ones', 'signs', pt.mark.long('rand')])
-def test_mppovm_list_estfun_from(
+def test_mppovmlist_est_fun_from(
         method, n_samples, nr_sites, local_dim, bond_dim, measure_width,
         local_width, nonuniform, function, rgen, eps=1e-10):
-    """Verify that estimated probabilities from MPPovmList.estprob_from()
+    """Verify that estimated probabilities from MPPovmList.est_pmf_from()
     are reasonable accurate"""
 
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
@@ -618,14 +617,14 @@ def test_mppovm_list_estfun_from(
     samples = tuple(g_povm.sample(
         rgen, mps, n_samples, method, mode='mps', eps=eps))
     exact_prob = tuple(mp.prune(p, singletons=True).to_array()
-                       for p in l_povm.probab(mps, 'mps'))
+                       for p in l_povm.pmf(mps, 'mps'))
 
-    est, var = l_povm.estfun_from(g_povm, coeff, samples, eps)
+    est, var = l_povm.est_fun_from(g_povm, coeff, samples, eps)
 
     # The final estimator is based on the samples for
     # `g_povm`. Therefore, it is correct to use `n_samples` below (and
     # not the "effective samples" for the `l_povm` probability
-    # estimation returned by :func:`l_povm.estprob_from()`.
+    # estimation returned by :func:`l_povm.est_pmf_from()`.
     exact_est = sum(np.inner(c.flat, p.flat) for c, p in zip(coeff, exact_prob))
     assert abs(est - exact_est) <= 3 / n_samples**0.5
     if function == 'ones':
@@ -643,8 +642,7 @@ def test_mppovm_list_estfun_from(
     n_samples2 = [s.shape[0] for s in samples]
     # Convert from matching functions + coefficients to coefficients
     # for each probability.
-    est_coeff, est_funs = l_povm._estfun_from_estimator(g_povm, coeff,
-                                                        n_samples2, eps)
+    est_coeff, est_funs = l_povm._fun_estimator(g_povm, coeff, n_samples2, eps)
     est_p_coeff = [np.zeros(mpp.nsoutdims, float) for mpp in g_povm.mpps]
     for fun_coeff, funs, p_coeff, mpp in zip(
             est_coeff, est_funs, est_p_coeff, g_povm.mpps):
@@ -654,7 +652,7 @@ def test_mppovm_list_estfun_from(
             match = fun(out)
             p_coeff.flat[match] += c
     exact_prob = tuple(mp.prune(p, singletons=True).to_array()
-                       for p in g_povm.probab(mps, 'mps'))
+                       for p in g_povm.pmf(mps, 'mps'))
     exact_p_cov = (np.diag(p.flat) - np.outer(p.flat, p.flat) for p in exact_prob)
     exact_var = sum(np.inner(c.flat, np.dot(cov, c.flat))
                     for c, cov in zip(est_p_coeff, exact_p_cov))
