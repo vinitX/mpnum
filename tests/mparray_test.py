@@ -634,6 +634,28 @@ def test_local_sum(nr_sites, local_dim, bond_dim, local_width, rgen):
     assert_array_almost_equal(mpa_local_sum.to_array(), mpa_sum.to_array())
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_diag_1pleg(nr_sites, local_dim, bond_dim, rgen):
+    mpa = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    mpa_np = mpa.to_array()
+    # this should be a single, 1D numpy array
+    diag_mp = mp.diag(mpa)
+    diag_np = np.array([mpa_np[(i,) * nr_sites] for i in range(local_dim)])
+    assert_array_almost_equal(diag_mp, diag_np)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_diag_2plegs(nr_sites, local_dim, bond_dim, rgen):
+    mpa = factory.random_mpa(nr_sites, 2 * (local_dim,), bond_dim, randstate=rgen)
+    mpa_np = mpa.to_array()
+    # this should be a single, 1D numpy array
+    diag_mp = mp.diag(mpa, axis=1)
+    diag_np = np.array([mpa_np[(slice(None), i) * nr_sites]
+                        for i in range(local_dim)])
+    for a, b in zip(diag_mp, diag_np):
+        assert a.plegs[0] == 1
+        assert_array_almost_equal(a.to_array(), b)
+
 ###############################################################################
 #                         Shape changes, conversions                          #
 ###############################################################################
