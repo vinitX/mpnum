@@ -120,8 +120,6 @@ class MPArray(object):
     def __len__(self):
         return len(self._ltens)
 
-    # FIXME Can we return immutable view into array without having to set the
-    #   WRITEABLE flag for the local copy?
     def __iter__(self):
         """Use only for read-only access! Do not change arrays in place!
 
@@ -129,7 +127,10 @@ class MPArray(object):
         break basic MPA functionality such as :func:`dot`.
 
         """
-        return iter(self._ltens)
+        for ltens in self._ltens:
+            view = ltens.view()
+            view.setflags(write=False)
+            yield view
 
     def __getitem__(self, index):
         """Use only for read-only access! Do not change arrays in place!"""
@@ -1138,7 +1139,7 @@ def diag(mpa, axis=0):
     assert all(p == plegs for p in mpa.plegs)
 
     slices = ((slice(None),) * (axis + 1) + (i,) for i in range(dim))
-    mpas = [MPArray(ltens[s] for ltens in mpa._ltens) for s in slices]
+    mpas = [MPArray(ltens[s] for ltens in mpa) for s in slices]
 
     if len(mpa.pdims[0]) == 1:
         return np.array([mpa.to_array() for mpa in mpas])

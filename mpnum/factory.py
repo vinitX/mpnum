@@ -266,8 +266,8 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
 
     if hermitian:
         # make mpa Herimitan in place, without increasing bond dimension:
-        for lten in mpo:
-            lten += lten.swapaxes(1, 2).conj()
+        ltens = (l + l.swapaxes(1, 2).conj() for l in mpo)
+        mpo = mp.MPArray(ltens)
     if normalized:
         # we do this with a copy to ensure the returned state is not
         # normalized
