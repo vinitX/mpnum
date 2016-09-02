@@ -44,7 +44,7 @@ from ._tools import block_diag, global_to_local, local_to_global, matdot
 
 __all__ = ['MPArray', 'dot', 'inject', 'inner', 'local_sum', 'louter',
            'norm', 'normdist', 'outer', 'partialdot', 'partialtrace',
-           'prune', 'regular_slices', 'embed_slice', 'trace']
+           'prune', 'regular_slices', 'embed_slice', 'trace', 'diag']
 
 
 class MPArray(object):
@@ -1113,6 +1113,39 @@ def outer(mpas):
     # TODO Make this normalization aware
     # FIXME Is copying here a good idea?
     return MPArray(sum(([ltens.copy() for ltens in mpa] for mpa in mpas), []))
+
+
+def diag(mpa, axis=0):
+    """Returns the diagonal elements :code:`mpa[i, i, ..., i]`. If :code:`mpa`
+    has more than one physical dimension, the result is a numpy array with
+    :code:`MPArray` entries, otherwise its a numpy array with floats.
+
+    :param mpa: MPArray with pdims > :code:`axis`
+    :param axis: The physical index to take diagonals over
+    :returns: Array containing the diagonal elements (`MPArray`s with the
+    physical dimension reduced by one, note that an `MPArray` with physical
+    dimension 0 is a simple number)
+
+    """
+    dim = mpa.pdims[0][axis]
+    # work around http://bugs.python.org/issue21161
+    try:
+        valid_axis = [d[axis] == dim for d in mpa.pdims]
+        assert all(valid_axis)
+    except NameError:
+        pass
+    plegs = mpa.plegs[0]
+    assert all(p == plegs for p in mpa.plegs)
+
+    slices = ((slice(None),) * (axis + 1) + (i,) for i in range(dim))
+    mpas = [MPArray(ltens[s] for ltens in mpa._ltens) for s in slices]
+
+    if len(mpa.pdims[0]) == 1:
+        return np.array([mpa.to_array() for mpa in mpas])
+    else:
+        result = np.empty(len(mpas), dtype=object)
+        result[:] = mpas
+        return result
 
 
 #FXIME Why is outer not a special case of this?
