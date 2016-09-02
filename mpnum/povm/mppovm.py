@@ -151,6 +151,54 @@ class MPPovm(mp.MPArray):
         right = MPPovm.eye([local_dim] * n_right)
         return MPPovm(mp.outer([left, self, right]))
 
+    def block(self, nr_sites):
+        """Embed an MP-POVM on local blocks
+
+        The returned :class:`MPPovmList` will contain `self` embedded
+        at every possible position on `len(self)` neighbouring sites
+        in a chain of length `nr_sites`. The remaining sites are not
+        measured (:func:`self.embed()`).
+
+        `self` must a have a uniform local Hilbert space dimension.
+
+        :param nr_sites: Number of sites of the resulting MP-POVMs
+
+        """
+        local_dim = self.hdims[0]
+        assert all(d == local_dim for d in self.hdims), \
+            "Blocking requires uniform local Hilbert space dimension"
+        return MPPovmList(
+            self.embed(nr_sites, startsite, local_dim)
+            for startsite in range(nr_sites - len(self) + 1)
+        )
+
+    def repeat(self, nr_sites):
+        """Construct a longer MP-POVM by repetition
+
+        The resulting POVM will have length `nr_sites`. If `nr_sites`
+        is not an integer multiple of `len(self)`, `self` must
+        factorize (have bond dimension one) at the position where it
+        will be cut. For example, consider the tensor product MP-POVM
+        of Pauli X and Pauli Y. Calling `repeat(nr_sites=5)` will
+        construct the tensor product POVM XYXYX:
+
+        >>> import mpnum as mp
+        >>> import mpnum.povm as mpp
+        >>> x, y = (mpp.MPPovm.from_local_povm(lp(3), 1) for lp in
+        ...         (mpp.x_povm, mpp.y_povm))
+        >>> xy = mpp.MPPovm(mp.outer((x, y)))
+        >>> xyxyx = mpp.MPPovm(mp.outer((x, y, x, y, x)))
+        >>> mp.norm(xyxyx - xy.repeat(5)) <= 1e-10
+        True
+
+        """
+        n_repeat, n_last = nr_sites // len(self), nr_sites % len(self)
+        if n_last > 0:
+            assert self.bdims[n_last - 1] == 1, \
+                "Partial repetition requires factorizing MP-POVM"
+        return MPPovm(mp.outer(
+            [self] * n_repeat + ([mp.MPArray(self[:n_last])] if n_last > 0 else [])))
+
     def expectations(self, mpa, mode='auto'):
         """Computes the exp. values of the POVM elements with given state
 
@@ -188,7 +236,6 @@ class MPPovm(mp.MPArray):
             return
         else:
             raise ValueError("Could not understand data dype.")
-
 
     def probab(self, state, mode='auto'):
         """Compute probabilities of `state`
@@ -730,6 +777,76 @@ class MPPovmList:
         self.mpps = tuple(mpp if isinstance(mpp, MPPovm) else MPPovm(mpp)
                           for mpp in self.mpps)
 
+    def block(self, nr_sites):
+        """Embed MP-POVMs on local blocks
+
+        This function calls :func:`MPPovm.block(nr_sites)` for each
+        MP-POVM in the list. Embedded MP-POVMs at the same position
+        appear consecutively in the returned list:
+
+        >>> import mpnum as mp
+        >>> import mpnum.povm as mpp
+        >>> ldim = 3
+        >>> x, y = (mpp.MPPovm.from_local_povm(lp(ldim), 1) for lp in
+        ...         (mpp.x_povm, mpp.y_povm))
+        >>> e = mpp.MPPovm.eye([ldim])
+        >>> xx = mpp.MPPovm(mp.outer((x, x)))
+        >>> xy = mpp.MPPovm(mp.outer((x, y)))
+        >>> mppl = mpp.MPPovmList((xx, xy))
+        >>> xxe = mpp.MPPovm(mp.outer((x, x, e)))
+        >>> xye = mpp.MPPovm(mp.outer((x, y, e)))
+        >>> exx = mpp.MPPovm(mp.outer((e, x, x)))
+        >>> exy = mpp.MPPovm(mp.outer((e, x, y)))
+        >>> expect = (xxe, xye, exx, exy)
+        >>> [abs(mp.norm(a - b)) <= 1e-10 
+        ...  for a, b in zip(mppl.block(3).mpps, expect)]
+        [True, True, True, True]
+
+        """
+        return MPPovmList(it.chain(*zip(*(m.block(nr_sites).mpps
+                                          for m in self.mpps))))
+
+    def repeat(self, nr_sites):
+        """Construct longer MP-POVMs by repeating each MP-POVM
+
+        This function calls :func:`MPPovm.repeat(nr_sites)` for each
+        MP-POVM in the list.
+
+        For example, :func:`pauli_mpps()` for `local_dim > 3`
+        (i.e. without Z) and two sites returns POVMs for the four
+        tensor product observables XX, XY, YX and YY:
+
+        >>> import mpnum as mp
+        >>> import mpnum.povm as mpp
+        >>> block_sites = 2
+        >>> ldim = 3
+        >>> x, y = (mpp.MPPovm.from_local_povm(lp(ldim), 1) for lp in
+        ...         (mpp.x_povm, mpp.y_povm))
+        >>> pauli = mpp.pauli_mpps(block_sites, ldim)
+        >>> expect = (
+        ...     mp.outer((x, x)),
+        ...     mp.outer((x, y)),
+        ...     mp.outer((y, x)),
+        ...     mp.outer((y, y)),
+        ... )
+        >>> [abs(mp.norm(a - b)) <= 1e-10 for a, b in zip(pauli.mpps, expect)]
+        [True, True, True, True]
+
+        Calling `repeat(5)` then returns the following
+        :class:`MPPovmList`:
+
+        >>> expect = (
+        ...     mp.outer((x, x, x, x, x)),
+        ...     mp.outer((x, y, x, y, x)),
+        ...     mp.outer((y, x, y, x, y)),
+        ...     mp.outer((y, y, y, y, y)),
+        ... )
+        >>> [abs(mp.norm(a - b)) <= 1e-10 for a, b in zip(pauli.repeat(5).mpps, expect)]
+        [True, True, True, True]
+
+        """
+        return MPPovmList(m.repeat(nr_sites) for m in self.mpps)
+
     def sample(self, rng, state, n_samples, method, n_group=1, mode='auto',
                eps=1e-10):
         """Sample from MPPovms on state
@@ -823,50 +940,62 @@ class MPPovmList:
             yield mpp.probab(state, mode)
 
 
-def block_pauli_povmlist(nr_sites, local_dim, block_width):
-    """Pauli POVM on local blocks
+def pauli_mpp(nr_sites, local_dim):
+    """Pauli POVM tensor product as MP-POVM
 
-    The returned :class:`MPPovmList` will have :class:`MPPovms
-    <MPPovm>` with the tensor product Pauli POVM on `block_width`
-    neighbouring sites placed at every possible position on `nr_sites`
-    sites. The remaining sites are not measured
-    (:func:`MPPovm.eye()`).
+    The resulting MP-POVM will contain all tensor products of the
+    elements of the local Pauli POVM from :func:`mpp.pauli_povm()`.
 
-    """
-    pauli_block = MPPovm.from_local_povm(mpp.pauli_povm(local_dim), block_width)
-    return MPPovmList(
-        pauli_block.embed(nr_sites, startsite, local_dim)
-        for startsite in range(nr_sites - block_width + 1)
-    )
+    :param int nr_sites: Number of sites of the returned MP-POVM
+    :param int local_dim: Local dimension
+    :rtype: MPPovm
 
+    For example, for two qubits the `(1, 3)` measurement outcome is
+    `minus X` on the first and `minus Y` on the second qubit:
 
-def tiled_pauli_povmlist(nr_sites, local_dim, block_width):
-    """Local block Pauli observables tiled across the chain
+    >>> nr_sites = 2
+    >>> local_dim = 2
+    >>> pauli = pauli_mpp(nr_sites, local_dim)
+    >>> xy = np.kron([1, -1], [1, -1j]) / 2
+    >>> xyproj = np.outer(xy, xy.conj())
+    >>> proj = pauli[1, 3].to_array_global().reshape((4, 4))
+    >>> abs(proj - xyproj / 3**nr_sites).max() <= 1e-10
+    True
 
-    We start with all tensor products of the three Pauli observables
-    :func:`x_povm <mpnum.povm.localpovm.x_povm>`, :func:`y_povm
-    <mpnum.povm.localpovm.y_povm>` and :func:`z_povm
-    <mpnum.povm.localpovm.z_povm>` on `block_width` neighbours. (For
-    `local_dim > 2`, :func:`z_povm <mpnum.povm.localpovm.z_povm>` is
-    not included.) We take these observables and repeat them across
-    the entire chain of `nr_sites` and return the result as an
-    :class:`MPPovmList`.
-
-    For example, for `local_dim > 2` (i.e. no Z), `block_width = 2`
-    and `nr_sites = 5`, the POVMs of the following observables will be
-    returned::
-
-        XX,XX,X
-        XY,XY,X
-        YX,YX,Y
-        YY,YY,Y
-
-    The commas have been added emphasize the block structure.
+    The prefactor `1 / 3**nr_sites` arises because X, Y and Z are in a
+    single POVM.
 
     """
-    mpps = [MPPovm.from_local_povm(x, 1) for x in mpp.pauli_parts(local_dim)]
-    return MPPovmList(
-        MPPovm(mp.outer(factor for _, factor in zip(
-            range(nr_sites), it.chain.from_iterable(it.repeat(factors)))))
-        for factors in it.product(mpps, repeat=block_width)
-    )
+    return MPPovm.from_local_povm(mpp.pauli_povm(local_dim), nr_sites)
+
+
+def pauli_mpps(nr_sites, local_dim):
+    """Pauli POVM tensor product as MP-POVM list
+
+    The returned :class:`MPPovmList` contains all tensor products of
+    the single-site X, Y (and Z if `local_dim == 2`) POVMs:
+
+    >>> import mpnum as mp
+    >>> import mpnum.povm as mpp
+    >>> block_sites = 2
+    >>> ldim = 3
+    >>> x, y = (mpp.MPPovm.from_local_povm(lp(ldim), 1) for lp in
+    ...         (mpp.x_povm, mpp.y_povm))
+    >>> pauli = mpp.pauli_mpps(block_sites, ldim)
+    >>> expect = (
+    ...     mp.outer((x, x)),
+    ...     mp.outer((x, y)),
+    ...     mp.outer((y, x)),
+    ...     mp.outer((y, y)),
+    ... )
+    >>> [abs(mp.norm(a - b)) <= 1e-10 for a, b in zip(pauli.mpps, expect)]
+    [True, True, True, True]
+
+    :param int nr_sites: Number of sites of the returned MP-POVMs
+    :param int local_dim: Local dimension
+    :rtype: MPPovmList
+
+    """
+    parts = [MPPovm.from_local_povm(x, 1) for x in mpp.pauli_parts(local_dim)]
+    return MPPovmList(MPPovm(mp.outer(factors))
+                      for factors in it.product(parts, repeat=nr_sites))
