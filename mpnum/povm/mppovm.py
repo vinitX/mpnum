@@ -750,6 +750,7 @@ class MPPovm(mp.MPArray):
             number of samples used for each probability.
 
         """
+        assert len(other.mpps) == len(samples)
         pmf_ests = np.zeros((len(other.mpps),) + self.nsoutdims, float)
         n_samples = np.zeros(len(other.mpps), int)
         for pos, other_mpp, other_samples in zip(it.count(), other.mpps, samples):
