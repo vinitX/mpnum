@@ -240,6 +240,32 @@ def eye(sites, ldim):
     return mp.MPArray.from_kron(it.repeat(np.eye(ldim), sites))
 
 
+def diagonal_mpa(entries, sites):
+    """@todo: Docstring for diagonal_mpa.
+
+    :param entries: @todo
+    :returns: @todo
+
+    """
+    assert sites > 0
+
+    if entries.ndim != 1:
+        raise NotImplementedError("Currently only supports 1-plegged diagonal")
+
+    if sites < 2:
+        return mp.MPArray.from_array(entries)
+
+    ldim = len(entries)
+    leftmost_ltens = np.eye(ldim).reshape((1, ldim, ldim))
+    rightmost_ltens = np.diag(entries).reshape((ldim, ldim, 1))
+    center_ltens = np.zeros((ldim,) * 3)
+    np.fill_diagonal(center_ltens, 1)
+    ltens = it.chain((leftmost_ltens,), it.repeat(center_ltens, sites - 2),
+                     (rightmost_ltens,))
+
+    return mp.MPArray(ltens, _lnormalized=sites - 1, _rnormalized=sites)
+
+
 #########################
 #  More physical stuff  #
 #########################
