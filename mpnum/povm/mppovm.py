@@ -852,6 +852,19 @@ class MPPovmList:
         """
         return MPPovmList(m.repeat(nr_sites) for m in self.mpps)
 
+    def probab(self, state, mode='auto'):
+        """Compute the probability mass functions of all MP-POVMs
+
+        :param state: A quantum state as MPA
+        :param mode: Passed to :func:`MPPovm.expectations()`
+
+        :returns: Iterator over shape probabilities as MPArrays
+
+        """
+        assert len(state) == len(self.mpps[0])
+        for mpp in self.mpps:
+            yield mpp.pmf(state, mode)
+
     def sample(self, rng, state, n_samples, method, n_group=1, mode='auto',
                eps=1e-10):
         """Sample from MPPovms on state
@@ -930,19 +943,6 @@ class MPPovmList:
             mpp.est_fun(np.array(c, float), f, s, eps=eps)
             for c, f, s, mpp in zip(est_coeff, funs, samples, other.mpps)))
         return sum(est), sum(var)
-
-    def probab(self, state, mode='auto'):
-        """Compute probabilities
-
-        :param state: A quantum state as MPA
-        :param mode: Passed to :func:`MPPovm.expectations()`
-
-        :returns: Iterator over shape probabilities as MPArrays
-
-        """
-        assert len(state) == len(self.mpps[0])
-        for mpp in self.mpps:
-            yield mpp.probab(state, mode)
 
 
 def pauli_mpp(nr_sites, local_dim):
