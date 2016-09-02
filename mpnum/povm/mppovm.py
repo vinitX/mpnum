@@ -494,8 +494,12 @@ class MPPovm(mp.MPArray):
         """Estimate a linear combination of functions of the POVM outcomes
 
         :param np.ndarray coeff: A length `n_funs` array with the
-            coefficients of the linear combination
-        :param np.ndarray funs: A length `n_funs` sequence of functions
+            coefficients of the linear combination. If `None`, return
+            the estimated values of the individual functions and the
+            estimated covariance matrix of the estimates.
+        :param np.ndarray funs: A length `n_funs` sequence of
+            functions. If `None`, the estimated function will be a
+            linear function of the POVM probabilities.
         :param np.ndarray samples: A shape `(n_samples,
             len(self.nsoutdims))` with samples from `self`
         :param weights: A length `n_samples` array for weighted
@@ -508,6 +512,13 @@ class MPPovm(mp.MPArray):
             of the estimated value
 
         """
+        if funs is None:
+            # In this special case, we could make the implementation faster.
+            n_out = np.prod(self.nsoutdims)
+            out = np.array(np.unravel_index(range(n_out), self.nsoutdims))\
+                    .T[:, None, :].copy()
+            funs = [lambda s, pos=pos: (s == out[pos]).all(1)
+                    for pos in range(n_out)]
         n_funs = len(funs)
         if coeff is not None:
             assert coeff.ndim == 1
