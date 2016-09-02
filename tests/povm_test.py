@@ -447,14 +447,7 @@ def test_mppovm_est_fun(
     cov_p_exact = np.diag(p_exact.flat) - np.outer(p_exact.flat, p_exact.flat)
     samples = mpp.sample(rgen, mps, n_samples, method, 4, 'mps', eps)
 
-    funs = []
-    nsoutdims = mpp.nsoutdims
-    out = np.unravel_index(range(np.prod(nsoutdims)), nsoutdims)
-    out = np.array(out).T[:, None, :].copy()
-    for ind in range(np.prod(nsoutdims)):
-        funs.append(lambda s, ind=ind: (s == out[ind]).all(1))
-
-    ept, cov = mpp.est_fun(None, funs, samples, None, eps)
+    ept, cov = mpp.est_fun(None, None, samples, None, eps)
 
     p_est = mpp.est_pmf(samples)
 
@@ -467,6 +460,13 @@ def test_mppovm_est_fun(
     # decrease by 1/n_samples, so we multiply with n_samples before
     # comparing to the rule-of-thumb for the estimation error.
     assert abs(diff).max() * n_samples <= 1 / n_samples**0.5
+
+    funs = []
+    nsoutdims = mpp.nsoutdims
+    out = np.unravel_index(range(np.prod(nsoutdims)), nsoutdims)
+    out = np.array(out).T[:, None, :].copy()
+    for ind in range(np.prod(nsoutdims)):
+        funs.append(lambda s, ind=ind: (s == out[ind]).all(1))
 
     # All probabilities sum to one, and we can estimate that well.
     coeff = np.ones(len(funs), dtype=float)
