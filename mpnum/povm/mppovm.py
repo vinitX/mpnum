@@ -725,7 +725,7 @@ class MPPovm(mp.MPArray):
         counts[~given] = np.nan
         return counts, n_samples_used
 
-    def estprob_from_mpplist(self, other, samples, eps=1e-10):
+    def estprob_from_mpps(self, other, samples, eps=1e-10):
         """Estimate POVM probabilities from MPPovmList samples
 
         :param MPPovmList other: An :class:`MPPovmList` instance
