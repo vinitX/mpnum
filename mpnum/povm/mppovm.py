@@ -626,6 +626,7 @@ class MPPovm(mp.MPArray):
             identity, return the fraction. Otherwise return `None`.
 
         """
+        assert given.any(), "Some elements are required" 
         any_missing = not given.all()
         given = self._fill_out_holes(
             support, mp.MPArray.from_array(given, plegs=1))
@@ -681,6 +682,10 @@ class MPPovm(mp.MPArray):
 
         n_nsout = len(self.nsoutdims)
         given = match.any(tuple(range(n_nsout, match.ndim)))
+        if not given.any():
+            counts = np.zeros(self.nsoutdims, float)
+            counts[:] = np.nan
+            return counts, 0
         all_prefactor = self._elemsum_identity(support, given, eps)
         assert all_prefactor is not None, (
             "Given subset of elements does not sum to multiple of identity; "
