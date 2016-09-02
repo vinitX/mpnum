@@ -527,12 +527,12 @@ def test_mppovm_list_counts_from(
     local_pauli = povm.pauli_povm(local_dim)
     pauli = povm.MPPovm.from_local_povm(local_pauli, local_width)
     # POVM list with global support
-    g_povm = povm.tiled_pauli_povmlist(nr_sites, local_dim, measure_width)
+    g_povm = povm.pauli_mpps(measure_width, local_dim).repeat(nr_sites)
     if nonuniform:
         add_povm = mp.outer((nr_sites - 1) * (x,) + (y,))
         g_povm = povm.MPPovmList(g_povm.mpps + (add_povm,))
     # POVM list with local support
-    l_povm = povm.block_pauli_povmlist(nr_sites, local_dim, local_width)
+    l_povm = povm.pauli_mpp(local_width, local_dim).block(nr_sites)
     samples = tuple(g_povm.sample(
         rgen, mps, n_samples, method, mode='mps', eps=eps))
     est_prob, n_samples = zip(*l_povm.estprob_from(g_povm, samples, eps))
@@ -581,12 +581,12 @@ def test_mppovm_list_estfun_from(
     local_pauli = povm.pauli_povm(local_dim)
     pauli = povm.MPPovm.from_local_povm(local_pauli, local_width)
     # POVM list with global support
-    g_povm = povm.tiled_pauli_povmlist(nr_sites, local_dim, measure_width)
+    g_povm = povm.pauli_mpps(measure_width, local_dim).repeat(nr_sites)
     if nonuniform:
         add_povm = mp.outer((nr_sites - 1) * (x,) + (y,))
         g_povm = povm.MPPovmList(g_povm.mpps + (add_povm,))
     # POVM list with local support
-    l_povm = povm.block_pauli_povmlist(nr_sites, local_dim, local_width)
+    l_povm = povm.pauli_mpp(local_width, local_dim).block(nr_sites)
     if function == 'rand':
         coeff = lambda x: rgen.rand(*x)
     elif function == 'randn':
