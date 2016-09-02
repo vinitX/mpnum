@@ -52,53 +52,6 @@ class MPPovm(mp.MPArray):
         assert all(pdims[1] == pdims[2] for pdims in self.pdims), \
             "Hilbert space dimension mismatch: {!r}".format(self.pdims)
 
-    @classmethod
-    def from_local_povm(cls, lelems, width):
-        """Generates a product POVM on `width` sites.
-
-        :param lelems: POVM elements as an iterator over all local elements
-            (i.e. an iterator over numpy arrays representing the latter)
-        :param int width: Number of sites the POVM lives on
-        :returns: :class:`MPPovm` which is a product POVM of the `lelems`
-
-        """
-        return cls.from_kron(it.repeat(lelems, width))
-
-    @classmethod
-    def eye(cls, local_dims):
-        """Construct MP-POVM with no output or measurement
-
-        Corresponds to taking the partial trace of the quantum state
-        and a shorter MP-POVM.
-
-        :param local_dims: Iterable of local dimensions
-
-        """
-        return cls.from_kron(
-            (np.eye(dim).reshape((1, dim, dim)) for dim in local_dims))
-
-    def embed(self, nr_sites, startsite, local_dim):
-        """Embed MP-POVM into larger system
-
-        Applying the resulting embedded MP-POVM to a state `rho` gives
-        the same result as applying the original MP-POVM `self` on the
-        reduced state of sites `range(startsite, startsite +
-        len(self))` of `rho`.
-
-        :param nr_sites: Number of sites of the resulting MP-POVM
-        :param startsite: Position of the first site of `self` in the
-            resulting MP-POVM
-        :param local_dim: Local dimension of sites to be added
-
-        :returns: MP-POVM with `self` on sites `range(startsite,
-            startsite + len(self))` and :func:`MPPovm.eye()` elsewhere
-
-        """
-        left = MPPovm.eye([local_dim] * startsite)
-        n_right = nr_sites - len(self) - startsite
-        right = MPPovm.eye([local_dim] * n_right)
-        return MPPovm(mp.outer([left, self, right]))
-
     @property
     def outdims(self):
         """Tuple of outcome dimensions"""
@@ -150,6 +103,53 @@ class MPPovm(mp.MPArray):
         # of the transpose.
         return self.transpose((0, 2, 1)).reshape(
             (pdim[0], -1) for pdim in self.pdims)
+
+    @classmethod
+    def from_local_povm(cls, lelems, width):
+        """Generates a product POVM on `width` sites.
+
+        :param lelems: POVM elements as an iterator over all local elements
+            (i.e. an iterator over numpy arrays representing the latter)
+        :param int width: Number of sites the POVM lives on
+        :returns: :class:`MPPovm` which is a product POVM of the `lelems`
+
+        """
+        return cls.from_kron(it.repeat(lelems, width))
+
+    @classmethod
+    def eye(cls, local_dims):
+        """Construct MP-POVM with no output or measurement
+
+        Corresponds to taking the partial trace of the quantum state
+        and a shorter MP-POVM.
+
+        :param local_dims: Iterable of local dimensions
+
+        """
+        return cls.from_kron(
+            (np.eye(dim).reshape((1, dim, dim)) for dim in local_dims))
+
+    def embed(self, nr_sites, startsite, local_dim):
+        """Embed MP-POVM into larger system
+
+        Applying the resulting embedded MP-POVM to a state `rho` gives
+        the same result as applying the original MP-POVM `self` on the
+        reduced state of sites `range(startsite, startsite +
+        len(self))` of `rho`.
+
+        :param nr_sites: Number of sites of the resulting MP-POVM
+        :param startsite: Position of the first site of `self` in the
+            resulting MP-POVM
+        :param local_dim: Local dimension of sites to be added
+
+        :returns: MP-POVM with `self` on sites `range(startsite,
+            startsite + len(self))` and :func:`MPPovm.eye()` elsewhere
+
+        """
+        left = MPPovm.eye([local_dim] * startsite)
+        n_right = nr_sites - len(self) - startsite
+        right = MPPovm.eye([local_dim] * n_right)
+        return MPPovm(mp.outer([left, self, right]))
 
     def expectations(self, mpa, mode='auto'):
         """Computes the exp. values of the POVM elements with given state
