@@ -157,6 +157,12 @@ class MPArray(object):
         self._ltens[index] = value
 
     @property
+    def size(self):
+        """Returns the number of floating point numbers used to represent the
+        MPArray"""
+        return sum(np.prod(shape) for shape in self.dims)
+
+    @property
     def dtype(self):
         """Returns the dtype that should be returned by to_array"""
         return np.common_type(*self._ltens)
