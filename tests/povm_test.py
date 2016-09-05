@@ -629,14 +629,15 @@ def test_mppovmlist_est_fun_from(
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
     mps.normalize()
 
-    # POVM list with local support
     sample_povm, fun_povm = povm_combo
     fromself = sample_povm == fun_povm and measure_width == local_width
-    g_povm = _get_povm(sample_povm, nr_sites, local_dim, measure_width)
+    # s_povm: POVM used to obtain samples
+    s_povm = _get_povm(sample_povm, nr_sites, local_dim, measure_width)
+    # f_povm: POVM on which a linear function is defined
     if fromself:
-        l_povm = g_povm
+        f_povm = s_povm
     else:
-        l_povm = _get_povm(fun_povm, nr_sites, local_dim, local_width)
+        f_povm = _get_povm(fun_povm, nr_sites, local_dim, local_width)
     if function == 'rand':
         coeff = lambda x: rgen.rand(*x)
     elif function == 'randn':
@@ -648,38 +649,38 @@ def test_mppovmlist_est_fun_from(
     else:
         raise ValueError('Unknown function {!r}'.format(function))
 
-    coeff = [coeff(mpp.nsoutdims) for mpp in l_povm.mpps]
-    samples = tuple(g_povm.sample(
+    coeff = [coeff(mpp.nsoutdims) for mpp in f_povm.mpps]
+    samples = tuple(s_povm.sample(
         rgen, mps, n_samples, method, mode='mps', eps=eps))
     exact_prob = tuple(mp.prune(p, singletons=True).to_array()
-                       for p in l_povm.pmf(mps, 'mps'))
+                       for p in f_povm.pmf(mps, 'mps'))
 
     # Make the estimated value have approximately same magnitude
-    # independently of len(l_povm.mpps)
-    coeff = [c / len(l_povm.mpps) for c in coeff]
-    # More POVMs in g_povm means more samples. Consider this in the
+    # independently of len(f_povm.mpps)
+    coeff = [c / len(f_povm.mpps) for c in coeff]
+    # More POVMs in s_povm means more samples. Consider this in the
     # tests.
-    n_samples_eff = n_samples * len(g_povm.mpps)
+    n_samples_eff = n_samples * len(s_povm.mpps)
 
-    est, var = l_povm.est_fun_from(g_povm, coeff, samples, eps)
+    est, var = f_povm.est_fun_from(s_povm, coeff, samples, eps)
     if fromself:
         # In this case, est_fun() and est_fun_from() must give exactly
         # the same result.
-        est2, var2 = l_povm.est_fun([c.ravel() for c in coeff],
+        est2, var2 = f_povm.est_fun([c.ravel() for c in coeff],
                                     None, samples, eps)
         assert abs(est - est2) <= eps
         assert abs(var - var2) <= eps
         # We use est_pmf() to test est_pmf_from()
         # again. MPPovmList.est_pmf() just aggregates results from
         # MPPovm.est_pmf().
-        pmf1 = l_povm.est_pmf(samples, normalized=True, eps=eps)
-        pmf2, _ = zip(*l_povm.est_pmf_from(g_povm, samples, eps=eps))
+        pmf1 = f_povm.est_pmf(samples, normalized=True, eps=eps)
+        pmf2, _ = zip(*f_povm.est_pmf_from(s_povm, samples, eps=eps))
         assert all(abs(p1 - p2).max() <= eps for p1, p2 in zip(pmf1, pmf2))
 
     # The final estimator is based on the samples for
-    # `g_povm`. Therefore, it is correct to use `n_samples_eff` below
-    # (and not the "effective samples" for the `l_povm` probability
-    # estimation returned by :func:`l_povm.est_pmf_from()`).
+    # `s_povm`. Therefore, it is correct to use `n_samples_eff` below
+    # (and not the "effective samples" for the `f_povm` probability
+    # estimation returned by :func:`f_povm.est_pmf_from()`).
     exact_est = sum(np.inner(c.flat, p.flat) for c, p in zip(coeff, exact_prob))
     assert abs(est - exact_est) <= 6 / n_samples_eff**0.5
     if function == 'ones':
@@ -690,7 +691,7 @@ def test_mppovmlist_est_fun_from(
     # nr_sites = 16 will work, but let's stay safe.
     assert nr_sites <= 8, "Larger systems will require a lot of memory"
 
-    # Use the estimator from `l_povm._estfun_from_estimator()` to
+    # Use the estimator from `f_povm._estfun_from_estimator()` to
     # compute the exact variance of the estimate. We can assume that
     # estimator is mostly correct because we have checked that it
     # produces accurate estimates (for large numbers of samples)
@@ -699,25 +700,25 @@ def test_mppovmlist_est_fun_from(
     # Convert from matching functions + coefficients to coefficients
     # for each probability.
     n_samples2 = [s.shape[0] for s in samples]
-    est_coeff, est_funs = l_povm._fun_estimator(g_povm, coeff, n_samples2, eps)
-    est_p_coeff = [np.zeros(mpp.nsoutdims, float) for mpp in g_povm.mpps]
+    est_coeff, est_funs = f_povm._fun_estimator(s_povm, coeff, n_samples2, eps)
+    est_p_coeff = [np.zeros(mpp.nsoutdims, float) for mpp in s_povm.mpps]
     for fun_coeff, funs, p_coeff, mpp in zip(
-            est_coeff, est_funs, est_p_coeff, g_povm.mpps):
+            est_coeff, est_funs, est_p_coeff, s_povm.mpps):
         out = np.unravel_index(range(np.prod(mpp.nsoutdims)), mpp.nsoutdims)
         out = np.array(out).T.copy()
         for c, fun in zip(fun_coeff, funs):
             match = fun(out)
             p_coeff.flat[match] += c
     exact_prob = tuple(mp.prune(p, singletons=True).to_array()
-                       for p in g_povm.pmf(mps, 'mps'))
+                       for p in s_povm.pmf(mps, 'mps'))
     exact_p_cov = (np.diag(p.flat) - np.outer(p.flat, p.flat) for p in exact_prob)
     exact_var = sum(np.inner(c.flat, np.dot(cov, c.flat))
                     for c, cov in zip(est_p_coeff, exact_p_cov))
     if fromself:
-        # `l_povm` and `g_povm` are equal. We must obtain exactly the
+        # `f_povm` and `s_povm` are equal. We must obtain exactly the
         # same result without using the matching functions from above:
         exact_prob = tuple(mp.prune(p, singletons=True).to_array()
-                           for p in l_povm.pmf(mps, 'mps'))
+                           for p in f_povm.pmf(mps, 'mps'))
         exact_p_cov = (np.diag(p.flat) - np.outer(p.flat, p.flat) for p in exact_prob)
         exact_var2 = sum(np.inner(c.flat, np.dot(cov, c.flat))
                          for c, cov in zip(coeff, exact_p_cov))
