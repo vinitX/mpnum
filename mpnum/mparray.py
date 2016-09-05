@@ -1396,8 +1396,7 @@ def regular_slices(length, width, offset):
         yield slice(offset * i, offset * i + width)
 
 
-# FIXME What is this doing here?
-def default_embed_ltens(mpa, embed_tensor):
+def _embed_ltens_identity(mpa, embed_tensor=None):
     """Embed with identity matrices by default.
 
     :param embed_tensor: If the MPAs do not have two physical legs or
@@ -1428,58 +1427,20 @@ def embed_slice(length, slice_, mpa, embed_tensor=None):
     :param MPArray mpa: MPA of length :code:`slice_.stop -
         slice_.start`.
     :param embed_tensor: Defaults to square identity matrix (see
-        :func:`default_embed_ltens` for details)
+        :func:`_embed_ltens_identity` for details)
     :returns: MPA of length `length`
 
     """
     start, stop, step = slice_.indices(length)
     assert step == 1
     assert len(mpa) == stop - start
-    embed_ltens = default_embed_ltens(mpa, embed_tensor)
+    embed_ltens = _embed_ltens_identity(mpa, embed_tensor)
     left = it.repeat(embed_ltens, times=start)
     right = it.repeat(embed_ltens, times=length - stop)
     return MPArray(it.chain(left, mpa, right))
 
 
-def local_sum(mpas, embed_tensor=None, length=None, slices=None):
-    """Embed local MPAs on a linear chain and sum as MPA.
-
-    We return the sum over :func:`embed_slice(length, slices[i],
-    mpas[i], embed_tensor) <embed_slice>` as MPA.
-
-    If `slices` is omitted, we use :func:`regular_slices(length,
-    width, offset) <regular_slices>` with :code:`offset = 1`,
-    :code:`width = len(mpas[0])` and :code:`length = len(mpas) + width
-    - offset`.
-
-    If `slices` is omitted or if the slices just described are given,
-    we call :func:`local_sum_simple()`, which gives a smaller bond
-    dimension than naive embedding and summing.
-
-    :param mpas: List of local MPAs.
-    :param embed_tensor: Defaults to square identity matrix (see
-        :func:`default_embed_ltens` for details)
-    :param length: Length of the resulting chain, ignored unless
-        slices is given.
-    :param slices: slice[i] specifies the position of mpas[i],
-        optional.
-    :returns: An MPA.
-
-    """
-    if slices is not None:
-        assert length is not None
-        slices = tuple(slices)
-        reg = regular_slices(length, slices[0].stop - slices[0].start, offset=1)
-        if all(s == t for s, t in zip_longest(slices, reg)):
-            slices = None
-    if slices is None:
-        return local_sum_simple(tuple(mpas), embed_tensor)
-    mpas = (embed_slice(length, slice_, mpa, embed_tensor)
-            for mpa, slice_ in zip(mpas, slices))
-    return ft.reduce(MPArray.__add__, mpas)
-
-
-def local_sum_simple(mpas, embed_tensor=None):
+def _local_sum_identity(mpas, embed_tensor=None):
     """Implement a special case of :func:`local_sum`.
 
     See :func:`local_sum` for a description.  We return an MPA with
@@ -1497,13 +1458,13 @@ def local_sum_simple(mpas, embed_tensor=None):
 
     :param mpas: A list of MPArrays with the same length.
     :param embed_tensor: Defaults to square identity matrix (see
-        :func:`default_embed_ltens` for details)
+        :func:`_embed_ltens_identity` for details)
 
     """
     width = len(mpas[0])
     nr_sites = len(mpas) + width - 1
     ltens = []
-    embed_ltens = default_embed_ltens(mpas[0], embed_tensor)
+    embed_ltens = _embed_ltens_identity(mpas[0], embed_tensor)
     assert all(len(mpa) == width for mpa in mpas)
 
     # The following ASCII art tries to illustrate the
@@ -1549,6 +1510,45 @@ def local_sum_simple(mpas, embed_tensor=None):
 
     mpa = MPArray(ltens)
     return mpa
+
+
+def local_sum(mpas, embed_tensor=None, length=None, slices=None):
+    """Embed local MPAs on a linear chain and sum as MPA.
+
+    We return the sum over :func:`embed_slice(length, slices[i],
+    mpas[i], embed_tensor) <embed_slice>` as MPA.
+
+    If `slices` is omitted, we use :func:`regular_slices(length,
+    width, offset) <regular_slices>` with :code:`offset = 1`,
+    :code:`width = len(mpas[0])` and :code:`length = len(mpas) + width
+    - offset`.
+
+    If `slices` is omitted or if the slices just described are given,
+    we call :func:`_local_sum_identity()`, which gives a smaller bond
+    dimension than naive embedding and summing.
+
+    :param mpas: List of local MPAs.
+    :param embed_tensor: Defaults to square identity matrix (see
+        :func:`_embed_ltens_identity` for details)
+    :param length: Length of the resulting chain, ignored unless
+        slices is given.
+    :param slices: slice[i] specifies the position of mpas[i],
+        optional.
+    :returns: An MPA.
+
+    """
+    if slices is None:
+        return _local_sum_identity(tuple(mpas), embed_tensor)
+
+    assert length is not None
+    slices = tuple(slices)
+    reg = regular_slices(length, slices[0].stop - slices[0].start, offset=1)
+    if all(s == t for s, t in zip_longest(slices, reg)):
+        slices = None
+
+    mpas = (embed_slice(length, slice_, mpa, embed_tensor)
+            for mpa, slice_ in zip(mpas, slices))
+    return ft.reduce(MPArray.__add__, mpas)
 
 
 ############################################################
