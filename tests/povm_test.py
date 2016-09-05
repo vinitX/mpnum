@@ -580,7 +580,7 @@ def _get_povm(name, nr_sites, local_dim, local_width):
         raise ValueError('Unknown MP-POVM list {!r}'.format(name))
 
 POVM_COMBOS = [
-    ('global', 'pauli'), ('splitpauli', 'pauli'), pt.mark.long(('pauli', 'pauli')),
+    ('global', 'pauli'), ('splitpauli', 'pauli'), ('pauli', 'pauli'),
     pt.mark.long(('splitpauli', 'splitpauli')), ('pauli', 'splitpauli')
 ]
 POVM_IDS = ['+'.join(getattr(x, 'args', (x,))[0]) for x in POVM_COMBOS]
