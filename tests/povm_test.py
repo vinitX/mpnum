@@ -10,6 +10,7 @@ import numpy as np
 import pytest as pt
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 from six.moves import range, zip, zip_longest
+from _pytest.mark import matchmark
 
 import mpnum.mparray as mp
 import mpnum.povm as povm
@@ -495,6 +496,13 @@ def test_mppovm_est_fun(
     assert abs(sum_var - sum_var2) <= eps
 
 
+def _pytest_want_long(request):
+    # FIXME: Is there a better way to find out whether items marked
+    # with `long` should be run or not?
+    class dummy:
+        keywords = {'long': pt.mark.long}
+    return matchmark(dummy, request.config.option.markexpr)
+
 @pt.fixture(params=[False, True])
 def splitpauli(n_samples, nonuniform, request):
     # We use this fixture to skip certain value combinations for
@@ -502,12 +510,12 @@ def splitpauli(n_samples, nonuniform, request):
     #
     # FIXME: Is there a better way to select certain value
     # combinations from the different pt.mark.parametrize() decorators
-    # except for writing down all combinatiosn by hand?
+    # except for writing down all combinations by hand?
     splitpauli = request.param
-    if (not splitpauli) or request.node.get_marker('long') \
+    if (not splitpauli) or _pytest_want_long(request) \
        or (n_samples >= 10000 and nonuniform):
         return splitpauli
-    pt.skip("Save some runtime")
+    pt.skip("Should only be run in long tests")
     return None
 
 @pt.mark.parametrize(
