@@ -726,10 +726,6 @@ def test_mppovmlist_est_fun_from(
     exact_var /= n_samples
 
     bound = 6 if sample_povm == 'pauli' else 1
-    print(abs(est - exact_est) / (6 / n_samples_eff**0.5),
-          n_samples * abs(var - exact_var) / (bound / n_samples_eff**0.5),
-          est / exact_est.real - 1, var / exact_var.real - 1,
-    )
     assert n_samples * abs(var - exact_var) <= bound / n_samples_eff**0.5
     if function == 'ones':
         assert abs(exact_var) <= eps
