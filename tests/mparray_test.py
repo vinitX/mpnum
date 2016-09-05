@@ -5,6 +5,8 @@
 
 from __future__ import absolute_import, division, print_function
 
+import functools as ft
+
 import h5py as h5
 import numpy as np
 import pytest as pt
@@ -441,12 +443,29 @@ def test_operations_typesafety(nr_sites, local_dim, bond_dim, rgen):
     assert (mpo1 + mpo2).dtype == np.complex_
     assert (mpo2 + mpo1).dtype == np.complex_
 
+    assert mp.sumup((mpo1, mpo1)).dtype == np.float_
+    assert mp.sumup((mpo1, mpo2)).dtype == np.complex_
+    assert mp.sumup((mpo2, mpo1)).dtype == np.complex_
+
     assert (mpo1 - mpo1).dtype == np.float_
     assert (mpo1 - mpo2).dtype == np.complex_
     assert (mpo2 - mpo1).dtype == np.complex_
 
     mpo1 += mpo2
     assert mpo1.dtype == np.complex_
+
+
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_summp(nr_sites, local_dim, bond_dim, rgen, dtype):
+    mpas = [factory.random_mpa(nr_sites, local_dim, 3, dtype=dtype, randstate=rgen)
+            for _ in range(bond_dim if bond_dim is not np.nan else 1)]
+    sum_naive = ft.reduce(mp.MPArray.__add__, mpas)
+    sum_mp = mp.sumup(mpas)
+
+    assert_array_almost_equal(sum_naive.to_array(), sum_mp.to_array())
+    assert all(bdim <= 3 * bond_dim for bdim in sum_mp.bdims)
+    assert(sum_mp.dtype is dtype)
 
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)

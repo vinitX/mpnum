@@ -28,6 +28,8 @@ References:
 #      local tensors
 from __future__ import absolute_import, division, print_function
 
+import sys
+
 import functools as ft
 import itertools as it
 import collections
@@ -44,7 +46,7 @@ from ._tools import block_diag, global_to_local, local_to_global, matdot
 
 __all__ = ['MPArray', 'dot', 'inject', 'inner', 'local_sum', 'louter',
            'norm', 'normdist', 'outer', 'partialdot', 'partialtrace',
-           'prune', 'regular_slices', 'embed_slice', 'trace', 'diag']
+           'prune', 'regular_slices', 'embed_slice', 'trace', 'diag', 'sumup']
 
 
 class MPArray(object):
@@ -416,7 +418,7 @@ class MPArray(object):
             return MPArray((self[0] + summand[0],))
 
         ltens = [np.concatenate((self[0], summand[0]), axis=-1)]
-        ltens += [_local_add(l, r) for l, r in zip(self[1:-1], summand[1:-1])]
+        ltens += [_local_add((l, r)) for l, r in zip(self[1:-1], summand[1:-1])]
         ltens += [np.concatenate((self[-1], summand[-1]), axis=0)]
         return MPArray(ltens)
 
@@ -1048,6 +1050,34 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
     return MPArray(ltens)
 
 
+def sumup(mpas):
+    """Returns the sum of the MPArrays in `mpas`. Same as
+
+        functools.reduce(mp.MPArray.__add__, mpas)
+
+    but should be faster.
+
+    :param mpas: Iterator over MPArrays
+    :returns: Sum of `mpas`
+
+    """
+    mpas = list(mpas)
+    length = len(mpas[0])
+    assert all(len(mpa) == length for mpa in mpas)
+
+    if length == 1:
+        # The code below assumes at least two sites.
+        return MPArray((sum(mpa[0] for mpa in mpas),))
+
+    ltensiter = [iter(mpa) for mpa in mpas]
+    ltens = [np.concatenate([next(lt) for lt in ltensiter], axis=-1)]
+    ltens += [_local_add([next(lt) for lt in ltensiter])
+              for _ in range(length - 2)]
+    ltens += [np.concatenate([next(lt) for lt in ltensiter], axis=0)]
+
+    return MPArray(ltens)
+
+
 def partialdot(mpa1, mpa2, start_at, axes=(-1, 0)):
     """Partial dot product of two MPAs of inequal length.
 
@@ -1608,24 +1638,29 @@ def _local_dot(ltens_l, ltens_r, axes):
                        (ltens_l.shape[-1] * ltens_r.shape[-1],))
 
 
-def _local_add(ltens_l, ltens_r):
-    """Computes the local tensors of a sum l + r (except for the boundary
+def _local_add(ltenss):
+    """Computes the local tensors of a sum of MPArrays (except for the boundary
     tensors)
 
-    :param ltens_l: Array with ndim > 1
-    :param ltens_r: Array with ndim > 1
+    :param ltenss: List of arrays with ndim > 1
     :returns: Correct local tensor representation
 
     """
-    assert_array_equal(ltens_l.shape[1:-1], ltens_r.shape[1:-1])
+    shape = ltenss[0].shape
+    if sys.flags.optimize == 0:
+        for lt in ltenss[1:]:
+            assert_array_equal(shape[1:-1], lt.shape[1:-1])
 
-    shape = (ltens_l.shape[0] + ltens_r.shape[0], )
-    shape += ltens_l.shape[1:-1]
-    shape += (ltens_l.shape[-1] + ltens_r.shape[-1], )
-    res = np.zeros(shape, dtype=max(ltens_l.dtype, ltens_r.dtype))
+    newshape = (sum(lt.shape[0] for lt in ltenss), )
+    newshape += shape[1:-1]
+    newshape += (sum(lt.shape[-1] for lt in ltenss), )
+    res = np.zeros(newshape, dtype=max(lt.dtype for lt in ltenss))
 
-    res[:ltens_l.shape[0], ..., :ltens_l.shape[-1]] = ltens_l
-    res[ltens_l.shape[0]:, ..., ltens_l.shape[-1]:] = ltens_r
+    pos_l, pos_r = 0, 0
+    for lt in ltenss:
+        pos_l_new, pos_r_new = pos_l + lt.shape[0], pos_r + lt.shape[-1]
+        res[pos_l:pos_l_new, ..., pos_r:pos_r_new] = lt
+        pos_l, pos_r = pos_l_new, pos_r_new
     return res
 
 
