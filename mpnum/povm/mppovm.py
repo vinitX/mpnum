@@ -915,6 +915,17 @@ class MPPovmList:
         for mpp in self.mpps:
             yield mpp.sample(rng, state, n_samples, method, n_group, mode, eps)
 
+    def est_pmf(self, samples, normalized=True, eps=1e-10):
+        """Estimate PMF from samples
+
+        Returns an iterator over results from :func:`MPPovm.est_pmf()`
+        (see there).
+
+        """
+        assert len(samples) == len(self.mpps)
+        for mpp, sam in zip(self.mpps, samples):
+            yield mpp.est_pmf(sam, normalized, eps)
+
     def est_pmf_from(self, other, samples, eps=1e-10):
         """Estimate PMF from samples of another MPPovmList
 
@@ -956,6 +967,31 @@ class MPPovmList:
             mpp._mppl_fun_estimator(est_coeff, est_funs, other, n_samples, c,
                                     eps=eps)
         return est_coeff, est_funs
+
+    def est_fun(self, coeff, funs, samples, weights=None, eps=1e-10):
+        """Estimate a linear combination of functions of POVM outcomes
+
+        :param coeff: Iterable of coefficient lists
+        :param funs: Iterable of function lists
+        :param samples: Iterable of samples
+        :param weights: Iterable of weight lists or `None`
+
+        The `i`-th item from these parameters is passed to
+        `self.mpps[i].est_fun <MPPovm.est_fun>`.
+
+        :returns: (`est`, `var`): Estimated value `est` and estimated
+            variance `var` of the estimate `est`
+
+        """
+        if funs is None:
+            funs = (None,) * len(self.mpps)
+        assert len(self.mpps) == len(coeff)
+        assert len(self.mpps) == len(funs)
+        assert len(self.mpps) == len(samples)
+        est, var = zip(*(
+            mpp.est_fun(c, f, sam)
+            for mpp, c, f, sam in zip(self.mpps, coeff, funs, samples)))
+        return sum(est), sum(var)
 
     def est_fun_from(self, other, coeff, samples, eps=1e-10):
         """Estimate a linear function from samples for another MPPovmList
