@@ -491,8 +491,51 @@ class MPPovm(mp.MPArray):
         else:
             return counts
 
+    def lfun(self, coeff, funs, state, mode='auto', eps=1e-10):
+        """Evaluate a linear combination of functions of POVM outcomes
+
+        The parameters `coeff` and `funs` are explained in
+        :func:`MPPovm.est_lfun`. `state` and `mode` are passed to
+        :func:`MPPovm.pmf`.
+
+        :returns: `(value, var)`: Expectation value and variance of
+            the expectation value
+
+        """
+        pmf = mp.prune(self.pmf(state, mode), True).to_array()
+        n_out = np.prod(self.nsoutdims)
+        if funs is not None:
+            out = np.array(np.unravel_index(range(n_out), self.nsoutdims)) \
+                    .T.copy()
+            fun_out = np.zeros((len(funs), n_out), float)
+            fun_out[:] = np.nan
+            for pos, fun in enumerate(funs):
+                fun_out[pos, :] = fun(out)
+        else:
+            fun_out = np.eye(n_out, dtype=float)
+        if coeff is not None:
+            assert coeff.shape == (fun_out.shape[0],)
+        w_fun_out = fun_out * pmf.ravel()[None, :]
+        ept = w_fun_out.sum(1)
+        # Covariance matrix of the functions
+        cov = np.dot(fun_out, w_fun_out.T) - np.outer(ept, ept)
+        if coeff is None:
+            return ept, cov
+
+        # Expectation value
+        est = np.inner(coeff, ept)
+        # Variance
+        var_est = np.inner(coeff, np.dot(cov, coeff))
+        assert var_est >= -eps
+        if var_est < 0:
+            var_est = 0
+        return est, var_est
+
     def est_lfun(self, coeff, funs, samples, weights=None, eps=1e-10):
         """Estimate a linear combination of functions of POVM outcomes
+
+        This function estimates the function with exact value given by
+        :func:`MPPovm.lfun`.
 
         :param np.ndarray coeff: A length `n_funs` array with the
             coefficients of the linear combination. If `None`, return
@@ -944,6 +987,27 @@ class MPPovmList:
         for mpp in self.mpps:
             yield mpp.est_pmf_from_mpps(other, samples, eps)
 
+    def lfun(self, coeff, funs, state, mode='auto', eps=1e-10):
+        """Evaluate a linear combination of functions of POVM outcomes
+
+        `coeff[i]` and `funs[i]` are passed to :func:`MPPovm.lfun` on
+        `self.mpps[i]`. `funs = None` is treated as `[None] *
+        len(self.mpps)`. `state` and `mode` are passed to
+        :func:`MPPovm.pmf`.
+
+        :returns: `(value, var)`: Expectation value and variance of
+            the expectation value
+
+        """
+        if funs is None:
+            funs = (None,) * len(self.mpps)
+        assert len(self.mpps) == len(coeff)
+        assert len(self.mpps) == len(funs)
+        est, var = zip(*(
+            mpp.lfun(c, f, state, mode, eps)
+            for mpp, c, f in zip(self.mpps, coeff, funs)))
+        return sum(est), sum(var)
+
     def est_lfun(self, coeff, funs, samples, weights=None, eps=1e-10):
         """Estimate a linear combination of functions of POVM outcomes
 
@@ -992,6 +1056,38 @@ class MPPovmList:
             mpp._mppl_lfun_estimator(est_coeff, est_funs, other, n_samples, c,
                                     eps=eps)
         return est_coeff, est_funs
+
+    def lfun_from(self, other, coeff, state, mode='auto', other_weights=None,
+                  eps=1e-10):
+        """Evaluate a linear combination of POVM probabilities
+
+        This function computes the same expectation value as
+        :func:`MPPovmList.lfun` if supplied with `funs = None`, but it
+        computes the variance for a different estimation procedure: It
+        uses weighted averages of POVM probabilities from `other` to
+        obtain the necessary POVM probabilities for `self` (the same
+        is done in :func:`MPPovmList.est_lfun_from`).
+
+        The parameter `coeff` is explained in
+        :func:`MPPovmList.est_lfun_from`. `state` and `mode` are
+        passed to :func:`MPPovm.pmf`.
+
+        You can supply the array `other_weights` to determine the
+        weighted average used when a probability in a POVM in `self`
+        can be estimated from probabilities in multiple different
+        POVMs in `other`.
+
+        :returns: `(value, var)`: Expectation value and variance of
+            the expectation value
+
+        """
+        if other_weights is None:
+            other_weights = np.ones(len(other.mpps))
+        coeff, funs = self._lfun_estimator(other, coeff, other_weights, eps)
+        est, var = zip(*(
+            mpp.lfun(np.array(c, float), f, state, mode, eps)
+            for mpp, c, f in zip(other.mpps, coeff, funs)))
+        return sum(est), sum(var)
 
     def est_lfun_from(self, other, coeff, samples, eps=1e-10):
         """Estimate a linear function from samples for another MPPovmList
