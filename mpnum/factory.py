@@ -345,8 +345,8 @@ def random_mpdo(sites, ldim, bdim, randstate=np.random):
     # generate density matrix as a mixture of `bdim` pure product states
     psis = [random_mps(sites, ldim, 1, randstate=randstate) for _ in range(bdim)]
     weights = (lambda x: x / np.sum(x))(randstate.rand(bdim))
-    rho = ft.reduce(mp.MPArray.__add__, (mpsmpo.mps_to_mpo(psi) * weight
-                                         for weight, psi in zip(weights, psis)))
+    rho = mp.sumup(mpsmpo.mps_to_mpo(psi) * weight
+                   for weight, psi in zip(weights, psis))
 
     # Scramble the local tensors
     for n, bdim in enumerate(rho.bdims):
