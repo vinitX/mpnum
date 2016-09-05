@@ -245,13 +245,13 @@ class MPPovm(mp.MPArray):
         """Compute the POVM's probability mass function for `state`
 
         If you want to compute the probabilities for reduced states of
-        `state`, you can use :func:`self.expectations()` instead of
+        `state`, you can use :func:`MPPovm.expectations()` instead of
         this function.
 
         :param mp.MPArray state: A quantum state as MPA. Must have the
             same length as `self`.
         :param mode: `'mps'`, `'mpdo'` or `'pmps'`. See
-            :func:`self.expectations()`.
+            :func:`MPPovm.expectations()`.
 
         :returns: Probabilities as MPArray
 
@@ -418,7 +418,7 @@ class MPPovm(mp.MPArray):
         :param method: Sampling method (`'cond'` or `'direct'`, see below)
         :param n_group: Number of sites to sample at a time in
             conditional sampling.
-        :param mode: Passed to :func:`self.expectations`
+        :param mode: Passed to :func:`MPPovm.expectations`
         :param eps: Threshold for small values to be treated as zero.
 
         Two different sampling methods are available:
@@ -702,10 +702,10 @@ class MPPovm(mp.MPArray):
         Example: If we consider the MPPovm
         :func:`MPPovm.from_local_povm(x, n) <MPPovm.from_local_povm>`
         for given local POVMs `x`, it is possible to obtain counts for
-        the Pauli X part of :func:`pauli_povm()
-        <mpnum.povm.localpovm.pauli_povm>` from samples for
-        :func:`x_povm() <mpnum.povm.localpovm.x_povm>`; this is also
-        true if the latter is supported on a larger part of the chain.
+        the Pauli X part of :func:`x = pauli_povm()
+        <mpnum.povm.localpovm.pauli_povm>` from samples for :func:`x =
+        x_povm() <mpnum.povm.localpovm.x_povm>`; this is also true if
+        the latter is supported on a larger part of the chain.
 
         :param MPPovm other: Another MPPovm
         :param np.ndarray samples: `(n_samples, len(other.nsoutdims))`
@@ -851,8 +851,8 @@ class MPPovmList:
     def repeat(self, nr_sites):
         """Construct longer MP-POVMs by repeating each MP-POVM
 
-        This function calls :func:`MPPovm.repeat(nr_sites)` for each
-        MP-POVM in the list.
+        This function calls :func:`MPPovm.repeat(nr_sites)
+        <MPPovm.repeat>` for each MP-POVM in the list.
 
         For example, :func:`pauli_mpps()` for `local_dim > 3`
         (i.e. without Z) and two sites returns POVMs for the four
