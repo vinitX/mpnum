@@ -319,6 +319,7 @@ class MPPovm(mp.MPArray):
         )
         onormsq = mp.dot(eye3d, onormsq, axes=((1, 2), (0, 1)))
         inner = abs(mp.prune(inner, True).to_array_global())**2
+        inner = inner.reshape(tuple(d for d in inner.shape if d > 1))
         snormsq = mp.prune(snormsq, True).to_array().real
         onormsq = mp.prune(onormsq, True).to_array().real
         assert (snormsq > 0).all()
@@ -515,7 +516,7 @@ class MPPovm(mp.MPArray):
         if funs is None:
             # In this special case, we could make the implementation faster.
             n_out = np.prod(self.nsoutdims)
-            out = np.array(np.unravel_index(range(n_out), self.nsoutdims))\
+            out = np.array(np.unravel_index(range(n_out), self.nsoutdims)) \
                     .T[:, None, :].copy()
             funs = [lambda s, pos=pos: (s == out[pos]).all(1)
                     for pos in range(n_out)]
@@ -588,7 +589,6 @@ class MPPovm(mp.MPArray):
 
         """
         assert coeff.shape == self.nsoutdims
-        support = self.nsoutpos
         n_nsout = len(self.nsoutdims)
         myout_n_samples = np.zeros(self.nsoutdims, int)
         fun_mpp = []
@@ -596,12 +596,16 @@ class MPPovm(mp.MPArray):
         fun_coeff = []
         for pos, mpp, n_sam in zip(it.count(), other.mpps, n_samples):
             matches, prefactors = self.match_elems(mpp, eps=eps)
+            nsoutdims = tuple(
+                sdim for sdim, odim in zip(self.outdims, mpp.outdims) if odim > 1)
+            support = tuple(pos for pos, d in enumerate(nsoutdims) if d > 1)
+            assert matches.ndim == n_nsout + len(support)
             for outcomes in np.argwhere(matches):
                 my_out, out = tuple(outcomes[:n_nsout]), outcomes[n_nsout:]
                 # Append a function which matches on the output `out`
                 # on sites specified by `support`.
                 est_funs[pos].append(
-                    lambda s, out=out[None, :]: (s[:, support] == out).all(1))
+                    lambda s, out=out[None, :], supp=support: (s[:, supp] == out).all(1))
                 # To compute the final coefficient, we need to know
                 # how many samples from (possibly many) `mpp`s have
                 # contributed to a given probability specified by `my_out`.
@@ -720,7 +724,14 @@ class MPPovm(mp.MPArray):
         n_samples = samples.shape[0]
         assert samples.shape[1] == len(other.nsoutdims)
         match, prefactors = self.match_elems(other)
-        other_outdims = tuple(other.outdims[i] for i in self.nsoutpos)
+        other_support = tuple(
+            pos for pos, (sdim, odim) in enumerate(
+                (sdim, odim) for sdim, odim in zip(self.outdims, other.outdims)
+                if odim > 1
+            ) if sdim > 1
+        )
+        other_outdims = tuple(dim for dim in (
+            other.nsoutdims[pos] for pos in other_support) if dim > 1)
         assert match.shape == self.nsoutdims + other_outdims
 
         n_nsout = len(self.nsoutdims)
@@ -734,7 +745,7 @@ class MPPovm(mp.MPArray):
             "Given subset of elements does not sum to multiple of identity; "
             "conversion not possible")
 
-        samples = samples[:, self.nsoutpos]
+        samples = samples[:, other_support]
         n_samples_used = \
             match.reshape((np.prod(self.nsoutdims),) + other_outdims) \
             [(slice(None),) + tuple(samples.T)].any(0).sum()
