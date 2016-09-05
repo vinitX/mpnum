@@ -541,13 +541,8 @@ def test_mppovmlist_est_pmf_from(
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
     mps.normalize()
 
-    local_xyz = (povm.x_povm(local_dim), povm.y_povm(local_dim))
-    if local_dim == 2:
-        local_xyz += (povm.z_povm(local_dim),)
-    xyz = [povm.MPPovm.from_local_povm(x, 1) for x in local_xyz]
-    x, y = xyz[:2]
-    local_pauli = povm.pauli_povm(local_dim)
-    pauli = povm.MPPovm.from_local_povm(local_pauli, local_width)
+    x, y = (povm.MPPovm.from_local_povm(p, 1)
+            for p in povm.pauli_parts(local_dim)[:2])
     # POVM list with global support
     g_povm = povm.pauli_mpps(measure_width, local_dim).repeat(nr_sites)
     if nonuniform:
