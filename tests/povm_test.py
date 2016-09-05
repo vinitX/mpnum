@@ -420,7 +420,7 @@ def test_mppovm_est_pmf_from(
 
 @pt.mark.parametrize('method, n_samples', MPPOVM_SAMPLE_PARAM)
 @pt.mark.parametrize('nr_sites, startsite, local_dim', MPPOVM_PARAM)
-def test_mppovm_est_fun(
+def test_mppovm_est(
         method, n_samples, nr_sites, startsite, local_dim, rgen):
     """Check that estimates from .est_pmf() and .est_lfun() are reasonably
     accurate
@@ -453,15 +453,23 @@ def test_mppovm_est_fun(
 
     p_est = mpp.est_pmf(samples)
     ept, cov = mpp.est_lfun(None, None, samples, None, eps)
+    ept_ex, single_cov_ex = mpp.lfun(None, None, mps, 'mps', eps)
+    # The two exact values must match
+    assert abs(ept_ex - p_exact.ravel()).max() <= eps
+    # The two exact values must match
+    assert abs(cov_p_exact - single_cov_ex).max() <= eps
+    # The two estimates must match. This verifies that we have chosen
+    # our estimator will be unbiased. (There are many other things we
+    # might want to know about our estimator.)
     assert (ept == p_est.ravel()).all()
+    # The estimate must be close to the true value
     assert abs(p_exact - p_est).max() <= 3 / n_samples**0.5
 
     cov_ex = cov_p_exact / n_samples
-    diff = cov - cov_ex
     # The covariances of the sample means (which we estimate here)
     # decrease by 1/n_samples, so we multiply with n_samples before
     # comparing to the rule-of-thumb for the estimation error.
-    assert abs(diff).max() * n_samples <= 1 / n_samples**0.5
+    assert abs(cov - cov_ex).max() * n_samples <= 1 / n_samples**0.5
 
     funs = []
     nsoutdims = mpp.nsoutdims
@@ -662,6 +670,16 @@ def test_mppovmlist_est_lfun_from(
     exact_prob = tuple(mp.prune(p, singletons=True).to_array()
                        for p in f_povm.pmf(mps, 'mps'))
 
+    # Compute exact estimate directly
+    exact_est1, exact_var1 = f_povm.lfun([c.ravel() for c in coeff], None, mps, 'mps', eps)
+    # Compute exact estimate and variance using the other POVM
+    exact_est2, exact_var2 = f_povm.lfun_from(s_povm, coeff, mps, 'mps', eps=eps)
+    # Estimates must agree.
+    assert abs(exact_est1 - exact_est2) <= eps
+    if fromself:
+        # Variances can be different unless f_povm and s_povm are the same.
+        assert abs(exact_var1 - exact_var2) <= eps
+
     est, var = f_povm.est_lfun_from(s_povm, coeff, samples, eps)
 
     if fromself:
@@ -683,6 +701,7 @@ def test_mppovmlist_est_lfun_from(
     # (and not the "effective samples" for the `f_povm` probability
     # estimation returned by :func:`f_povm.est_pmf_from()`).
     exact_est = sum(np.inner(c.flat, p.flat) for c, p in zip(coeff, exact_prob))
+    assert abs(exact_est - exact_est2) <= eps
     assert abs(est - exact_est) <= 6 / n_samples_eff**0.5
     if function == 'ones':
         assert abs(exact_est - 1) <= eps
@@ -697,6 +716,9 @@ def test_mppovmlist_est_lfun_from(
     # estimator is mostly correct because we have checked that it
     # produces accurate estimates (for large numbers of samples)
     # above.
+    #
+    # FIXME: Drop the exact variance computation here and use
+    # exact_var2 from above.
     #
     # Convert from matching functions + coefficients to coefficients
     # for each probability.
@@ -715,6 +737,7 @@ def test_mppovmlist_est_lfun_from(
     exact_p_cov = (np.diag(p.flat) - np.outer(p.flat, p.flat) for p in exact_prob)
     exact_var = sum(np.inner(c.flat, np.dot(cov, c.flat))
                     for c, cov in zip(est_p_coeff, exact_p_cov))
+    assert abs(exact_var - exact_var2) <= eps
     if fromself:
         # `f_povm` and `s_povm` are equal. We must obtain exactly the
         # same result without using the matching functions from above:
