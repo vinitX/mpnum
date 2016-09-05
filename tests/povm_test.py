@@ -574,6 +574,38 @@ def test_mppovmlist_est_pmf_from(
         assert (abs(est - exact) / (3 / n_sam**0.5)).max() <= 1
 
 
+def _get_povm(name, nr_sites, local_dim, local_width):
+    if name == 'global':
+        return povm.pauli_mpps(local_width, local_dim).repeat(nr_sites)
+    elif name == 'splitpauli':
+        return povm.pauli_mpps(local_width, local_dim).block(nr_sites)
+    elif name == 'pauli':
+        return povm.pauli_mpp(local_width, local_dim).block(nr_sites)
+    else:
+        raise ValueError('Unknown MP-POVM list {!r}'.format(name))
+
+POVM_COMBOS = [
+    ('global', 'pauli'), ('splitpauli', 'pauli'), pt.mark.long(('pauli', 'pauli')),
+    pt.mark.long(('splitpauli', 'splitpauli')), ('pauli', 'splitpauli')
+]
+POVM_IDS = ['+'.join(getattr(x, 'args', (x,))[0]) for x in POVM_COMBOS]
+
+@pt.fixture(params=POVM_COMBOS, ids=POVM_IDS)
+def povm_combo(function, request):
+    # We use this fixture to skip certain value combinations for
+    # non-long tests.
+    #
+    # FIXME: Is there a better way to select certain value
+    # combinations from the different pt.mark.parametrize() decorators
+    # except for writing down all combinatiosn by hand?
+    combo = request.param
+    if _pytest_want_long(request):
+        return combo
+    if function == 'randn' or combo == ('global', 'pauli'):
+        return combo
+    pt.skip("Should only be run in long tests")
+    return None
+
 @pt.mark.parametrize(
     'method, n_samples', [
         pt.mark.long(('cond', 100)),
@@ -590,27 +622,21 @@ def test_mppovmlist_est_pmf_from(
 @pt.mark.parametrize('function', ['randn', 'ones', 'signs', pt.mark.long('rand')])
 def test_mppovmlist_est_fun_from(
         method, n_samples, nr_sites, local_dim, bond_dim, measure_width,
-        local_width, nonuniform, function, rgen, eps=1e-10):
+        local_width, nonuniform, function, povm_combo, rgen, eps=1e-10):
     """Verify that estimated probabilities from MPPovmList.est_pmf_from()
     are reasonable accurate"""
 
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
     mps.normalize()
 
-    local_xyz = (povm.x_povm(local_dim), povm.y_povm(local_dim))
-    if local_dim == 2:
-        local_xyz += (povm.z_povm(local_dim),)
-    xyz = [povm.MPPovm.from_local_povm(x, 1) for x in local_xyz]
-    x, y = xyz[:2]
-    local_pauli = povm.pauli_povm(local_dim)
-    pauli = povm.MPPovm.from_local_povm(local_pauli, local_width)
-    # POVM list with global support
-    g_povm = povm.pauli_mpps(measure_width, local_dim).repeat(nr_sites)
-    if nonuniform:
-        add_povm = mp.outer((nr_sites - 1) * (x,) + (y,))
-        g_povm = povm.MPPovmList(g_povm.mpps + (add_povm,))
     # POVM list with local support
-    l_povm = povm.pauli_mpp(local_width, local_dim).block(nr_sites)
+    sample_povm, fun_povm = povm_combo
+    fromself = sample_povm == fun_povm and measure_width == local_width
+    g_povm = _get_povm(sample_povm, nr_sites, local_dim, measure_width)
+    if fromself:
+        l_povm = g_povm
+    else:
+        l_povm = _get_povm(fun_povm, nr_sites, local_dim, local_width)
     if function == 'rand':
         coeff = lambda x: rgen.rand(*x)
     elif function == 'randn':
@@ -621,35 +647,58 @@ def test_mppovmlist_est_fun_from(
         coeff = lambda x: rgen.choice([1., -1.], x)
     else:
         raise ValueError('Unknown function {!r}'.format(function))
+
     coeff = [coeff(mpp.nsoutdims) for mpp in l_povm.mpps]
     samples = tuple(g_povm.sample(
         rgen, mps, n_samples, method, mode='mps', eps=eps))
     exact_prob = tuple(mp.prune(p, singletons=True).to_array()
                        for p in l_povm.pmf(mps, 'mps'))
 
+    # Make the estimated value have approximately same magnitude
+    # independently of len(l_povm.mpps)
+    coeff = [c / len(l_povm.mpps) for c in coeff]
+    # More POVMs in g_povm means more samples. Consider this in the
+    # tests.
+    n_samples_eff = n_samples * len(g_povm.mpps)
+
     est, var = l_povm.est_fun_from(g_povm, coeff, samples, eps)
+    if fromself:
+        # In this case, est_fun() and est_fun_from() must give exactly
+        # the same result.
+        est2, var2 = l_povm.est_fun([c.ravel() for c in coeff],
+                                    None, samples, eps)
+        assert abs(est - est2) <= eps
+        assert abs(var - var2) <= eps
+        # We use est_pmf() to test est_pmf_from()
+        # again. MPPovmList.est_pmf() just aggregates results from
+        # MPPovm.est_pmf().
+        pmf1 = l_povm.est_pmf(samples, normalized=True, eps=eps)
+        pmf2, _ = zip(*l_povm.est_pmf_from(g_povm, samples, eps=eps))
+        assert all(abs(p1 - p2).max() <= eps for p1, p2 in zip(pmf1, pmf2))
 
     # The final estimator is based on the samples for
-    # `g_povm`. Therefore, it is correct to use `n_samples` below (and
-    # not the "effective samples" for the `l_povm` probability
-    # estimation returned by :func:`l_povm.est_pmf_from()`.
+    # `g_povm`. Therefore, it is correct to use `n_samples_eff` below
+    # (and not the "effective samples" for the `l_povm` probability
+    # estimation returned by :func:`l_povm.est_pmf_from()`).
     exact_est = sum(np.inner(c.flat, p.flat) for c, p in zip(coeff, exact_prob))
-    assert abs(est - exact_est) <= 3 / n_samples**0.5
+    assert abs(est - exact_est) <= 6 / n_samples_eff**0.5
     if function == 'ones':
-        assert abs(exact_est - (nr_sites - local_width + 1)) <= eps
+        assert abs(exact_est - 1) <= eps
         assert abs(est - exact_est) <= eps
 
-    # The following code will only work for small systems. Probably
+    # The code below will only work for small systems. Probably
     # nr_sites = 16 will work, but let's stay safe.
     assert nr_sites <= 8, "Larger systems will require a lot of memory"
+
     # Use the estimator from `l_povm._estfun_from_estimator()` to
     # compute the exact variance of the estimate. We can assume that
-    # estimator to be mostly correct because above, we have checked
-    # the it produces accurate estimates (for large numbers of
-    # samples).
-    n_samples2 = [s.shape[0] for s in samples]
+    # estimator is mostly correct because we have checked that it
+    # produces accurate estimates (for large numbers of samples)
+    # above.
+    #
     # Convert from matching functions + coefficients to coefficients
     # for each probability.
+    n_samples2 = [s.shape[0] for s in samples]
     est_coeff, est_funs = l_povm._fun_estimator(g_povm, coeff, n_samples2, eps)
     est_p_coeff = [np.zeros(mpp.nsoutdims, float) for mpp in g_povm.mpps]
     for fun_coeff, funs, p_coeff, mpp in zip(
@@ -664,10 +713,25 @@ def test_mppovmlist_est_fun_from(
     exact_p_cov = (np.diag(p.flat) - np.outer(p.flat, p.flat) for p in exact_prob)
     exact_var = sum(np.inner(c.flat, np.dot(cov, c.flat))
                     for c, cov in zip(est_p_coeff, exact_p_cov))
+    if fromself:
+        # `l_povm` and `g_povm` are equal. We must obtain exactly the
+        # same result without using the matching functions from above:
+        exact_prob = tuple(mp.prune(p, singletons=True).to_array()
+                           for p in l_povm.pmf(mps, 'mps'))
+        exact_p_cov = (np.diag(p.flat) - np.outer(p.flat, p.flat) for p in exact_prob)
+        exact_var2 = sum(np.inner(c.flat, np.dot(cov, c.flat))
+                         for c, cov in zip(coeff, exact_p_cov))
+        assert abs(exact_var - exact_var2) <= eps
     # Convert variance to variance of the estimator (=average)
     exact_var /= n_samples
 
-    assert n_samples * abs(var - exact_var) <= 1 / n_samples**0.5
+    bound = 6 if sample_povm == 'pauli' else 1
+    print(abs(est - exact_est) / (6 / n_samples_eff**0.5),
+          n_samples * abs(var - exact_var) / (bound / n_samples_eff**0.5),
+          est / exact_est.real - 1, var / exact_var.real - 1,
+    )
+    assert n_samples * abs(var - exact_var) <= bound / n_samples_eff**0.5
     if function == 'ones':
         assert abs(exact_var) <= eps
         assert abs(var - exact_var) <= eps
+
