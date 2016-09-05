@@ -491,8 +491,8 @@ class MPPovm(mp.MPArray):
         else:
             return counts
 
-    def est_fun(self, coeff, funs, samples, weights=None, eps=1e-10):
-        """Estimate a linear combination of functions of the POVM outcomes
+    def est_lfun(self, coeff, funs, samples, weights=None, eps=1e-10):
+        """Estimate a linear combination of functions of POVM outcomes
 
         :param np.ndarray coeff: A length `n_funs` array with the
             coefficients of the linear combination. If `None`, return
@@ -561,14 +561,14 @@ class MPPovm(mp.MPArray):
             var_est = 0
         return est, var_est
 
-    def _mppl_fun_estimator(self, est_coeff, est_funs, other, n_samples,
+    def _mppl_lfun_estimator(self, est_coeff, est_funs, other, n_samples,
                             coeff, eps):
         """Compute the estimator used by :func:`MPPovmList.estfun_from()`
 
-        Used by :func:`MPPovmList._fun_estimator()`.
+        Used by :func:`MPPovmList._lfun_estimator()`.
 
         `est_coeff[i]` and `est_funs[i]` will specify an estimator in
-        the format used by :func:`MPPovm.est_fun()` on
+        the format used by :func:`MPPovm.est_lfun()` on
         `other.mpps[i]`. This functions adds the coefficients and
         functions necessary to estimate the linear function of `self`
         probabilities specified by `coeff`.
@@ -944,7 +944,7 @@ class MPPovmList:
         for mpp in self.mpps:
             yield mpp.est_pmf_from_mpps(other, samples, eps)
 
-    def est_fun(self, coeff, funs, samples, weights=None, eps=1e-10):
+    def est_lfun(self, coeff, funs, samples, weights=None, eps=1e-10):
         """Estimate a linear combination of functions of POVM outcomes
 
         :param coeff: Iterable of coefficient lists
@@ -953,7 +953,7 @@ class MPPovmList:
         :param weights: Iterable of weight lists or `None`
 
         The `i`-th item from these parameters is passed to
-        `self.mpps[i].est_fun <MPPovm.est_fun>`.
+        `self.mpps[i].est_lfun <MPPovm.est_lfun>`.
 
         :returns: (`est`, `var`): Estimated value `est` and estimated
             variance `var` of the estimate `est`
@@ -965,23 +965,23 @@ class MPPovmList:
         assert len(self.mpps) == len(funs)
         assert len(self.mpps) == len(samples)
         est, var = zip(*(
-            mpp.est_fun(c, f, sam)
+            mpp.est_lfun(c, f, sam)
             for mpp, c, f, sam in zip(self.mpps, coeff, funs, samples)))
         return sum(est), sum(var)
 
-    def _fun_estimator(self, other, coeff, n_samples, eps):
-        """Compute the estimator used by :func:`self.estfun_from()`
+    def _lfun_estimator(self, other, coeff, n_samples, eps):
+        """Compute the estimator used by :func:`self.est_lfun_from()`
 
         Parameters: See :func:`self.estfun_from()` for `other` and
-        `coeff`.  See :func:`MPPovm._mppl_fun_estimator()` for
+        `coeff`.  See :func:`MPPovm._mppl_lfun_estimator()` for
         `n_samples`.
 
         :returns: `(est_coeff, `est_funs`): `est_coeff[i]` and
             `est_funs[i]` specify an estimator in the format used by
-            :func:`MPPovm.est_fun()` on `other.mpps[i]`.
+            :func:`MPPovm.est_lfun()` on `other.mpps[i]`.
 
         This method aggregates the results from
-        :func:`MPPovm._mppl_fun_estimator()` on each `self.mpps[i]`.
+        :func:`MPPovm._mppl_lfun_estimator()` on each `self.mpps[i]`.
 
         """
         assert len(n_samples) == len(other.mpps)
@@ -989,11 +989,11 @@ class MPPovmList:
         est_coeff = tuple([] for _ in range(len(other.mpps)))
         est_funs = tuple([] for _ in range(len(other.mpps)))
         for c, mpp in zip(coeff, self.mpps):
-            mpp._mppl_fun_estimator(est_coeff, est_funs, other, n_samples, c,
+            mpp._mppl_lfun_estimator(est_coeff, est_funs, other, n_samples, c,
                                     eps=eps)
         return est_coeff, est_funs
 
-    def est_fun_from(self, other, coeff, samples, eps=1e-10):
+    def est_lfun_from(self, other, coeff, samples, eps=1e-10):
         """Estimate a linear function from samples for another MPPovmList
 
         The function to estimate is a linear function of the
@@ -1009,9 +1009,9 @@ class MPPovmList:
 
         """
         n_samples = [s.shape[0] for s in samples]
-        est_coeff, funs = self._fun_estimator(other, coeff, n_samples, eps)
+        est_coeff, funs = self._lfun_estimator(other, coeff, n_samples, eps)
         est, var = zip(*(
-            mpp.est_fun(np.array(c, float), f, s, eps=eps)
+            mpp.est_lfun(np.array(c, float), f, s, eps=eps)
             for c, f, s, mpp in zip(est_coeff, funs, samples, other.mpps)))
         return sum(est), sum(var)
 

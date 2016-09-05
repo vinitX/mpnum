@@ -422,7 +422,10 @@ def test_mppovm_est_pmf_from(
 @pt.mark.parametrize('nr_sites, startsite, local_dim', MPPOVM_PARAM)
 def test_mppovm_est_fun(
         method, n_samples, nr_sites, startsite, local_dim, rgen):
-    """Check that .est_fun() probability estimates are reasonably accurate"""
+    """Check that estimates from .est_pmf() and .est_lfun() are reasonably
+    accurate
+
+    """
     bond_dim = 3
     eps = 1e-10
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
@@ -448,10 +451,8 @@ def test_mppovm_est_fun(
     cov_p_exact = np.diag(p_exact.flat) - np.outer(p_exact.flat, p_exact.flat)
     samples = mpp.sample(rgen, mps, n_samples, method, 4, 'mps', eps)
 
-    ept, cov = mpp.est_fun(None, None, samples, None, eps)
-
     p_est = mpp.est_pmf(samples)
-
+    ept, cov = mpp.est_lfun(None, None, samples, None, eps)
     assert (ept == p_est.ravel()).all()
     assert abs(p_exact - p_est).max() <= 3 / n_samples**0.5
 
@@ -473,13 +474,13 @@ def test_mppovm_est_fun(
     coeff = np.ones(len(funs), dtype=float)
     # Test with dummy weights
     weights = np.ones(n_samples, dtype=float)
-    sum_ept, sum_var = mpp.est_fun(coeff, funs, samples, weights, eps)
+    sum_ept, sum_var = mpp.est_lfun(coeff, funs, samples, weights, eps)
     assert abs(sum_ept - 1.0) <= eps
     assert sum_var <= eps
 
     # Check a sum of probabilities with varying signs.
     coeff = ((-1)**rgen.choice(2, len(funs))).astype(float)
-    sum_ept, sum_var = mpp.est_fun(coeff, funs, samples, None, eps)
+    sum_ept, sum_var = mpp.est_lfun(coeff, funs, samples, None, eps)
     ex_sum = np.inner(coeff, p_exact.flat)
     ex_var = np.inner(coeff, np.dot(cov_ex, coeff))
     assert abs(sum_ept - ex_sum) <= 3 / n_samples**0.5
@@ -491,7 +492,7 @@ def test_mppovm_est_fun(
     count_samples = np.array(np.unravel_index(range(np.prod(mpp.nsoutdims)),
                                               mpp.nsoutdims)).T
     weights = counts.ravel()
-    sum_ept2, sum_var2 = mpp.est_fun(coeff, funs, count_samples, weights, eps)
+    sum_ept2, sum_var2 = mpp.est_lfun(coeff, funs, count_samples, weights, eps)
     assert abs(sum_ept - sum_ept2) <= eps
     assert abs(sum_var - sum_var2) <= eps
 
@@ -615,14 +616,15 @@ def povm_combo(function, request):
     ])
 @pt.mark.parametrize('nonuniform', [True, pt.mark.long(False)])
 @pt.mark.parametrize('function', ['randn', 'ones', 'signs', pt.mark.long('rand')])
-def test_mppovmlist_est_fun_from(
+def test_mppovmlist_est_lfun_from(
         method, n_samples, nr_sites, local_dim, bond_dim, measure_width,
         local_width, nonuniform, function, povm_combo, rgen, eps=1e-10):
     """Verify that estimated probabilities from MPPovmList.est_pmf_from()
     are reasonable accurate
 
     .. todo:: This test is too long and should be split into several
-              smaller tests.
+              smaller tests. Also, some of the testing done here is
+              redundant.
 
     """
 
@@ -660,12 +662,12 @@ def test_mppovmlist_est_fun_from(
     exact_prob = tuple(mp.prune(p, singletons=True).to_array()
                        for p in f_povm.pmf(mps, 'mps'))
 
-    est, var = f_povm.est_fun_from(s_povm, coeff, samples, eps)
+    est, var = f_povm.est_lfun_from(s_povm, coeff, samples, eps)
 
     if fromself:
-        # In this case, est_fun() and est_fun_from() must give exactly
+        # In this case, est_lfun() and est_lfun_from() must give exactly
         # the same result.
-        est2, var2 = f_povm.est_fun([c.ravel() for c in coeff],
+        est2, var2 = f_povm.est_lfun([c.ravel() for c in coeff],
                                     None, samples, eps)
         assert abs(est - est2) <= eps
         assert abs(var - var2) <= eps
@@ -699,7 +701,7 @@ def test_mppovmlist_est_fun_from(
     # Convert from matching functions + coefficients to coefficients
     # for each probability.
     n_samples2 = [s.shape[0] for s in samples]
-    est_coeff, est_funs = f_povm._fun_estimator(s_povm, coeff, n_samples2, eps)
+    est_coeff, est_funs = f_povm._lfun_estimator(s_povm, coeff, n_samples2, eps)
     est_p_coeff = [np.zeros(mpp.nsoutdims, float) for mpp in s_povm.mpps]
     for fun_coeff, funs, p_coeff, mpp in zip(
             est_coeff, est_funs, est_p_coeff, s_povm.mpps):
