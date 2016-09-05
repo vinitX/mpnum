@@ -624,7 +624,12 @@ def test_mppovmlist_est_fun_from(
         method, n_samples, nr_sites, local_dim, bond_dim, measure_width,
         local_width, nonuniform, function, povm_combo, rgen, eps=1e-10):
     """Verify that estimated probabilities from MPPovmList.est_pmf_from()
-    are reasonable accurate"""
+    are reasonable accurate
+
+    .. todo:: This test is too long and should be split into several
+              smaller tests.
+
+    """
 
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
     mps.normalize()
@@ -649,20 +654,19 @@ def test_mppovmlist_est_fun_from(
     else:
         raise ValueError('Unknown function {!r}'.format(function))
 
-    coeff = [coeff(mpp.nsoutdims) for mpp in f_povm.mpps]
+    # More POVMs in s_povm means more samples. Consider this in the tests.
+    n_samples_eff = n_samples * len(s_povm.mpps)
+    # We divide the coefficients by len(f_povm.mpps) to make the
+    # estimated value have approximately same magnitude, independently
+    # of len(f_povm.mpps).
+    coeff = [coeff(mpp.nsoutdims) / len(f_povm.mpps) for mpp in f_povm.mpps]
     samples = tuple(s_povm.sample(
         rgen, mps, n_samples, method, mode='mps', eps=eps))
     exact_prob = tuple(mp.prune(p, singletons=True).to_array()
                        for p in f_povm.pmf(mps, 'mps'))
 
-    # Make the estimated value have approximately same magnitude
-    # independently of len(f_povm.mpps)
-    coeff = [c / len(f_povm.mpps) for c in coeff]
-    # More POVMs in s_povm means more samples. Consider this in the
-    # tests.
-    n_samples_eff = n_samples * len(s_povm.mpps)
-
     est, var = f_povm.est_fun_from(s_povm, coeff, samples, eps)
+
     if fromself:
         # In this case, est_fun() and est_fun_from() must give exactly
         # the same result.
