@@ -1578,7 +1578,7 @@ def local_sum(mpas, embed_tensor=None, length=None, slices=None):
 
     mpas = (embed_slice(length, slice_, mpa, embed_tensor)
             for mpa, slice_ in zip(mpas, slices))
-    return ft.reduce(MPArray.__add__, mpas)
+    return sumup(mpas)
 
 
 ############################################################
