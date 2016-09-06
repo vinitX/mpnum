@@ -142,7 +142,6 @@ import numpy as np
 import mpnum.factory as factory
 import mpnum.mparray as mp
 import mpnum.mpsmpo as mpsmpo
-from mpnum import povm as mpp
 
 
 class MPPovm(mp.MPArray):
@@ -1279,7 +1278,8 @@ def pauli_mpp(nr_sites, local_dim):
     single POVM.
 
     """
-    return MPPovm.from_local_povm(mpp.pauli_povm(local_dim), nr_sites)
+    from mpnum.povm import pauli_povm
+    return MPPovm.from_local_povm(pauli_povm(local_dim), nr_sites)
 
 
 def pauli_mpps(nr_sites, local_dim):
@@ -1309,6 +1309,7 @@ def pauli_mpps(nr_sites, local_dim):
     :rtype: MPPovmList
 
     """
-    parts = [MPPovm.from_local_povm(x, 1) for x in mpp.pauli_parts(local_dim)]
+    from mpnum.povm import pauli_parts
+    parts = [MPPovm.from_local_povm(x, 1) for x in pauli_parts(local_dim)]
     return MPPovmList(MPPovm(mp.outer(factors))
                       for factors in it.product(parts, repeat=nr_sites))
