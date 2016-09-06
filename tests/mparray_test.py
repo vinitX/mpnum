@@ -6,6 +6,7 @@
 from __future__ import absolute_import, division, print_function
 
 import functools as ft
+import itertools as it
 
 import h5py as h5
 import numpy as np
@@ -742,6 +743,27 @@ def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
         mpa.normalize()
         mpa_t = mpa.pleg2bleg(nr_sites // 2 - 1)
         assert_correct_normalization(mpa_t)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_split(nr_sites, local_dim, bond_dim, rgen):
+    if nr_sites < 2:
+        return
+    mpa = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    for pos in range(nr_sites - 1):
+        mpa_l, mpa_r = mpa.split(pos)
+        assert len(mpa_l) == pos + 1
+        assert len(mpa_l) + len(mpa_r) == nr_sites
+        assert_correct_normalization(mpa_l)
+        assert_correct_normalization(mpa_r)
+        recons = np.tensordot(mpa_l.to_array(), mpa_r.to_array(), axes=(-1, 0))
+        assert_array_almost_equal(mpa.to_array(), recons)
+
+    for (lnorm, rnorm) in it.product(range(nr_sites - 1), range(1, nr_sites)):
+        mpa_l, mpa_r = mpa.split(nr_sites // 2 - 1)
+        assert_correct_normalization(mpa_l)
+        assert_correct_normalization(mpa_r)
+
 
 ###############################################################################
 #                         Normalization & Compression                         #

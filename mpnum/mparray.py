@@ -561,6 +561,24 @@ class MPArray(object):
         return MPArray(ltens, _lnormalized=min(lnormal, pos - 1),
                        _rnormalized=max(rnormal, pos + 1))
 
+    def split(self, pos):
+        """Splits the MPA into two by transforming the bond legs into physical
+        legs
+
+        :param pos: Number of the bond to perform the transformation
+        :returns: (mpa_left, mpa_right)
+
+        """
+        mpa_t = self.bleg2pleg(pos)
+        lnorm, rnorm = mpa_t.normal_form
+        mpa_l = MPArray(it.islice(mpa_t, 0, pos + 1),
+                        _lnormalized=min(lnorm, pos),
+                        _rnormalized=min(rnorm, pos + 1))
+        mpa_r = MPArray(it.islice(mpa_t, pos + 1, len(mpa_t)),
+                        _lnormalized=max(0, lnorm - pos),
+                        _rnormalized=max(0, rnorm - pos))
+        return mpa_l, mpa_r
+
     ################################
     #  Normalizaton & Compression  #
     ################################
