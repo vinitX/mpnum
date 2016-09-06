@@ -1709,7 +1709,7 @@ def _local_add(ltenss):
 
     """
     shape = ltenss[0].shape
-    if sys.flags.optimize == 0:
+    if __debug__:
         for lt in ltenss[1:]:
             assert_array_equal(shape[1:-1], lt.shape[1:-1])
 
