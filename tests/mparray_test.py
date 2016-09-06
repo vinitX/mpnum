@@ -716,6 +716,33 @@ def test_iter_readonly():
     raise AssertionError("Iterator over ltens should be read only")
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
+    mpa = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    # +2 so we cover all possibilities
+    mpa.normalize(left=nr_sites // 2, right=min(nr_sites // 2 + 2, nr_sites))
+
+    for pos in range(nr_sites - 1):
+        mpa_t = mpa.bleg2pleg(pos)
+        true_bond_dim = mpa.bdims[pos]
+        pshape = [(local_dim,)] * pos + [(local_dim, true_bond_dim)] + \
+            [(true_bond_dim, local_dim)] + [(local_dim,)] * (nr_sites - pos - 2)
+        bdims = list(mpa.bdims)
+        bdims[pos] = 1
+        assert_array_equal(mpa_t.pdims, pshape)
+        assert_array_equal(mpa_t.bdims, bdims)
+        assert_correct_normalization(mpa_t)
+
+        mpa_t = mpa_t.pleg2bleg(pos)
+        mpa_t._lnormalized, mpa_t._rnormalized = mpa.normal_form
+        assert_mpa_identical(mpa, mpa_t)
+
+    if nr_sites > 1:
+        mpa = factory.random_mpa(nr_sites, local_dim, 1, randstate=rgen)
+        mpa.normalize()
+        mpa_t = mpa.pleg2bleg(nr_sites // 2 - 1)
+        assert_correct_normalization(mpa_t)
+
 ###############################################################################
 #                         Normalization & Compression                         #
 ###############################################################################

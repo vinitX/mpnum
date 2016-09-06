@@ -30,7 +30,6 @@ from __future__ import absolute_import, division, print_function
 
 import sys
 
-import functools as ft
 import itertools as it
 import collections
 
@@ -526,6 +525,41 @@ class MPArray(object):
                 'plegs not a multiple of sites_per_group'
             ltens += _extract_factors(self[i], plegs // sites_per_group)
         return MPArray(ltens)
+
+    def bleg2pleg(self, pos):
+        """Transforms the bond leg between site `pos` and `pos + 1` into
+        physical legs at those sites. The new leg will be the rightmost one
+        at site `pos` and the leftmost one at site `pos + 1`. The new bond
+        dimension is 1.
+
+        Also see :func:`pleg2bleg`.
+
+        :param pos: Number of the bond to perform the transformation
+        :returns: read-only MPA with transformed bond
+
+        """
+        ltens = list(self)
+        ltens[pos] = ltens[pos].reshape(ltens[pos].shape + (1,))
+        ltens[pos + 1] = ltens[pos + 1].reshape((1,) + ltens[pos + 1].shape)
+        lnormal, rnormal = self.normal_form
+        return MPArray(ltens, _lnormalized=min(lnormal, pos - 1),
+                       _rnormalized=max(rnormal, pos + 2))
+
+    def pleg2bleg(self, pos):
+        """Performs the inverse operation to :func:`bleg2pleg`.
+
+        :param pos: Number of the bond to perform the transformation
+        :returns: read-only MPA with transformed bond
+
+        """
+        ltens = list(self)
+        assert ltens[pos].shape[-1] == 1
+        assert ltens[pos + 1].shape[0] == 1
+        ltens[pos] = ltens[pos].reshape(ltens[pos].shape[:-1])
+        ltens[pos + 1] = ltens[pos + 1].reshape(ltens[pos + 1].shape[1:])
+        lnormal, rnormal = self.normal_form
+        return MPArray(ltens, _lnormalized=min(lnormal, pos - 1),
+                       _rnormalized=max(rnormal, pos + 1))
 
     ################################
     #  Normalizaton & Compression  #
