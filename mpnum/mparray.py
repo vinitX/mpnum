@@ -1176,7 +1176,7 @@ def partialdot(mpa1, mpa2, start_at, axes=(-1, 0)):
     ltens_new = (
         l if r is None else (r if l is None else _local_dot(l, r, axes))
         for l, r in zip(mpa1, mpa2)
-        )
+    )
     return MPArray(ltens_new)
 
 
