@@ -470,16 +470,21 @@ class MPArray(object):
 
         Use self.pdims to obtain the shapes of the physical legs.
 
-        :param newshapes: A single new shape or a list of new shapes
+        :param newshapes: A single new shape or a list of new shapes.
+            Alternatively, you can pass 'prune' to get rid of all physical legs
+            of size 1.
         :returns: Reshaped MPA
 
         """
+        if newshapes == 'prune':
+            newshapes = (tuple(s for s in pdim if s > 1) for pdim in self.pdims)
+
         newshapes = tuple(newshapes)
         if not isinstance(newshapes[0], collections.Iterable):
             newshapes = it.repeat(newshapes, times=len(self))
 
         return MPArray([_local_reshape(lten, newshape)
-                       for lten, newshape in zip(self._ltens, newshapes)])
+                       for lten, newshape in zip(self, newshapes)])
 
     def ravel(self):
         """Flatten the MPA to an MPS, shortcut for self.reshape((-1,))
