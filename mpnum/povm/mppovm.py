@@ -978,10 +978,6 @@ class MPPovmList:
         :returns: Iterator over `(p_est, n_samples_used)` from
             :func:`MPPovm.est_pmf_from_mpps()`.
 
-        .. todo:: Add a separate method to estimate from samples for
-            `self`. This method should not be used if `other` is equal
-            to `self`!
-
         """
         assert len(self.mpps[0]) == len(other.mpps[0])
         for mpp in self.mpps:
