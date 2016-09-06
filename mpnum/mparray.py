@@ -569,6 +569,11 @@ class MPArray(object):
         :returns: (mpa_left, mpa_right)
 
         """
+        if pos < 0:
+            return None, self
+        elif pos >= len(self):
+            return self, None
+
         mpa_t = self.bleg2pleg(pos)
         lnorm, rnorm = mpa_t.normal_form
         mpa_l = MPArray(it.islice(mpa_t, 0, pos + 1),
