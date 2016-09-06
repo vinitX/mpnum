@@ -1,4 +1,139 @@
 # encoding: utf-8
+
+
+r'''Matrix-product representation of POVMs
+
+This module provides the following classes:
+
+* :class:`MPPovm`: A matrix product representation of a multi-site
+  POVM.
+
+  For example, for a linear chain of `n` qubits this class can
+  represent the POVM of the observable `XX...X` with :math:`2^n`
+  elements efficiently. It is also possible to sample from the
+  probability distribution of this POVM efficiently.
+
+* :class:`MPPovmList`: A list of MP-POVMs.
+
+  This class can be used e.g. to obtain estimated expectation values
+  of the local observable `XX1...1` on two qubits from from samples
+  for the global observables `XX...X` and `XXY...Y` (cf. below on
+  :ref:`mppovm-lfun-overview`).
+
+* The methods :func:`MPPovm.embed`,
+  :func:`MPPovm.block`/:func:`MPPovmList.block`,
+  :func:`MPPovm.repeat`/:func:`MPPovmList.repeat` as well as
+  :func:`pauli_mpp` and :func:`pauli_mpps` allow for convenient
+  construction of MP-POVMs and MP-POVM lists.
+
+.. _mppovm-lfun-overview:
+
+Linear combinations of functions of POVM outcomes
+=====
+
+In order to perform the just mentioned estimation of probabilities of
+one POVM from samples of another POVM with possibly larger support, we
+provide a function which can estimate linear functions of functions of
+POVM outcomes: Let :math:`M` a finite index set with real elements
+:math:`y \in M \subset \mathbb R` such that :math:`\hat y` are the
+positive semidefinite POVM elements which sum to the identity,
+:math:`\sum_{y \in M} \hat y = 1`. Given a state :math:`\rho`, the
+probability mass function (PMF) of the probability distribution given
+by the POVM and the state can be expressed as :math:`p_y =
+\operatorname{tr}(\rho \hat y)`, :math:`y \in M` or as :math:`p(x) =
+\sum_{y \in M} \delta(x - y) p_y`. Let further :math:`D = (x_1,
+\ldots, x_m)`, :math:`x_k \in M` a set of samples from :math:`p(x)`
+and let :math:`f \colon M \to \mathbb R` an arbitrary function of the
+POVM outcomes. The true value :math:`\langle f \rangle_p = \int f(y)
+p(y) \mathrm d y` can then be estimated using the sample average
+:math:`\langle f \rangle_D = \frac1m \sum_{k=1}^m f(x_k) p_{x_k}`. In
+the same way, a linear combination :math:`f = \sum c_i f_i` of
+functions :math:`f_i \colon M \to \mathbb R` of POVM outcomes can be
+estimated by :math:`\langle f \rangle_D = \sum_i c_i \langle f_i
+\rangle_D`. Such a linear combination of functions of POVM outcomes
+can be estimated using :func:`MPPovm.est_lfun()`. More technically,
+the relation :math:`\langle \langle f \rangle_D \rangle_{p_m} =
+\langle f \rangle_p` shows that :math:`\langle f \rangle_D` is an
+unbiased estimator for the true expectation value :math:`\langle f
+\rangle_p`; the probability distribution of the dataset :math:`D` is
+given by the sampling distribution :math:`p_m(D) = p(x_1) \ldots
+p(x_m)`.
+
+Estimates of the POVM probabilities :math:`p_y` can also be expressed
+as functions of this kind: Consider the function
+
+.. math::
+
+   \theta_y(x) =
+   \begin{cases}
+     1, & x = y, \\
+     0, & \text{otherwise.}
+   \end{cases}
+
+The true value of this function under :math:`p(x)` is :math:`\langle
+\theta_y \rangle_p = p_y` and the sample average :math:`\langle
+\theta_y \rangle_D` provides an estimator for :math:`p_y`. In order to
+estimate probabilities of one POVM from samples for another POVM, such
+a function can be used: E.g. to estimate the probability of the
+:math:`(+1, +1)` outcome of the POVM `XX1...1`, we can define a
+function which is equal to 1 if the outcome of the POVM `XX...X` on
+the first two sites is equal to :math:`(+1, +1)` and zero
+otherwise. The sample average of this function over samples for the
+latter POVM `XX...X` will estimate the desired probability. This
+approach is implemented in :func:`MPPovm.est_pmf_from()`. If samples
+from more than one POVM are available for estimating a given
+probability, a weighted average of estimators can be used as
+implemented in :func:`MPPovm.est_pmf_from_mpps()`; the list of
+MP-POVMs for which samples are available is passed as an
+:class:`MPPovmList` instance. Finally, the function
+:func:`MPPovmList.est_lfun_from` allows estimation of a linear
+combination of probabilities from different POVMs using samples of a
+second list of MP-POVMs. This function also estimates the variance of
+the estimate. In order to perform the two estimation procedures, for
+each probability, we construct an estimator from a weighted average of
+functions of outcomes of different POVMs, as has been explained
+above. For more simple settings, :func:`MPPovmList.est_lfun` is also
+available.
+
+True values of the functions just mentioned can be obtained from
+:func:`MPPovm.lfun`, :func:`MPPovmList.lfun` and
+:func:`MPPovmList.lfun_from`. All functions return both the true
+expectation value and the variance of the expectation value. 
+
+The variance of the (true) expectation value :math:`\langle f
+\rangle_p` of a function :math:`f\colon M \to \mathbb R` is given by
+:math:`\operatorname{var}_p(f) = \operatorname{cov}_p(f, f)` with
+:math:`\operatorname{cov}_p(f, g) = \langle fg \rangle_p - \langle f
+\rangle_p \langle g \rangle_p`. The variance of the estimate
+:math:`\langle f \rangle_D` is given by
+:math:`\operatorname{var}_{p_m}(\langle f \rangle_D) = \frac1m
+\operatorname{var}_p(f)` where :math:`p_m(D)` is the sampling
+distribution from above. An unbiased estimator for the covariance
+:math:`\operatorname{cov}_p(f, g)` is given by :math:`\frac{m}{m-1}
+\operatorname{cov}_D(f, g)` where the sample covariance
+:math:`\operatorname{cov}_D(f, g)` is defined in terms of sample
+averages in the usual way, :math:`\operatorname{cov}_D(f, g) = \langle
+fg \rangle_D - \langle f \rangle_D \langle g \rangle_D`. This
+estimator is used by :func:`MPPovm.est_lfun`.
+
+.. todo:: 
+
+   Explain the details of the variance estimation, in particular the
+   difference between the variances returned from
+   :func:`MPPovmList.lfun` and :func:`MPPovmList.lfun_from`. Check the
+   mean square error.
+
+   Add a good references explaining all facts mentioned above and for
+   further reading.
+
+   Document the runtime and memory cost of the functions.
+
+Class and function reference
+=====
+
+'''
+
+
 from __future__ import absolute_import, division, print_function
 
 import itertools as it
@@ -22,9 +157,10 @@ class MPPovm(mp.MPArray):
 
                 [POVM index, column index, row index]
 
-        that is, the first physical leg of the MPArray corresponds to the index
-        of the POVM element. This representation is especially helpful for
-        computing expectation values with MPSs/MPDOs.
+       that is, the first physical leg of the MPArray corresponds to
+       the index of the POVM element. This representation is
+       especially helpful for computing expectation values with
+       MPSs/MPDOs.
 
     Here, we choose the second.
 
@@ -494,8 +630,17 @@ class MPPovm(mp.MPArray):
     def lfun(self, coeff, funs, state, mode='auto', eps=1e-10):
         """Evaluate a linear combination of functions of POVM outcomes
 
-        The parameters `coeff` and `funs` are explained in
-        :func:`MPPovm.est_lfun`. `state` and `mode` are passed to
+        :param np.ndarray coeff: A length `n_funs` array with the
+            coefficients of the linear combination. If `None`, return
+            the estimated values of the individual functions and the
+            estimated covariance matrix of the estimates.
+        :param np.ndarray funs: A length `n_funs` sequence of
+            functions. If `None`, the estimated function will be a
+            linear function of the POVM probabilities.
+
+        For further information, see also :ref:`mppovm-lfun-overview`.
+
+        The parameters `state` and `mode` are passed to
         :func:`MPPovm.pmf`.
 
         :returns: `(value, var)`: Expectation value and variance of
@@ -535,15 +680,9 @@ class MPPovm(mp.MPArray):
         """Estimate a linear combination of functions of POVM outcomes
 
         This function estimates the function with exact value given by
-        :func:`MPPovm.lfun`.
+        :func:`MPPovm.lfun`; see there for description of the
+        parameters `coeff` and `funs`.
 
-        :param np.ndarray coeff: A length `n_funs` array with the
-            coefficients of the linear combination. If `None`, return
-            the estimated values of the individual functions and the
-            estimated covariance matrix of the estimates.
-        :param np.ndarray funs: A length `n_funs` sequence of
-            functions. If `None`, the estimated function will be a
-            linear function of the POVM probabilities.
         :param np.ndarray samples: A shape `(n_samples,
             len(self.nsoutdims))` with samples from `self`
         :param weights: A length `n_samples` array for weighted
@@ -553,7 +692,8 @@ class MPPovm(mp.MPArray):
             `weights` is given.
 
         :returns: `(est, var)`: Estimated value and estimated variance
-            of the estimated value
+            of the estimated value. For details, see
+            :ref:`mppovm-lfun-overview`.
 
         """
         if funs is None:
@@ -611,8 +751,8 @@ class MPPovm(mp.MPArray):
         Used by :func:`MPPovmList._lfun_estimator()`.
 
         `est_coeff[i]` and `est_funs[i]` will specify an estimator in
-        the format used by :func:`MPPovm.est_lfun()` on
-        `other.mpps[i]`. This functions adds the coefficients and
+        the format used by :func:`MPPovm.lfun()` on
+        `other.mpps[i]`. This function adds the coefficients and
         functions necessary to estimate the linear function of `self`
         probabilities specified by `coeff`.
 
@@ -1013,7 +1153,7 @@ class MPPovmList:
         :param weights: Iterable of weight lists or `None`
 
         The `i`-th item from these parameters is passed to
-        `self.mpps[i].est_lfun <MPPovm.est_lfun>`.
+        :func:`MPPovm.est_lfun` on `self.mpps[i].est_lfun`.
 
         :returns: (`est`, `var`): Estimated value `est` and estimated
             variance `var` of the estimate `est`
@@ -1030,10 +1170,10 @@ class MPPovmList:
         return sum(est), sum(var)
 
     def _lfun_estimator(self, other, coeff, n_samples, eps):
-        """Compute the estimator used by :func:`self.est_lfun_from()`
+        """Compute the estimator used by :func:`MPPovmList.est_lfun_from()`
 
-        Parameters: See :func:`self.estfun_from()` for `other` and
-        `coeff`.  See :func:`MPPovm._mppl_lfun_estimator()` for
+        Parameters: See :func:`MPPovmList.est_lfun_from()` for `other`
+        and `coeff`.  See :func:`MPPovm._mppl_lfun_estimator()` for
         `n_samples`.
 
         :returns: `(est_coeff, `est_funs`): `est_coeff[i]` and
@@ -1089,7 +1229,12 @@ class MPPovmList:
         """Estimate a linear function from samples for another MPPovmList
 
         The function to estimate is a linear function of the
-        probabilities of `self` and it is specified by `coeff`.
+        probabilities of `self` and it is specified by `coeff`. Its
+        true expectation value and variance are returned by
+        :func:`MPPovmList.lfun_from`. First, an estimator is
+        constructed using :func:`MPPovmList._lfun_estimator` and this
+        estimator is passed to :func:`MPPovm.est_lfun` to obtain the
+        estimate. See :ref:`mppovm-lfun-overview` for more details.
 
         :param MPPovmList other: Another MP-POVM list
         :param coeff: A sequence of shape `self.mpps[i].nsoutdims`
