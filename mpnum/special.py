@@ -17,13 +17,17 @@ def inner_prod_mps(mpa1, mpa2):
     :returns: <mpa1|mpa2>
 
     """
+    assert all(bdim == 1 for bdim in mpa1.bdims)
+    assert all(pleg == 1 for pleg in mpa1.plegs)
+    assert all(pleg == 1 for pleg in mpa2.plegs)
+
     # asssume mpa1 is product
     ltens1 = iter(mpa1)
     ltens2 = iter(mpa2)
 
-    res = next(ltens1)[0, :, 0] @ next(ltens2)
+    res = np.dot(next(ltens1)[0, :, 0].conj(), next(ltens2))
     for l1, l2 in zip(ltens1, ltens2):
-        res = res @ (l1[0, :, 0] @ l2)
+        res = np.dot(res, np.dot(l1[0, :, 0].conj(), l2))
     return res[0, 0]
 
 
