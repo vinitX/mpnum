@@ -439,14 +439,7 @@ def test_mppovm_est(
               .embed(nr_sites, startsite, local_dim)
 
     p_exact = mp.prune(mpp.pmf(mps, 'mps'), singletons=True).to_array()
-    assert (abs(p_exact.imag) <= eps).all()
-    p_exact = p_exact.real
-    assert (p_exact >= -eps).all()
-    assert (p_exact <= 1 + eps).all()
-    p_exact[p_exact <= 0] = 0
-    assert abs(p_exact.sum() - 1) <= eps
-    p_exact /= p_exact.sum()
-    assert abs(p_exact.sum() - 1) <= eps
+    p_exact = _tools.check_pmf(p_exact, eps, eps)
 
     cov_p_exact = np.diag(p_exact.flat) - np.outer(p_exact.flat, p_exact.flat)
     samples = mpp.sample(rgen, mps, n_samples, method, 4, 'mps', eps)
