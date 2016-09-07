@@ -1709,9 +1709,10 @@ def _local_add(ltenss):
 
     """
     shape = ltenss[0].shape
-    if __debug__:
-        for lt in ltenss[1:]:
-            assert_array_equal(shape[1:-1], lt.shape[1:-1])
+    # NOTE These are currently disabled due to real speed issues.
+    #  if __debug__:
+    #      for lt in ltenss[1:]:
+    #          assert_array_equal(shape[1:-1], lt.shape[1:-1])
 
     newshape = (sum(lt.shape[0] for lt in ltenss), )
     newshape += shape[1:-1]
