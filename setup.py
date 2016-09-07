@@ -35,12 +35,14 @@ class PyTest(Command):
         ('selector=', None, "Specifies the tests to run"),
         ('covreport', None, "Run coverage report from tests"),
         ('pdb', None, "Whether to run pdb on failure"),
+        ('bench', None, "Whether to run benchmarks"),
     ]
 
     def initialize_options(self):
         self.selector = 'not long'
         self.covreport = None
         self.pdb = False
+        self.bench = False
 
     def finalize_options(self):
         pass
@@ -48,6 +50,7 @@ class PyTest(Command):
     def run(self):
         import pytest
         args = [] if not self.pdb else ['--pdb']
+        args += [] if self.bench else ['--benchmark-skip']
 
         if self.covreport is None:
             # Run doctests afterwards because they auto-import things. We want
