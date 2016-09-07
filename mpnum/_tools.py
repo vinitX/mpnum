@@ -175,34 +175,59 @@ def block_diag(summands, axes=(0, 1)):
     return res
 
 
-def verify_real_nonnegative(values, zero_tol=1e-6, zero_cutoff=None):
-    """Check that values are real and non-negative.
+def check_nonneg_trunc(values, imag_eps=1e-10, real_eps=1e-10, real_trunc=0.0):
+    """Check that values are real and non-negative
 
-    :param numpy.ndarray values: An ndarray of complex or real values
-        (or a single value).
+    :param np.ndarray values: An ndarray of complex or real values (or
+        a single value). `values` is modified in-place unless `values`
+        is complex. A single value is also accepted.
 
-    :param zero_tol: Replace negative real values and imaginary parts
-        with modulus smaller than or equal to `zero_tol` with zero.
+    :param float imag_eps: Raise an error if imaginary parts with
+        modulus larger than `imag_eps` are present.
 
-    :param zero_cutoff: Replace positive real values smaller than or
-       equal to zero_cutoff with zero. Default: None (`zero_tol` will
-       be used).
+    :param float real_eps: Raise an error if real parts smaller than
+        `-real_eps` are present. Replace all remaining negative values
+        by zero.
 
-    :returns: An ndarray of real values (or a single real value).
+    :param float real_trunc: Replace positive real values smaller than
+        or equal to `real_trunc` by zero.
+
+    :returns: An ndarray of real values (or a single real value). 
+
+    If `values` is an array with complex type, a new array is
+    returned. If `values` is an array with real type, it is modified
+    in-place and returned.
 
     """
-    single_value = False
+    if values.dtype.kind == 'c':
+        assert (abs(values.imag) <= imag_eps).all()
+        values = values.real.copy()
     if getattr(values, 'ndim', 0) == 0:
-        single_value = True
-        values = np.array([values])
+        assert values >= -real_eps
+        return 0.0 if values <= real_trunc else values
+    assert (values >= -real_eps).all()
+    values[values <= real_trunc] = 0.0
+    return values
+
+
+def check_pmf(values, imag_eps=1e-10, real_eps=1e-10, real_trunc=0.0):
+    """Check that values are real probabilities
+
+    See :func:`check_nonneg_trunc` for parameters and return value. In
+    addition, we check that `abs(values.sum() - 1.0)` is smaller than
+    or equal to `real_eps` and divide `values` by `values.sum()`
+    afterwards.
+
+    """
+    values = check_nonneg_trunc(values, imag_eps, real_eps, real_trunc)
+    s = values.sum()
+    assert abs(s - 1.0) <= real_eps
+    values /= s
+    return values
+
+
+def verify_real_nonnegative(values, zero_tol=1e-6, zero_cutoff=None):
+    """Deprecated; use :func:`check_nonneg_trunc` instead"""
     if zero_cutoff is None:
         zero_cutoff = zero_tol
-    if hasattr(values, 'imag'):
-        assert all(abs(values.imag) <= zero_tol), \
-            'non-real values found: {}'.format(values)
-    values = values.real
-    assert all(values >= -zero_tol), 'negative values found: {}'.format(values)
-    values[values <= zero_cutoff] = 0
-    if single_value:
-        return values[0]
-    return values
+    return check_nonneg_trunc(values, zero_tol, zero_tol, zero_cutoff)

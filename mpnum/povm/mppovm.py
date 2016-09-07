@@ -142,6 +142,7 @@ import numpy as np
 import mpnum.factory as factory
 import mpnum.mparray as mp
 import mpnum.mpsmpo as mpsmpo
+from mpnum._tools import check_pmf
 
 
 class MPPovm(mp.MPArray):
@@ -500,12 +501,7 @@ class MPPovm(mp.MPArray):
             p = marginal_pmf[min(n_sites, n_out + n_group)]
             # Obtain conditional probab. from joint `p` and marginal `out_p`
             p = p[tuple(out[:n_out]) + (slice(None),) * (len(p) - n_out)]
-            p = mp.prune(p).to_array() / out_p
-            assert (abs(p.imag) <= eps).all()
-            p = p.real
-            assert (p >= -eps).all()
-            p[p < 0] = 0.0
-            assert abs(p.sum() - 1.0) <= eps
+            p = check_pmf(mp.prune(p).to_array() / out_p, eps, eps)
             # Sample from conditional probab. for next `n_group` sites
             choice = rng.choice(p.size, p=p.flat)
             out[n_out:n_out + n_group] = np.unravel_index(choice, p.shape)
@@ -534,12 +530,7 @@ class MPPovm(mp.MPArray):
 
     def _sample_direct(self, rng, pmf, n_samples, out, eps):
         """Sample from full pmfilities (call :func:`self.sample`)"""
-        pmf = mp.prune(pmf, singletons=True).to_array()
-        assert (abs(pmf.imag) <= eps).all()
-        pmf = pmf.real
-        assert (pmf >= -eps).all()
-        pmf[pmf < 0] = 0.0
-        assert abs(pmf.sum() - 1.0) <= eps
+        pmf = check_pmf(mp.prune(pmf, singletons=True).to_array(), eps, eps)
         choices = rng.choice(pmf.size, n_samples, p=pmf.flat)
         for pos, c in enumerate(np.unravel_index(choices, pmf.shape)):
             out[:, pos] = c
