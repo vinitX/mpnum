@@ -395,6 +395,22 @@ class MPPovm(mp.MPArray):
         assert len(self) == len(state)
         return next(self.expectations(state, mode))
 
+    def pmf_as_array(self, state, mode='auto', eps=1e-10):
+        """Compute the POVM's PMF for `state` as full array
+
+        Parameters: See :func:`MPPovm.pmf`. 
+
+        :returns: PMF as shape `self.nsoutdims` ndarray
+
+        The resulting (real or complex) probabilities `pmf` are passed
+        through :func:`check_pmf(pmf, eps, eps)
+        <mpnum._tools.check_pmf>` before being returned.
+
+        """
+        assert len(self) == len(state)
+        pmf = mp.prune(next(self.expectations(state, mode)), True).to_array()
+        return check_pmf(pmf, eps, eps)
+
     def match_elems(self, other, exclude_dup=(), eps=1e-10):
         """Find POVM elements in `other` which have information on `self`
 
@@ -1068,12 +1084,25 @@ class MPPovmList:
         :param state: A quantum state as MPA
         :param mode: Passed to :func:`MPPovm.expectations()`
 
-        :returns: Iterator over shape probabilities as MPArrays
+        :returns: Iterator over probabilities as MPArrays
 
         """
         assert len(state) == len(self.mpps[0])
         for mpp in self.mpps:
             yield mpp.pmf(state, mode)
+
+    def pmf_as_array(self, state, mode='auto', eps=1e-10):
+        """Compute the PMF of all MP-POVMs as full arrays
+
+        Parameters: See :func:`MPPovmList.pmf`. Sanity checks: See
+        :func:`MPPovm.pmf_as_array`.
+
+        :returns: Iterator over probabilities as ndarrays
+
+        """
+        assert len(state) == len(self.mpps[0])
+        for mpp in self.mpps:
+            yield mpp.pmf_as_array(state, mode, eps)
 
     def sample(self, rng, state, n_samples, method, n_group=1, mode='auto',
                eps=1e-10):

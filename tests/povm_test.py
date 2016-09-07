@@ -351,7 +351,7 @@ def test_mppovm_sample(
     mpp = povm.MPPovm(mp.outer([xx, povm.MPPovm.eye([local_dim]), y])) \
               .embed(nr_sites, startsite, local_dim)
 
-    pmf_exact = mp.prune(mpp.pmf(mps, 'mps'), singletons=True).to_array()
+    pmf_exact = mpp.pmf_as_array(mps, 'mps', eps)
 
     if n_samples > 100:
         n_gr = 5
@@ -398,7 +398,7 @@ def test_mppovm_est_pmf_from(
     given_sites = [x_given if ((startsite + i) % 2) == 0 else y_given
                    for i in (0, 2, 3)]
     given_expected = np.einsum('i, j, k -> ijk', *given_sites)
-    pmf_exact = mp.prune(small_mpp.pmf(mps, 'mps'), singletons=True).to_array()
+    pmf_exact = small_mpp.pmf_as_array(mps, 'mps', eps)
 
     if n_samples > 100:
         n_gr = 5
@@ -438,7 +438,7 @@ def test_mppovm_est(
     mpp = povm.MPPovm(mp.outer([xx, povm.MPPovm.eye([local_dim]), y])) \
               .embed(nr_sites, startsite, local_dim)
 
-    p_exact = mp.prune(mpp.pmf(mps, 'mps'), singletons=True).to_array()
+    p_exact = mpp.pmf_as_array(mps, 'mps', eps)
     p_exact = _tools.check_pmf(p_exact, eps, eps)
 
     cov_p_exact = np.diag(p_exact.flat) - np.outer(p_exact.flat, p_exact.flat)
@@ -556,8 +556,7 @@ def test_mppovmlist_est_pmf_from(
     samples = tuple(g_povm.sample(
         rgen, mps, n_samples, method, mode='mps', eps=eps))
     est_prob, n_samples = zip(*l_povm.est_pmf_from(g_povm, samples, eps))
-    exact_prob = tuple(mp.prune(p, singletons=True).to_array()
-                       for p in l_povm.pmf(mps, 'mps'))
+    exact_prob = tuple(l_povm.pmf_as_array(mps, 'mps', eps))
     # Consistency check on n_samples: All entries should be equal
     # unless `nonuniform` is True.
     all_n_sam = np.concatenate(n_samples)
@@ -661,8 +660,7 @@ def test_mppovmlist_est_lfun_from(
     coeff = [coeff(mpp.nsoutdims) / len(f_povm.mpps) for mpp in f_povm.mpps]
     samples = tuple(s_povm.sample(
         rgen, mps, n_samples, method, mode='mps', eps=eps))
-    exact_prob = tuple(mp.prune(p, singletons=True).to_array()
-                       for p in f_povm.pmf(mps, 'mps'))
+    exact_prob = tuple(f_povm.pmf_as_array(mps, 'mps', eps))
 
     # Compute exact estimate directly
     exact_est1, exact_var1 = f_povm.lfun([c.ravel() for c in coeff], None, mps, 'mps', eps)
@@ -726,8 +724,7 @@ def test_mppovmlist_est_lfun_from(
         for c, fun in zip(fun_coeff, funs):
             match = fun(out)
             p_coeff.flat[match] += c
-    exact_prob = tuple(mp.prune(p, singletons=True).to_array()
-                       for p in s_povm.pmf(mps, 'mps'))
+    exact_prob = tuple(s_povm.pmf_as_array(mps, 'mps', eps))
     exact_p_cov = (np.diag(p.flat) - np.outer(p.flat, p.flat) for p in exact_prob)
     exact_var = sum(np.inner(c.flat, np.dot(cov, c.flat))
                     for c, cov in zip(est_p_coeff, exact_p_cov))
@@ -735,8 +732,7 @@ def test_mppovmlist_est_lfun_from(
     if fromself:
         # `f_povm` and `s_povm` are equal. We must obtain exactly the
         # same result without using the matching functions from above:
-        exact_prob = tuple(mp.prune(p, singletons=True).to_array()
-                           for p in f_povm.pmf(mps, 'mps'))
+        exact_prob = tuple(f_povm.pmf_as_array(mps, 'mps', eps))
         exact_p_cov = (np.diag(p.flat) - np.outer(p.flat, p.flat) for p in exact_prob)
         exact_var2 = sum(np.inner(c.flat, np.dot(cov, c.flat))
                          for c, cov in zip(coeff, exact_p_cov))
