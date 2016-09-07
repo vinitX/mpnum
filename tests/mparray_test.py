@@ -712,9 +712,9 @@ def test_iter_readonly():
     try:
         ltens[0] = 0
     except ValueError:
-        return
-
-    raise AssertionError("Iterator over ltens should be read only")
+        pass
+    else:
+        raise AssertionError("Iterator over ltens should be read only")
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)

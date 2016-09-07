@@ -73,7 +73,8 @@ _install_requires = [
     'NumPy>=1.5.1',
     'six>=1.0',
     'PyTest>=2.8.7',
-    'h5py>=2.4'
+    'h5py>=2.4',
+    'pytest_benchmark>=3'
 ]
 
 
