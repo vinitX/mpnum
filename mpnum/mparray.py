@@ -829,8 +829,6 @@ class MPArray(object):
         else:
             raise ValueError('{!r} is not a valid method'.format(method))
 
-
-
     def _compress_svd(self, bdim=None, relerr=0.0, direction=None):
         """Compress `self` using SVD [Sch11_, Sec. 4.5.1]
 
@@ -1112,7 +1110,7 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
     return MPArray(ltens)
 
 
-def sumup(mpas):
+def sumup(mpas, weights=None):
     """Returns the sum of the MPArrays in `mpas`. Same as
 
         functools.reduce(mp.MPArray.__add__, mpas)
@@ -1128,11 +1126,16 @@ def sumup(mpas):
     assert all(len(mpa) == length for mpa in mpas)
 
     if length == 1:
-        # The code below assumes at least two sites.
-        return MPArray((sum(mpa[0] for mpa in mpas),))
+        if weights is None:
+            return MPArray((sum(mpa[0] for mpa in mpas),))
+        else:
+            return MPArray((sum(w * mpa[0] for w, mpa in zip(weights, mpas),)))
 
     ltensiter = [iter(mpa) for mpa in mpas]
-    ltens = [np.concatenate([next(lt) for lt in ltensiter], axis=-1)]
+    if weights is None:
+        ltens = [np.concatenate([next(lt) for lt in ltensiter], axis=-1)]
+    else:
+        ltens = [np.concatenate([w * next(lt) for w, lt in zip(weights, ltensiter)], axis=-1)]
     ltens += [_local_add([next(lt) for lt in ltensiter])
               for _ in range(length - 2)]
     ltens += [np.concatenate([next(lt) for lt in ltensiter], axis=0)]
