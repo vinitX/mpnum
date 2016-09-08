@@ -557,7 +557,7 @@ class MPPovm(mp.MPArray):
             out[:, pos] = c
 
     def sample(self, rng, state, n_samples, method='cond', n_group=1,
-               mode='auto', eps=1e-10):
+               mode='auto', pack=False, eps=1e-10):
         """Random sample from `self` on a quantum state
 
         :param mp.MPArray state: A quantum state as MPA (see `mode`)
@@ -610,7 +610,46 @@ class MPPovm(mp.MPArray):
         else:
             raise ValueError('Unknown method {!r}'.format(method))
         assert (out < np.array(self.nsoutdims)[None, :]).all()
+        if pack:
+            return self.pack_samples(out)
         return out
+
+    def pack_samples(self, samples):
+        """Pack samples into one integer per sample
+
+        Store one sample in a single integer instead of a list of
+        integers with length `len(self.nsoutdims)`. Example:
+
+        >>> p = pauli_mpp(nr_sites=2, local_dim=2)
+        >>> p.outdims
+        (6, 6)
+        >>> p.pack_samples(np.array([[0, 1], [1, 0], [1, 2], [5, 5]]))
+        array([ 1,  6,  8, 35])
+
+        """
+        assert samples.ndim == 2
+        assert samples.shape[1] == len(self.nsoutdims)
+        return np.ravel_multi_index(samples.T, self.nsoutdims)
+
+    def unpack_samples(self, samples):
+        """Unpack samples into several integers per sample
+
+        Inverse of :func:`MPPovm.pack_samples`. Example:
+
+        >>> p = pauli_mpp(nr_sites=2, local_dim=2)
+        >>> p.outdims
+        (6, 6)
+        >>> p.unpack_samples(np.array([0, 6, 7, 12]))
+        array([[0, 0],
+               [1, 0],
+               [1, 1],
+               [2, 0]], dtype=uint8)
+
+        """
+        assert samples.ndim == 1
+        assert all(dim <= 255 for dim in self.outdims)
+        return np.array(np.unravel_index(samples, self.nsoutdims)) \
+                 .T.astype(np.uint8)
 
     def est_pmf(self, samples, normalize=True, eps=1e-10):
         """Estimate probability mass function from samples
@@ -1110,7 +1149,7 @@ class MPPovmList:
             yield mpp.pmf_as_array(state, mode, eps)
 
     def sample(self, rng, state, n_samples, method, n_group=1, mode='auto',
-               eps=1e-10):
+               pack=False, eps=1e-10):
         """Random sample from all MP-POVMs on a quantum state
 
         Parameters: See :func:`MPPovm.sample()`.
@@ -1120,7 +1159,28 @@ class MPPovmList:
 
         """
         for mpp in self.mpps:
-            yield mpp.sample(rng, state, n_samples, method, n_group, mode, eps)
+            yield mpp.sample(rng, state, n_samples, method, n_group, mode, pack,
+                             eps)
+
+    def pack_samples(self, samples):
+        """Pack samples into one integer per sample
+
+        :returns: Iterator over output from :func:`MPPovm.pack_samples`
+
+        """
+        assert len(samples) == len(self.mpps)
+        for s, mpp in zip(samples, self.mpps):
+            yield mpp.pack_samples(s)
+
+    def unpack_samples(self, samples):
+        """Unpack samples into several integers per sample
+
+        :returns: Iterator over output from :func:`MPPovm.unpack_samples`
+
+        """
+        assert len(samples) == len(self.mpps)
+        for s, mpp in zip(samples, self.mpps):
+            yield mpp.unpack_samples(s)
 
     def est_pmf(self, samples, normalized=True, eps=1e-10):
         """Estimate PMF from samples
