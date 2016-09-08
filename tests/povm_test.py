@@ -359,7 +359,7 @@ def test_mppovm_sample(
         n_gr = 2
     else:
         n_gr = 3
-    samples = mpp.sample(rgen, mps, n_samples, method, n_gr, 'mps', eps)
+    samples = mpp.sample(rgen, mps, n_samples, method, n_gr, 'mps', eps=eps)
 
     pmf_est = mpp.est_pmf(samples)
 
@@ -407,7 +407,7 @@ def test_mppovm_est_pmf_from(
     else:
         n_gr = 3
 
-    samples = mpp.sample(rgen, mps, n_samples, method, n_gr, 'mps', eps)
+    samples = mpp.sample(rgen, mps, n_samples, method, n_gr, 'mps', eps=eps)
     est_pmf, est_n_samples = small_mpp.est_pmf_from(mpp, samples)
     # In this case, we use all the samples from `mpp`.
     assert est_n_samples == n_samples
@@ -442,7 +442,7 @@ def test_mppovm_est(
     p_exact = _tools.check_pmf(p_exact, eps, eps)
 
     cov_p_exact = np.diag(p_exact.flat) - np.outer(p_exact.flat, p_exact.flat)
-    samples = mpp.sample(rgen, mps, n_samples, method, 4, 'mps', eps)
+    samples = mpp.sample(rgen, mps, n_samples, method, 4, 'mps', eps=eps)
 
     p_est = mpp.est_pmf(samples)
     ept, cov = mpp.est_lfun(None, None, samples, None, eps)
