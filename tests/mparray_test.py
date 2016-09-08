@@ -11,9 +11,8 @@ import itertools as it
 import h5py as h5
 import numpy as np
 import pytest as pt
-from numpy.linalg import svd
 from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
-                           assert_array_equal, assert_equal)
+                           assert_array_equal)
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
@@ -145,7 +144,6 @@ def test_dump_and_load(tmpdir):
     mpa.dump(str(tmpdir / 'dump_load_test_str.h5'))
     mpa_loaded = mp.MPArray.load(str(tmpdir / 'dump_load_test_str.h5'))
     assert_mpa_identical(mpa, mpa_loaded)
-
 
 
 ###############################################################################
@@ -954,7 +952,7 @@ compr_settings = pt.mark.parametrize(
 compr_normalization = pt.mark.parametrize(
     'normalize',
     (dict(left=1, right=-1), dict()) +
-        tuple(pt.mark.long(x) for x in (
+    tuple(pt.mark.long(x) for x in (
         None,
         dict(left='afull'),
         dict(right='afull'),
@@ -1122,7 +1120,8 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
 
     # SVD: compare with alternative implementation
     if comparg['method'] == 'svd' and 'relerr' not in comparg:
-        alt_compr = _svd_compression_full(mpa, comparg['direction'], bond_dim)
+        alt_compr = _tools.compression_svd(mpa.to_array(), bond_dim,
+                                           comparg['direction'])
         compr = compr.to_array()
         assert_array_almost_equal(alt_compr, compr)
 
@@ -1204,48 +1203,3 @@ def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize,
     assert_almost_equal(overlap, (norm * factor)**2)
     assert_mpa_almost_equal(compr, factor * mpa, full=True)
     assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
-
-
-#######################################
-#  Compression test helper functions  #
-#######################################
-
-
-def _svd_compression_full(mpa, direction, target_bonddim):
-    """Re-implement MPArray.compress('svd') but on the level of the full
-    matrix representation, i.e. it truncates the Schmidt-decompostion
-    on each bipartition sequentially.
-
-    We have two implementations and check that both produce the same
-    output.  This is useful because the correctness of the MPA-based
-    implementation depends crucially on correct normalization at each
-    step, while the implementation here is much simpler.
-
-    :param mpa: The MPA to compress
-    :param direction: 'right' means sweep from left to right,
-        'left' vice versa
-    :param target_bonddim: Compress to this bond dimension
-    :returns: Result as numpy.ndarray
-
-    """
-    def singlecut(array, nr_left, plegs, target_bonddim):
-        array_shape = array.shape
-        array = array.reshape((np.prod(array_shape[:nr_left * plegs]), -1))
-        u, s, v = svd(array, full_matrices=False)
-        u = u[:, :target_bonddim]
-        s = s[:target_bonddim]
-        v = v[:target_bonddim, :]
-        opt_compr = np.dot(u * s, v)
-        opt_compr = opt_compr.reshape(array_shape)
-        return opt_compr
-
-    array = mpa.to_array()
-    plegs = mpa.plegs[0]
-    nr_sites = len(mpa)
-    if direction == 'right':
-        nr_left_values = range(1, nr_sites)
-    else:
-        nr_left_values = range(nr_sites-1, 0, -1)
-    for nr_left in nr_left_values:
-        array = singlecut(array, nr_left, plegs, target_bonddim)
-    return array
