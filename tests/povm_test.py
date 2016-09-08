@@ -498,6 +498,35 @@ def test_mppovm_est(
     assert abs(sum_var - sum_var2) <= eps
 
 
+@pt.mark.parametrize(
+    'method, n_samples', [
+        ('direct', 100),
+    ])
+@pt.mark.parametrize(
+    'nr_sites, local_dim, bond_dim, measure_width', [
+        (3, 3, 2, 2),
+        (3, 2, 3, 3),
+        (5, 2, 3, 2),
+    ])
+def test_mppovmlist_pack_unpack_samples(
+        method, n_samples, nr_sites, local_dim, bond_dim, measure_width,
+        rgen, eps=1e-10):
+    """Check that packing and unpacking samples does not change them"""
+
+    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
+    mps.normalize()
+
+    s_povm = povm.pauli_mpp(measure_width, local_dim).block(nr_sites)
+    samples = tuple(s_povm.sample(
+        rgen, mps, n_samples, method, mode='mps', pack=False, eps=eps))
+    packed = tuple(s_povm.pack_samples(samples))
+    unpacked = tuple(s_povm.unpack_samples(packed))
+
+    assert all(s.dtype == np.uint8 for s in samples)
+    assert all(s.dtype == np.uint8 for s in unpacked)
+    assert all((s == u).all() for s, u in zip(samples, unpacked))
+
+
 def _pytest_want_long(request):
     # FIXME: Is there a better way to find out whether items marked
     # with `long` should be run or not?
