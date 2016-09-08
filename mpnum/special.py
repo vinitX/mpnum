@@ -69,10 +69,18 @@ def sumup(mpas, weights=None, target_bdim=None, max_bdim=None,
 
 
 def _sum_n_compress(mpas, weights, current_bdim, target_bdim, max_bdim, compargs):
-    """@todo: Docstring for _sum_n_compress.
+    """Recursively sum and compress the MPArrays' in `mpas`. The end result
+    will have bond dimension smaller than `target_bdim` and during the process,
+    the intermediate results always have bond dimension smaller than
+    `max_bdim`.
 
-    :param arg1: @todo
-    :returns: @todo
+    :param mpas: List of MPArrays to sum
+    :param weights: Optional weights to compute weighted sum. If `None` is
+        passed, they are all assumed to be 1.
+    :param current_bdim: The maximal bond dimension of any MPArray in `mpas`
+    :param target_bdim: Bond dimension the end result should have at most.
+    :param max_bdim: Max bond dimension any intermediate result should have
+    :param compargs: Compression args to be used.
 
     """
     length = len(mpas[0])
