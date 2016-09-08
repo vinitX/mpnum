@@ -98,7 +98,7 @@ available.
 True values of the functions just mentioned can be obtained from
 :func:`MPPovm.lfun`, :func:`MPPovmList.lfun` and
 :func:`MPPovmList.lfun_from`. All functions return both the true
-expectation value and the variance of the expectation value. 
+expectation value and the variance of the expectation value.
 
 The variance of the (true) expectation value :math:`\langle f
 \rangle_p` of a function :math:`f\colon M \to \mathbb R` is given by
@@ -116,7 +116,7 @@ averages in the usual way, :math:`\operatorname{cov}_D(f, g) = \langle
 fg \rangle_D - \langle f \rangle_D \langle g \rangle_D`. This
 estimator is used by :func:`MPPovm.est_lfun`.
 
-.. todo:: 
+.. todo::
 
    Explain the details of the variance estimation, in particular the
    difference between the variances returned from
@@ -398,7 +398,7 @@ class MPPovm(mp.MPArray):
     def pmf_as_array(self, state, mode='auto', eps=1e-10):
         """Compute the POVM's PMF for `state` as full array
 
-        Parameters: See :func:`MPPovm.pmf`. 
+        Parameters: See :func:`MPPovm.pmf`.
 
         :returns: PMF as shape `self.nsoutdims` ndarray
 
