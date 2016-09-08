@@ -187,6 +187,11 @@ class MPPovm(mp.MPArray):
             "Need 3 physical legs at each site: {!r}".format(self.pdims)
         assert all(pdims[1] == pdims[2] for pdims in self.pdims), \
             "Hilbert space dimension mismatch: {!r}".format(self.pdims)
+        # Used to store single outcomes as np.uint8 with 255 = 0xff
+        # denoting "no value" (see :func:`MPPovm.sample`,
+        # :func:`MPPovm.unpack_samples`).
+        assert all(dim <= 255 for dim in self.outdims), \
+            "Maximal outcome dimension 255 exceeded: {!r}".format(self.outdims)
 
     @property
     def outdims(self):
