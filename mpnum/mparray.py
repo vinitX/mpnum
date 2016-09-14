@@ -28,7 +28,8 @@ References:
 #      local tensors
 from __future__ import absolute_import, division, print_function
 
-import functools as ft
+import sys
+
 import itertools as it
 import collections
 
@@ -44,7 +45,7 @@ from ._tools import block_diag, global_to_local, local_to_global, matdot
 
 __all__ = ['MPArray', 'dot', 'inject', 'inner', 'local_sum', 'louter',
            'norm', 'normdist', 'outer', 'partialdot', 'partialtrace',
-           'prune', 'regular_slices', 'embed_slice', 'trace']
+           'prune', 'regular_slices', 'embed_slice', 'trace', 'diag', 'sumup']
 
 
 class MPArray(object):
@@ -120,8 +121,6 @@ class MPArray(object):
     def __len__(self):
         return len(self._ltens)
 
-    # FIXME Can we return immutable view into array without having to set the
-    #   WRITEABLE flag for the local copy?
     def __iter__(self):
         """Use only for read-only access! Do not change arrays in place!
 
@@ -129,7 +128,10 @@ class MPArray(object):
         break basic MPA functionality such as :func:`dot`.
 
         """
-        return iter(self._ltens)
+        for ltens in self._ltens:
+            view = ltens.view()
+            view.setflags(write=False)
+            yield view
 
     def __getitem__(self, index):
         """Use only for read-only access! Do not change arrays in place!"""
@@ -154,6 +156,12 @@ class MPArray(object):
         if self._rnormalized is not None:
             self._rnormalized = max(self._rnormalized, stop)
         self._ltens[index] = value
+
+    @property
+    def size(self):
+        """Returns the number of floating point numbers used to represent the
+        MPArray"""
+        return sum(np.prod(shape) for shape in self.dims)
 
     @property
     def dtype(self):
@@ -409,7 +417,7 @@ class MPArray(object):
             return MPArray((self[0] + summand[0],))
 
         ltens = [np.concatenate((self[0], summand[0]), axis=-1)]
-        ltens += [_local_add(l, r) for l, r in zip(self[1:-1], summand[1:-1])]
+        ltens += [_local_add((l, r)) for l, r in zip(self[1:-1], summand[1:-1])]
         ltens += [np.concatenate((self[-1], summand[-1]), axis=0)]
         return MPArray(ltens)
 
@@ -462,16 +470,21 @@ class MPArray(object):
 
         Use self.pdims to obtain the shapes of the physical legs.
 
-        :param newshapes: A single new shape or a list of new shapes
+        :param newshapes: A single new shape or a list of new shapes.
+            Alternatively, you can pass 'prune' to get rid of all physical legs
+            of size 1.
         :returns: Reshaped MPA
 
         """
+        if newshapes == 'prune':
+            newshapes = (tuple(s for s in pdim if s > 1) for pdim in self.pdims)
+
         newshapes = tuple(newshapes)
         if not isinstance(newshapes[0], collections.Iterable):
             newshapes = it.repeat(newshapes, times=len(self))
 
         return MPArray([_local_reshape(lten, newshape)
-                       for lten, newshape in zip(self._ltens, newshapes)])
+                       for lten, newshape in zip(self, newshapes)])
 
     def ravel(self):
         """Flatten the MPA to an MPS, shortcut for self.reshape((-1,))
@@ -517,6 +530,64 @@ class MPArray(object):
                 'plegs not a multiple of sites_per_group'
             ltens += _extract_factors(self[i], plegs // sites_per_group)
         return MPArray(ltens)
+
+    def bleg2pleg(self, pos):
+        """Transforms the bond leg between site `pos` and `pos + 1` into
+        physical legs at those sites. The new leg will be the rightmost one
+        at site `pos` and the leftmost one at site `pos + 1`. The new bond
+        dimension is 1.
+
+        Also see :func:`pleg2bleg`.
+
+        :param pos: Number of the bond to perform the transformation
+        :returns: read-only MPA with transformed bond
+
+        """
+        ltens = list(self)
+        ltens[pos] = ltens[pos].reshape(ltens[pos].shape + (1,))
+        ltens[pos + 1] = ltens[pos + 1].reshape((1,) + ltens[pos + 1].shape)
+        lnormal, rnormal = self.normal_form
+        return MPArray(ltens, _lnormalized=min(lnormal, pos - 1),
+                       _rnormalized=max(rnormal, pos + 2))
+
+    def pleg2bleg(self, pos):
+        """Performs the inverse operation to :func:`bleg2pleg`.
+
+        :param pos: Number of the bond to perform the transformation
+        :returns: read-only MPA with transformed bond
+
+        """
+        ltens = list(self)
+        assert ltens[pos].shape[-1] == 1
+        assert ltens[pos + 1].shape[0] == 1
+        ltens[pos] = ltens[pos].reshape(ltens[pos].shape[:-1])
+        ltens[pos + 1] = ltens[pos + 1].reshape(ltens[pos + 1].shape[1:])
+        lnormal, rnormal = self.normal_form
+        return MPArray(ltens, _lnormalized=min(lnormal, pos - 1),
+                       _rnormalized=max(rnormal, pos + 1))
+
+    def split(self, pos):
+        """Splits the MPA into two by transforming the bond legs into physical
+        legs
+
+        :param pos: Number of the bond to perform the transformation
+        :returns: (mpa_left, mpa_right)
+
+        """
+        if pos < 0:
+            return None, self
+        elif pos >= len(self):
+            return self, None
+
+        mpa_t = self.bleg2pleg(pos)
+        lnorm, rnorm = mpa_t.normal_form
+        mpa_l = MPArray(it.islice(mpa_t, 0, pos + 1),
+                        _lnormalized=min(lnorm, pos),
+                        _rnormalized=min(rnorm, pos + 1))
+        mpa_r = MPArray(it.islice(mpa_t, pos + 1, len(mpa_t)),
+                        _lnormalized=max(0, lnorm - pos),
+                        _rnormalized=max(0, rnorm - pos))
+        return mpa_l, mpa_r
 
     ################################
     #  Normalizaton & Compression  #
@@ -757,8 +828,6 @@ class MPArray(object):
             return self._compression_var(**kwargs)
         else:
             raise ValueError('{!r} is not a valid method'.format(method))
-
-
 
     def _compress_svd(self, bdim=None, relerr=0.0, direction=None):
         """Compress `self` using SVD [Sch11_, Sec. 4.5.1]
@@ -1041,6 +1110,39 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
     return MPArray(ltens)
 
 
+def sumup(mpas, weights=None):
+    """Returns the sum of the MPArrays in `mpas`. Same as
+
+        functools.reduce(mp.MPArray.__add__, mpas)
+
+    but should be faster.
+
+    :param mpas: Iterator over MPArrays
+    :returns: Sum of `mpas`
+
+    """
+    mpas = list(mpas)
+    length = len(mpas[0])
+    assert all(len(mpa) == length for mpa in mpas)
+
+    if length == 1:
+        if weights is None:
+            return MPArray((sum(mpa[0] for mpa in mpas),))
+        else:
+            return MPArray((sum(w * mpa[0] for w, mpa in zip(weights, mpas),)))
+
+    ltensiter = [iter(mpa) for mpa in mpas]
+    if weights is None:
+        ltens = [np.concatenate([next(lt) for lt in ltensiter], axis=-1)]
+    else:
+        ltens = [np.concatenate([w * next(lt) for w, lt in zip(weights, ltensiter)], axis=-1)]
+    ltens += [_local_add([next(lt) for lt in ltensiter])
+              for _ in range(length - 2)]
+    ltens += [np.concatenate([next(lt) for lt in ltensiter], axis=0)]
+
+    return MPArray(ltens)
+
+
 def partialdot(mpa1, mpa2, start_at, axes=(-1, 0)):
     """Partial dot product of two MPAs of inequal length.
 
@@ -1077,7 +1179,7 @@ def partialdot(mpa1, mpa2, start_at, axes=(-1, 0)):
     ltens_new = (
         l if r is None else (r if l is None else _local_dot(l, r, axes))
         for l, r in zip(mpa1, mpa2)
-        )
+    )
     return MPArray(ltens_new)
 
 
@@ -1113,6 +1215,39 @@ def outer(mpas):
     # TODO Make this normalization aware
     # FIXME Is copying here a good idea?
     return MPArray(sum(([ltens.copy() for ltens in mpa] for mpa in mpas), []))
+
+
+def diag(mpa, axis=0):
+    """Returns the diagonal elements :code:`mpa[i, i, ..., i]`. If :code:`mpa`
+    has more than one physical dimension, the result is a numpy array with
+    :code:`MPArray` entries, otherwise its a numpy array with floats.
+
+    :param mpa: MPArray with pdims > :code:`axis`
+    :param axis: The physical index to take diagonals over
+    :returns: Array containing the diagonal elements (`MPArray`s with the
+    physical dimension reduced by one, note that an `MPArray` with physical
+    dimension 0 is a simple number)
+
+    """
+    dim = mpa.pdims[0][axis]
+    # work around http://bugs.python.org/issue21161
+    try:
+        valid_axis = [d[axis] == dim for d in mpa.pdims]
+        assert all(valid_axis)
+    except NameError:
+        pass
+    plegs = mpa.plegs[0]
+    assert all(p == plegs for p in mpa.plegs)
+
+    slices = ((slice(None),) * (axis + 1) + (i,) for i in range(dim))
+    mpas = [MPArray(ltens[s] for ltens in mpa) for s in slices]
+
+    if len(mpa.pdims[0]) == 1:
+        return np.array([mpa.to_array() for mpa in mpas])
+    else:
+        result = np.empty(len(mpas), dtype=object)
+        result[:] = mpas
+        return result
 
 
 #FXIME Why is outer not a special case of this?
@@ -1356,8 +1491,7 @@ def regular_slices(length, width, offset):
         yield slice(offset * i, offset * i + width)
 
 
-# FIXME What is this doing here?
-def default_embed_ltens(mpa, embed_tensor):
+def _embed_ltens_identity(mpa, embed_tensor=None):
     """Embed with identity matrices by default.
 
     :param embed_tensor: If the MPAs do not have two physical legs or
@@ -1388,58 +1522,20 @@ def embed_slice(length, slice_, mpa, embed_tensor=None):
     :param MPArray mpa: MPA of length :code:`slice_.stop -
         slice_.start`.
     :param embed_tensor: Defaults to square identity matrix (see
-        :func:`default_embed_ltens` for details)
+        :func:`_embed_ltens_identity` for details)
     :returns: MPA of length `length`
 
     """
     start, stop, step = slice_.indices(length)
     assert step == 1
     assert len(mpa) == stop - start
-    embed_ltens = default_embed_ltens(mpa, embed_tensor)
+    embed_ltens = _embed_ltens_identity(mpa, embed_tensor)
     left = it.repeat(embed_ltens, times=start)
     right = it.repeat(embed_ltens, times=length - stop)
     return MPArray(it.chain(left, mpa, right))
 
 
-def local_sum(mpas, embed_tensor=None, length=None, slices=None):
-    """Embed local MPAs on a linear chain and sum as MPA.
-
-    We return the sum over :func:`embed_slice(length, slices[i],
-    mpas[i], embed_tensor) <embed_slice>` as MPA.
-
-    If `slices` is omitted, we use :func:`regular_slices(length,
-    width, offset) <regular_slices>` with :code:`offset = 1`,
-    :code:`width = len(mpas[0])` and :code:`length = len(mpas) + width
-    - offset`.
-
-    If `slices` is omitted or if the slices just described are given,
-    we call :func:`local_sum_simple()`, which gives a smaller bond
-    dimension than naive embedding and summing.
-
-    :param mpas: List of local MPAs.
-    :param embed_tensor: Defaults to square identity matrix (see
-        :func:`default_embed_ltens` for details)
-    :param length: Length of the resulting chain, ignored unless
-        slices is given.
-    :param slices: slice[i] specifies the position of mpas[i],
-        optional.
-    :returns: An MPA.
-
-    """
-    if slices is not None:
-        assert length is not None
-        slices = tuple(slices)
-        reg = regular_slices(length, slices[0].stop - slices[0].start, offset=1)
-        if all(s == t for s, t in zip_longest(slices, reg)):
-            slices = None
-    if slices is None:
-        return local_sum_simple(tuple(mpas), embed_tensor)
-    mpas = (embed_slice(length, slice_, mpa, embed_tensor)
-            for mpa, slice_ in zip(mpas, slices))
-    return ft.reduce(MPArray.__add__, mpas)
-
-
-def local_sum_simple(mpas, embed_tensor=None):
+def _local_sum_identity(mpas, embed_tensor=None):
     """Implement a special case of :func:`local_sum`.
 
     See :func:`local_sum` for a description.  We return an MPA with
@@ -1457,13 +1553,13 @@ def local_sum_simple(mpas, embed_tensor=None):
 
     :param mpas: A list of MPArrays with the same length.
     :param embed_tensor: Defaults to square identity matrix (see
-        :func:`default_embed_ltens` for details)
+        :func:`_embed_ltens_identity` for details)
 
     """
     width = len(mpas[0])
     nr_sites = len(mpas) + width - 1
     ltens = []
-    embed_ltens = default_embed_ltens(mpas[0], embed_tensor)
+    embed_ltens = _embed_ltens_identity(mpas[0], embed_tensor)
     assert all(len(mpa) == width for mpa in mpas)
 
     # The following ASCII art tries to illustrate the
@@ -1509,6 +1605,45 @@ def local_sum_simple(mpas, embed_tensor=None):
 
     mpa = MPArray(ltens)
     return mpa
+
+
+def local_sum(mpas, embed_tensor=None, length=None, slices=None):
+    """Embed local MPAs on a linear chain and sum as MPA.
+
+    We return the sum over :func:`embed_slice(length, slices[i],
+    mpas[i], embed_tensor) <embed_slice>` as MPA.
+
+    If `slices` is omitted, we use :func:`regular_slices(length,
+    width, offset) <regular_slices>` with :code:`offset = 1`,
+    :code:`width = len(mpas[0])` and :code:`length = len(mpas) + width
+    - offset`.
+
+    If `slices` is omitted or if the slices just described are given,
+    we call :func:`_local_sum_identity()`, which gives a smaller bond
+    dimension than naive embedding and summing.
+
+    :param mpas: List of local MPAs.
+    :param embed_tensor: Defaults to square identity matrix (see
+        :func:`_embed_ltens_identity` for details)
+    :param length: Length of the resulting chain, ignored unless
+        slices is given.
+    :param slices: slice[i] specifies the position of mpas[i],
+        optional.
+    :returns: An MPA.
+
+    """
+    if slices is None:
+        return _local_sum_identity(tuple(mpas), embed_tensor)
+
+    assert length is not None
+    slices = tuple(slices)
+    reg = regular_slices(length, slices[0].stop - slices[0].start, offset=1)
+    if all(s == t for s, t in zip_longest(slices, reg)):
+        slices = None
+
+    mpas = (embed_slice(length, slice_, mpa, embed_tensor)
+            for mpa, slice_ in zip(mpas, slices))
+    return sumup(mpas)
 
 
 ############################################################
@@ -1568,24 +1703,30 @@ def _local_dot(ltens_l, ltens_r, axes):
                        (ltens_l.shape[-1] * ltens_r.shape[-1],))
 
 
-def _local_add(ltens_l, ltens_r):
-    """Computes the local tensors of a sum l + r (except for the boundary
+def _local_add(ltenss):
+    """Computes the local tensors of a sum of MPArrays (except for the boundary
     tensors)
 
-    :param ltens_l: Array with ndim > 1
-    :param ltens_r: Array with ndim > 1
+    :param ltenss: List of arrays with ndim > 1
     :returns: Correct local tensor representation
 
     """
-    assert_array_equal(ltens_l.shape[1:-1], ltens_r.shape[1:-1])
+    shape = ltenss[0].shape
+    # NOTE These are currently disabled due to real speed issues.
+    #  if __debug__:
+    #      for lt in ltenss[1:]:
+    #          assert_array_equal(shape[1:-1], lt.shape[1:-1])
 
-    shape = (ltens_l.shape[0] + ltens_r.shape[0], )
-    shape += ltens_l.shape[1:-1]
-    shape += (ltens_l.shape[-1] + ltens_r.shape[-1], )
-    res = np.zeros(shape, dtype=max(ltens_l.dtype, ltens_r.dtype))
+    newshape = (sum(lt.shape[0] for lt in ltenss), )
+    newshape += shape[1:-1]
+    newshape += (sum(lt.shape[-1] for lt in ltenss), )
+    res = np.zeros(newshape, dtype=max(lt.dtype for lt in ltenss))
 
-    res[:ltens_l.shape[0], ..., :ltens_l.shape[-1]] = ltens_l
-    res[ltens_l.shape[0]:, ..., ltens_l.shape[-1]:] = ltens_r
+    pos_l, pos_r = 0, 0
+    for lt in ltenss:
+        pos_l_new, pos_r_new = pos_l + lt.shape[0], pos_r + lt.shape[-1]
+        res[pos_l:pos_l_new, ..., pos_r:pos_r_new] = lt
+        pos_l, pos_r = pos_l_new, pos_r_new
     return res
 
 

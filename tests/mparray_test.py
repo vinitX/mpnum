@@ -5,21 +5,23 @@
 
 from __future__ import absolute_import, division, print_function
 
+import functools as ft
+import itertools as it
+
+import h5py as h5
 import numpy as np
 import pytest as pt
-from numpy.linalg import svd
-from numpy.testing import assert_array_almost_equal, assert_array_equal, \
-    assert_almost_equal, assert_equal
-from six.moves import range, zip
-import h5py as h5
+from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
+                           assert_array_equal)
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
 from mpnum import _tools
+from mpnum._testing import (assert_correct_normalization,
+                            assert_mpa_almost_equal, assert_mpa_identical,
+                            mpo_to_global)
 from mpnum._tools import global_to_local
-from mpnum._testing import assert_mpa_almost_equal, \
-    assert_mpa_identical, mpo_to_global
-
+from six.moves import range, zip
 
 # nr_sites, local_dim, bond_dim
 MP_TEST_PARAMETERS = [(1, 7, np.nan), (2, 3, 3), (3, 2, 4), (6, 2, 4),
@@ -142,7 +144,6 @@ def test_dump_and_load(tmpdir):
     mpa.dump(str(tmpdir / 'dump_load_test_str.h5'))
     mpa_loaded = mp.MPArray.load(str(tmpdir / 'dump_load_test_str.h5'))
     assert_mpa_identical(mpa, mpa_loaded)
-
 
 
 ###############################################################################
@@ -441,12 +442,29 @@ def test_operations_typesafety(nr_sites, local_dim, bond_dim, rgen):
     assert (mpo1 + mpo2).dtype == np.complex_
     assert (mpo2 + mpo1).dtype == np.complex_
 
+    assert mp.sumup((mpo1, mpo1)).dtype == np.float_
+    assert mp.sumup((mpo1, mpo2)).dtype == np.complex_
+    assert mp.sumup((mpo2, mpo1)).dtype == np.complex_
+
     assert (mpo1 - mpo1).dtype == np.float_
     assert (mpo1 - mpo2).dtype == np.complex_
     assert (mpo2 - mpo1).dtype == np.complex_
 
     mpo1 += mpo2
     assert mpo1.dtype == np.complex_
+
+
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_summp(nr_sites, local_dim, bond_dim, rgen, dtype):
+    mpas = [factory.random_mpa(nr_sites, local_dim, 3, dtype=dtype, randstate=rgen)
+            for _ in range(bond_dim if bond_dim is not np.nan else 1)]
+    sum_naive = ft.reduce(mp.MPArray.__add__, mpas)
+    sum_mp = mp.sumup(mpas)
+
+    assert_array_almost_equal(sum_naive.to_array(), sum_mp.to_array())
+    assert all(bdim <= 3 * bond_dim for bdim in sum_mp.bdims)
+    assert(sum_mp.dtype is dtype)
 
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
@@ -634,6 +652,29 @@ def test_local_sum(nr_sites, local_dim, bond_dim, local_width, rgen):
     assert_array_almost_equal(mpa_local_sum.to_array(), mpa_sum.to_array())
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_diag_1pleg(nr_sites, local_dim, bond_dim, rgen):
+    mpa = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    mpa_np = mpa.to_array()
+    # this should be a single, 1D numpy array
+    diag_mp = mp.diag(mpa)
+    diag_np = np.array([mpa_np[(i,) * nr_sites] for i in range(local_dim)])
+    assert_array_almost_equal(diag_mp, diag_np)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_diag_2plegs(nr_sites, local_dim, bond_dim, rgen):
+    mpa = factory.random_mpa(nr_sites, 2 * (local_dim,), bond_dim, randstate=rgen)
+    mpa_np = mpa.to_array()
+    # this should be a single, 1D numpy array
+    diag_mp = mp.diag(mpa, axis=1)
+    diag_np = np.array([mpa_np[(slice(None), i) * nr_sites]
+                        for i in range(local_dim)])
+    for a, b in zip(diag_mp, diag_np):
+        assert a.plegs[0] == 1
+        assert_array_almost_equal(a.to_array(), b)
+
+
 ###############################################################################
 #                         Shape changes, conversions                          #
 ###############################################################################
@@ -662,44 +703,69 @@ def test_split_sites(nr_sites, local_dim, bond_dim, sites_per_group, rgen):
     assert_array_almost_equal(op, split_op)
 
 
+def test_iter_readonly():
+    mpa = factory.random_mpa(4, 2, 1)
+    ltens = next(iter(mpa))
+
+    try:
+        ltens[0] = 0
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Iterator over ltens should be read only")
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
+    mpa = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    # +2 so we cover all possibilities
+    mpa.normalize(left=nr_sites // 2, right=min(nr_sites // 2 + 2, nr_sites))
+
+    for pos in range(nr_sites - 1):
+        mpa_t = mpa.bleg2pleg(pos)
+        true_bond_dim = mpa.bdims[pos]
+        pshape = [(local_dim,)] * pos + [(local_dim, true_bond_dim)] + \
+            [(true_bond_dim, local_dim)] + [(local_dim,)] * (nr_sites - pos - 2)
+        bdims = list(mpa.bdims)
+        bdims[pos] = 1
+        assert_array_equal(mpa_t.pdims, pshape)
+        assert_array_equal(mpa_t.bdims, bdims)
+        assert_correct_normalization(mpa_t)
+
+        mpa_t = mpa_t.pleg2bleg(pos)
+        mpa_t._lnormalized, mpa_t._rnormalized = mpa.normal_form
+        assert_mpa_identical(mpa, mpa_t)
+
+    if nr_sites > 1:
+        mpa = factory.random_mpa(nr_sites, local_dim, 1, randstate=rgen)
+        mpa.normalize()
+        mpa_t = mpa.pleg2bleg(nr_sites // 2 - 1)
+        assert_correct_normalization(mpa_t)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_split(nr_sites, local_dim, bond_dim, rgen):
+    if nr_sites < 2:
+        return
+    mpa = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    for pos in range(nr_sites - 1):
+        mpa_l, mpa_r = mpa.split(pos)
+        assert len(mpa_l) == pos + 1
+        assert len(mpa_l) + len(mpa_r) == nr_sites
+        assert_correct_normalization(mpa_l)
+        assert_correct_normalization(mpa_r)
+        recons = np.tensordot(mpa_l.to_array(), mpa_r.to_array(), axes=(-1, 0))
+        assert_array_almost_equal(mpa.to_array(), recons)
+
+    for (lnorm, rnorm) in it.product(range(nr_sites - 1), range(1, nr_sites)):
+        mpa_l, mpa_r = mpa.split(nr_sites // 2 - 1)
+        assert_correct_normalization(mpa_l)
+        assert_correct_normalization(mpa_r)
+
+
 ###############################################################################
 #                         Normalization & Compression                         #
 ###############################################################################
-def assert_lcanonical(ltens, msg=''):
-    ltens = ltens.reshape((np.prod(ltens.shape[:-1]), ltens.shape[-1]))
-    prod = ltens.conj().T.dot(ltens)
-    assert_array_almost_equal(prod, np.identity(prod.shape[0]),
-                              err_msg=msg)
-
-
-def assert_rcanonical(ltens, msg=''):
-    ltens = ltens.reshape((ltens.shape[0], np.prod(ltens.shape[1:])))
-    prod = ltens.dot(ltens.conj().T)
-    assert_array_almost_equal(prod, np.identity(prod.shape[0]),
-                              err_msg=msg)
-
-
-def assert_correct_normalization(mpo, lnormal_target=None, rnormal_target=None):
-    lnormal, rnormal = mpo.normal_form
-
-    # If no targets are given, verify that the data matches the
-    # information in `mpo.normal_form`.
-    lnormal_target = lnormal_target or lnormal
-    rnormal_target = rnormal_target or rnormal
-
-    # If targets are given, verify that the information in
-    # `mpo.normal_form` matches the targets.
-    assert_equal(lnormal, lnormal_target)
-    assert_equal(rnormal, rnormal_target)
-
-    for n in range(lnormal):
-        assert_lcanonical(mpo[n], msg="Failure left canonical (n={}/{})"
-                          .format(n, lnormal_target))
-    for n in range(rnormal, len(mpo)):
-        assert_rcanonical(mpo[n], msg="Failure right canonical (n={}/{})"
-                          .format(n, rnormal_target))
-
-
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
 def test_normalization_from_full(nr_sites, local_dim, _, rgen):
     op = factory.random_op(nr_sites, local_dim, randstate=rgen)
@@ -886,7 +952,7 @@ compr_settings = pt.mark.parametrize(
 compr_normalization = pt.mark.parametrize(
     'normalize',
     (dict(left=1, right=-1), dict()) +
-        tuple(pt.mark.long(x) for x in (
+    tuple(pt.mark.long(x) for x in (
         None,
         dict(left='afull'),
         dict(right='afull'),
@@ -1054,7 +1120,8 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
 
     # SVD: compare with alternative implementation
     if comparg['method'] == 'svd' and 'relerr' not in comparg:
-        alt_compr = _svd_compression_full(mpa, comparg['direction'], bond_dim)
+        alt_compr = _tools.compression_svd(mpa.to_array(), bond_dim,
+                                           comparg['direction'])
         compr = compr.to_array()
         assert_array_almost_equal(alt_compr, compr)
 
@@ -1136,48 +1203,3 @@ def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize,
     assert_almost_equal(overlap, (norm * factor)**2)
     assert_mpa_almost_equal(compr, factor * mpa, full=True)
     assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
-
-
-#######################################
-#  Compression test helper functions  #
-#######################################
-
-
-def _svd_compression_full(mpa, direction, target_bonddim):
-    """Re-implement MPArray.compress('svd') but on the level of the full
-    matrix representation, i.e. it truncates the Schmidt-decompostion
-    on each bipartition sequentially.
-
-    We have two implementations and check that both produce the same
-    output.  This is useful because the correctness of the MPA-based
-    implementation depends crucially on correct normalization at each
-    step, while the implementation here is much simpler.
-
-    :param mpa: The MPA to compress
-    :param direction: 'right' means sweep from left to right,
-        'left' vice versa
-    :param target_bonddim: Compress to this bond dimension
-    :returns: Result as numpy.ndarray
-
-    """
-    def singlecut(array, nr_left, plegs, target_bonddim):
-        array_shape = array.shape
-        array = array.reshape((np.prod(array_shape[:nr_left * plegs]), -1))
-        u, s, v = svd(array, full_matrices=False)
-        u = u[:, :target_bonddim]
-        s = s[:target_bonddim]
-        v = v[:target_bonddim, :]
-        opt_compr = np.dot(u * s, v)
-        opt_compr = opt_compr.reshape(array_shape)
-        return opt_compr
-
-    array = mpa.to_array()
-    plegs = mpa.plegs[0]
-    nr_sites = len(mpa)
-    if direction == 'right':
-        nr_left_values = range(1, nr_sites)
-    else:
-        nr_left_values = range(nr_sites-1, 0, -1)
-    for nr_left in nr_left_values:
-        array = singlecut(array, nr_left, plegs, target_bonddim)
-    return array

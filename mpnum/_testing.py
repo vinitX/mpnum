@@ -7,7 +7,8 @@
 import itertools as it
 
 import numpy as np
-from numpy.testing import assert_array_almost_equal, assert_array_equal
+from numpy.testing import (assert_array_almost_equal, assert_array_equal,
+                           assert_equal)
 
 
 def assert_mpa_almost_equal(mpa1, mpa2, full=False, **kwargs):
@@ -44,3 +45,38 @@ def mpo_to_global(mpo):
 
     """
     return mpo.to_array_global()
+
+
+def _assert_lcanonical(ltens, msg=''):
+    ltens = ltens.reshape((np.prod(ltens.shape[:-1]), ltens.shape[-1]))
+    prod = ltens.conj().T.dot(ltens)
+    assert_array_almost_equal(prod, np.identity(prod.shape[0]),
+                              err_msg=msg)
+
+
+def _assert_rcanonical(ltens, msg=''):
+    ltens = ltens.reshape((ltens.shape[0], np.prod(ltens.shape[1:])))
+    prod = ltens.dot(ltens.conj().T)
+    assert_array_almost_equal(prod, np.identity(prod.shape[0]),
+                              err_msg=msg)
+
+
+def assert_correct_normalization(mpo, lnormal_target=None, rnormal_target=None):
+    lnormal, rnormal = mpo.normal_form
+
+    # If no targets are given, verify that the data matches the
+    # information in `mpo.normal_form`.
+    lnormal_target = lnormal_target or lnormal
+    rnormal_target = rnormal_target or rnormal
+
+    # If targets are given, verify that the information in
+    # `mpo.normal_form` matches the targets.
+    assert_equal(lnormal, lnormal_target)
+    assert_equal(rnormal, rnormal_target)
+
+    for n in range(lnormal):
+        _assert_lcanonical(mpo[n], msg="Failure left canonical (n={}/{})"
+                          .format(n, lnormal_target))
+    for n in range(rnormal, len(mpo)):
+        _assert_rcanonical(mpo[n], msg="Failure right canonical (n={}/{})"
+                          .format(n, rnormal_target))

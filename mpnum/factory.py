@@ -19,7 +19,7 @@ from ._tools import global_to_local, matdot
 
 __all__ = ['eye', 'random_local_ham', 'random_mpa', 'random_mpdo',
            'random_mps', 'random_mpo', 'random_op', 'random_state',
-           'random_vec', 'zero']
+           'random_vec', 'zero', 'diagonal_mpa']
 
 
 def _zrandn(shape, randstate=None):
@@ -240,6 +240,32 @@ def eye(sites, ldim):
     return mp.MPArray.from_kron(it.repeat(np.eye(ldim), sites))
 
 
+def diagonal_mpa(entries, sites):
+    """@todo: Docstring for diagonal_mpa.
+
+    :param entries: @todo
+    :returns: @todo
+
+    """
+    assert sites > 0
+
+    if entries.ndim != 1:
+        raise NotImplementedError("Currently only supports 1-plegged diagonal")
+
+    if sites < 2:
+        return mp.MPArray.from_array(entries)
+
+    ldim = len(entries)
+    leftmost_ltens = np.eye(ldim).reshape((1, ldim, ldim))
+    rightmost_ltens = np.diag(entries).reshape((ldim, ldim, 1))
+    center_ltens = np.zeros((ldim,) * 3)
+    np.fill_diagonal(center_ltens, 1)
+    ltens = it.chain((leftmost_ltens,), it.repeat(center_ltens, sites - 2),
+                     (rightmost_ltens,))
+
+    return mp.MPArray(ltens, _lnormalized=sites - 1, _rnormalized=sites)
+
+
 #########################
 #  More physical stuff  #
 #########################
@@ -266,8 +292,8 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
 
     if hermitian:
         # make mpa Herimitan in place, without increasing bond dimension:
-        for lten in mpo:
-            lten += lten.swapaxes(1, 2).conj()
+        ltens = (l + l.swapaxes(1, 2).conj() for l in mpo)
+        mpo = mp.MPArray(ltens)
     if normalized:
         # we do this with a copy to ensure the returned state is not
         # normalized
@@ -319,8 +345,8 @@ def random_mpdo(sites, ldim, bdim, randstate=np.random):
     # generate density matrix as a mixture of `bdim` pure product states
     psis = [random_mps(sites, ldim, 1, randstate=randstate) for _ in range(bdim)]
     weights = (lambda x: x / np.sum(x))(randstate.rand(bdim))
-    rho = ft.reduce(mp.MPArray.__add__, (mpsmpo.mps_to_mpo(psi) * weight
-                                         for weight, psi in zip(weights, psis)))
+    rho = mp.sumup(mpsmpo.mps_to_mpo(psi) * weight
+                   for weight, psi in zip(weights, psis))
 
     # Scramble the local tensors
     for n, bdim in enumerate(rho.bdims):
