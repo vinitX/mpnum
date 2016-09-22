@@ -41,6 +41,7 @@ from six.moves import range, zip, zip_longest
 
 from ._named_ndarray import named_ndarray
 from ._tools import block_diag, global_to_local, local_to_global, matdot
+from .mpstruct import LocalTensors
 
 
 __all__ = ['MPArray', 'dot', 'inject', 'inner', 'local_sum', 'louter',
@@ -86,30 +87,14 @@ class MPArray(object):
 
     """
 
-    def __init__(self, ltens, **kwargs):
+    def __init__(self, ltens):
         """
-        :param list ltens: List of local tensors for the MPA. In order
-            to be valid the elements of `tens` need to be
-            :code:`N`-dimensional arrays with :code:`N > 1` and need
-            to fullfill::
-
-                shape(tens[i])[-1] == shape(tens[i])[0].
-
-
-        :param `**kwargs`: Additional paramters to set protected
-            variables, not for use by user
+        :param LocalTensors ltens: local tensors as instance of
+            `mpstruct.LocalTensors`
 
         """
-        self._ltens = list(ltens)
-        for i, (ten, nten) in enumerate(zip(self._ltens[:-1], self._ltens[1:])):
-            if ten.shape[-1] != nten.shape[0]:
-                raise ValueError("Shape mismatch on {}: {} != {}"
-                                 .format(i, ten.shape[-1], nten.shape[0]))
-
-        # Elements _ltens[m] with m < self._lnorm are in left-canon. form
-        self._lnormalized = kwargs.get('_lnormalized', None)
-        # Elements _ltens[n] with n >= self._rnorm are in right-canon. form
-        self._rnormalized = kwargs.get('_rnormalized', None)
+        self._lt = ltens if isinstance(ltens, LocalTensors) \
+            else LocalTensors(ltens)
 
     def copy(self):
         """Makes a deep copy of the MPA"""
@@ -156,6 +141,10 @@ class MPArray(object):
         if self._rnormalized is not None:
             self._rnormalized = max(self._rnormalized, stop)
         self._ltens[index] = value
+
+    @property
+    def lt(self):
+        return self._lt
 
     @property
     def size(self):
@@ -742,7 +731,7 @@ class MPArray(object):
         .. math::
 
            \| u - r c \|^2 = \| u \|^2 + r (r - 2) \langle u \vert c \rangle,
-           \quad r \ge 0. 
+           \quad r \ge 0.
 
         In the special case of :math:`\|u\| = 1` and :math:`c_0 = c/\| c
         \|` (pure quantum states as MPS), we obtain

@@ -703,18 +703,6 @@ def test_split_sites(nr_sites, local_dim, bond_dim, sites_per_group, rgen):
     assert_array_almost_equal(op, split_op)
 
 
-def test_iter_readonly():
-    mpa = factory.random_mpa(4, 2, 1)
-    ltens = next(iter(mpa))
-
-    try:
-        ltens[0] = 0
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Iterator over ltens should be read only")
-
-
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
     mpa = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
