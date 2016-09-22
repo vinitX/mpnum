@@ -5,10 +5,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import functools as ft
-import itertools as it
-
-import h5py as h5
 import numpy as np
 import pytest as pt
 from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
@@ -16,6 +12,7 @@ from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
 
 from mpnum import factory
 from mpnum.mpstruct import LocalTensors
+from mpnum._testing import assert_correct_normalization
 from six.moves import range, zip
 
 
@@ -31,4 +28,40 @@ def test_iter_readonly():
         raise AssertionError("Iterator over ltens should be read only")
 
 
+def test_update_normalization():
+    ltens = factory.random_mpa(4, 2, 1).lt
+    tensor = np.array([0, 0])[None, :, None]
 
+    # Replacing in unnormalized tensor
+    ltens.update(0, tensor)
+    assert ltens.normal_form == (0, 4)
+    ltens.update(3, tensor)
+    assert ltens.normal_form == (0, 4)
+
+    # Replacing in left-normalized part with unnormalized tensor
+    ltens._lnormalized, ltens._rnormalized = (3, 4)
+    ltens.update(3, tensor)
+    assert ltens.normal_form == (3, 4)
+    ltens.update(0, tensor)
+    assert ltens.normal_form == (0, 4)
+
+    # Replacing in right-normalized part with unnormalized tensor
+    ltens._lnormalized, ltens._rnormalized = (0, 1)
+    ltens.update(0, tensor)
+    assert ltens.normal_form == (0, 1)
+    ltens.update(3, tensor)
+    assert ltens.normal_form == (0, 4)
+
+    # Replacing in left-normalized part with normalized tensor
+    ltens._lnormalized, ltens._rnormalized = (3, 4)
+    ltens.update(2, tensor, normalization='left')
+    assert ltens.normal_form == (3, 4)
+    ltens.update(2, tensor, normalization='right')
+    assert ltens.normal_form == (2, 4)
+
+    # Replacing in right-normalized part with normalized tensor
+    ltens._lnormalized, ltens._rnormalized = (0, 1)
+    ltens.update(2, tensor, normalization='right')
+    assert ltens.normal_form == (0, 1)
+    ltens.update(2, tensor, normalization='left')
+    assert ltens.normal_form == (0, 3)

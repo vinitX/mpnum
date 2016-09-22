@@ -22,8 +22,8 @@ class LocalTensors(Sequence):
         """
         Sequence.__init__(self)
         self._ltens = list(ltens)
-        self._lnormalized = lnormalized
-        self._rnormalized = rnormalized
+        self._lnormalized = lnormalized or 0
+        self._rnormalized = rnormalized or len(self._ltens)
 
         if __debug__:
             for i, (ten, nten) in enumerate(zip(self._ltens[:-1], self._ltens[1:])):
@@ -44,10 +44,15 @@ class LocalTensors(Sequence):
             view.setflags(write=False)
             yield view
 
-    def __getitem(self, index):
+    def __getitem__(self, index):
         view = self._ltens[index].view()
         view.setflags(write=False)
         return view
+
+    @property
+    def normal_form(self):
+        """Tensors which are currently in left/right-canonical form."""
+        return self._lnormalized, self._rnormalized
 
     def update(self, index, tens, normalization=None):
         """Replaces the local tensor at position `index` with the tensor `tens`.
@@ -60,4 +65,16 @@ class LocalTensors(Sequence):
         :returns: @todo
 
         """
-        pass
+        current = self._ltens[index]
+        assert current.shape[0] == tens.shape[0]
+        assert current.shape[-1] == tens.shape[-1]
+        assert tens.ndim >= 2
+
+        self._ltens[index] = tens
+        if normalization == 'left' and self._lnormalized - index >= 0:
+            self._lnormalized = max(index, self._lnormalized)
+        elif normalization == 'right' and index - self._rnormalized >= -1:
+            self._rnormalized = min(index, self._rnormalized)
+        else:
+            self._lnormalized = min(index, self._lnormalized)
+            self._rnormalized = max(index + 1, self._rnormalized)
