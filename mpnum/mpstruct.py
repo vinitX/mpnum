@@ -20,7 +20,7 @@ class LocalTensors(object):
             for i, (ten, nten) in enumerate(zip(self._ltens[:-1], self._ltens[1:])):
                 assert ten.shape[-1] == nten.shape[0]
 
-    def update(self, index, tens, normalization=None):
+    def update(self, index, tens, normalization=None, unsafe=False):
         """Replaces the local tensor at position `index` with the tensor `tens`.
         by an in-place update
 
@@ -32,13 +32,14 @@ class LocalTensors(object):
 
         """
         current = self._ltens[index]
-        assert current.shape[0] == tens.shape[0]
-        assert current.shape[-1] == tens.shape[-1]
-        assert tens.ndim >= 2
+        if not unsafe:
+            assert current.shape[0] == tens.shape[0]
+            assert current.shape[-1] == tens.shape[-1]
+            assert tens.ndim >= 2
 
         self._ltens[index] = tens
         if normalization == 'left' and self._lnormalized - index >= 0:
-            self._lnormalized = max(index, self._lnormalized)
+            self._lnormalized = max(index + 1, self._lnormalized)
         elif normalization == 'right' and index - self._rnormalized >= -1:
             self._rnormalized = min(index, self._rnormalized)
         else:
