@@ -65,3 +65,27 @@ def test_update_normalization():
     assert ltens.normal_form == (0, 1)
     ltens.update(2, tensor, normalization='left')
     assert ltens.normal_form == (0, 3)
+
+
+def test_getitem():
+    ltens = factory.random_mpa(10, 2, 1).lt
+
+    assert isinstance(ltens[0], np.ndarray)
+    try:
+        ltens[0][0] = 0
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Getitem should be read only")
+
+    rest = list(ltens[1:])
+    assert len(rest) == 9
+    for n, lt in enumerate(rest):
+        assert_array_equal(lt, ltens[1 + n])
+
+        try:
+            lt[0] = 0
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Getitem slice over ltens should be read only")
