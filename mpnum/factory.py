@@ -117,7 +117,7 @@ def random_state(sites, ldim, randstate=None):
     return rho.reshape((ldim,) * 2 * sites)
 
 
-def _generate(sites, ldim, bdim, func):
+def _generate(sites, ldim, bdim, func, force_bdim):
     """Returns a matrix product operator with identical number and dimensions
     of the physical legs. The local tensors are generated using `func`
 
@@ -139,6 +139,7 @@ def _generate(sites, ldim, bdim, func):
     :param func: Generator function for local tensors, should accept
         shape as tuple in first argument and should return
         numpy.ndarray of given shape
+    :param force_bdim: TODO
 
     :returns: randomly choosen matrix product array
 
@@ -155,19 +156,21 @@ def _generate(sites, ldim, bdim, func):
         bdim = (bdim,) * (sites - 1)
     else:
         bdim = tuple(bdim)
-    bdim_l = (1,) + bdim
-    bdim_r = bdim + (1,)
+
+    if not force_bdim:
+        bdim = tuple(min(b1, b2) for b1, b2 in zip(bdim, mp.full_bdim(ldim)))
+
     assert len(ldim) == sites
     assert len(bdim) == sites - 1
 
-    ltens = (
-        func((b_l,) + tuple(ld) + (b_r,))
-        for b_l, ld, b_r in zip(bdim_l, ldim, bdim_r))
+    bdim = (1,) + bdim + (1,)
+    ltens = (func((bdim[n],) + tuple(ld) + (bdim[n + 1],))
+             for n, ld in enumerate(ldim))
     return mp.MPArray(ltens)
 
 
 def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
-               dtype=np.complex_):
+               force_bdim=False, dtype=np.complex_):
     """Returns a MPA with randomly choosen local tensors
 
     :param sites: Number of sites
@@ -183,8 +186,10 @@ def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
     :param randn: Function used to generate random local tensors
     :param randstate: numpy.random.RandomState instance or None
     :param normalized: Resulting `mpa` has `mp.norm(mpa) == 1`
+    :param force_bdim: TODO
     :param dtype: Whicht type the returned array should have. Currently only
         `np.real_` and `np.complex_` is implemented (default: complex)
+
     :returns: randomly choosen matrix product array
 
     >>> mpa = random_mpa(4, 2, 10)
@@ -201,13 +206,13 @@ def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
 
     """
     randfun = ft.partial(_randfuncs[dtype], randstate=randstate)
-    mpa = _generate(sites, ldim, bdim, randfun)
+    mpa = _generate(sites, ldim, bdim, randfun, force_bdim)
     if normalized:
         mpa /= mp.norm(mpa.copy())
     return mpa
 
 
-def zero(sites, ldim, bdim):
+def zero(sites, ldim, bdim, force_bdim=False):
     """Returns a MPA with localtensors beeing zero (but of given shape)
 
     :param sites: Number of sites
@@ -220,10 +225,11 @@ def zero(sites, ldim, bdim):
           dimension
 
     :param bdim: Bond dimension
+    :param force_bdim: TODO
     :returns: Representation of the zero-array as MPA
 
     """
-    return _generate(sites, ldim, bdim, np.zeros)
+    return _generate(sites, ldim, bdim, np.zeros, force_bdim)
 
 
 def eye(sites, ldim):

@@ -1903,3 +1903,15 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
         compr_ltens = MPArray.from_array(compr_lten, plegs=1, has_bond=True)
         compr_ltens.compress('svd', bdim=max_bonddim)
     return compr_ltens
+
+
+def full_bdim(ldims):
+    """@todo: Docstring for full_bdim.
+
+    :param ldims: @todo
+    :returns: @todo
+
+    """
+    ldims_raveled = list(np.prod(ldim) for ldim in ldims)
+    return [min(np.prod(ldims_raveled[:cut]), np.prod(ldims_raveled[cut:]))
+            for cut in range(1, len(ldims))]
