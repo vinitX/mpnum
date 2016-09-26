@@ -6,6 +6,13 @@ import itertools as it
 import numpy as np
 
 
+def _roview(array):
+    """Creates a read only view of the numpy array `view`."""
+    view = array.view()
+    view.setflags(write=False)
+    return view
+
+
 class LocalTensors(object):
     """Docstring for LocalTensors. """
 
@@ -60,19 +67,30 @@ class LocalTensors(object):
 
         """
         for ltens in self._ltens:
-            view = ltens.view()
-            view.setflags(write=False)
-            yield view
+            yield _roview(ltens)
 
     def __getitem__(self, index):
         if isinstance(index, slice):
-            return it.islice(self, index.start, index.stop, index.step)
+            return (_roview(lten) for lten in self._ltens[index])
         else:
             view = self._ltens[index].view()
             view.setflags(write=False)
             return view
 
+    def __setitem__(self, index, value):
+        if isinstance(index, slice):
+            for v, lten in zip(value, self._ltens[index]):
+                lten[:] = v
+                self._lnormalized = min(index.start, self._lnormalized)
+                self._rnormalized = max(index.stop or len(self) + 1, self._rnormalized)
+        else:
+            self.update(index, value)
+
     @property
     def normal_form(self):
         """Tensors which are currently in left/right-canonical form."""
         return self._lnormalized, self._rnormalized
+
+    def copy(self):
+        ltens = (lt.copy() for lt in self._ltens)
+        return type(self)(ltens, nform=self.normal_form)
