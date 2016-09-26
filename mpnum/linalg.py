@@ -213,6 +213,10 @@ def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
     Middle row: MPO matrices with row (column) indices to bottom (top)
 
     """
+    # FIXME Do we really need this conversion?
+    mpo_ltens = list(mpo_ltens)
+    eigvec_ltens = list(eigvec_ltens)
+
     eigs_opts = {'k': 1, 'which': 'SR', 'tol': 1e-6}
     if user_eigs_opts is not None:
         eigs_opts.update(user_eigs_opts)
@@ -345,8 +349,8 @@ def mineig(mpo,
     rightvecs = [None] * (nr_sites - minimize_sites) + [np.array(1, ndmin=3)]
     for pos in reversed(range(nr_sites - minimize_sites)):
         rightvecs[pos] = _mineig_rightvec_add(rightvecs[pos + 1],
-                                              mpo[pos + minimize_sites],
-                                              eigvec[pos + minimize_sites])
+                                                 mpo.lt[pos + minimize_sites],
+                                                 eigvec.lt[pos + minimize_sites])
 
     # The iteration pattern is very similar to
     # :func:`mpnum.mparray.MPArray._adapt_to()`. See there for more
@@ -362,12 +366,12 @@ def mineig(mpo,
                 eigvec.normalize(left=pos)
                 rightvecs[pos - 1] = None
                 leftvecs[pos] = _mineig_leftvec_add(
-                    leftvecs[pos - 1], mpo[pos - 1], eigvec[pos - 1])
+                    leftvecs[pos - 1], mpo.lt[pos - 1], eigvec.lt[pos - 1])
             pos_end = pos + minimize_sites
             eigval, eigvec_lten = _mineig_minimize_locally(
-                leftvecs[pos], mpo[pos:pos_end], rightvecs[pos],
-                eigvec[pos:pos_end], eigs_opts)
-            eigvec[pos:pos_end] = eigvec_lten
+                leftvecs[pos], mpo.lt[pos:pos_end], rightvecs[pos],
+                eigvec.lt[pos:pos_end], eigs_opts)
+            eigvec.lt[pos:pos_end] = eigvec_lten
 
         # Sweep from right to left (don't do last site again)
         for pos in reversed(range(nr_sites - minimize_sites)):
@@ -377,11 +381,11 @@ def mineig(mpo,
                 eigvec.normalize(right=pos_end)
                 leftvecs[pos + 1] = None
                 rightvecs[pos] = _mineig_rightvec_add(
-                    rightvecs[pos + 1], mpo[pos_end], eigvec[pos_end])
+                    rightvecs[pos + 1], mpo.lt[pos_end], eigvec.lt[pos_end])
             eigval, eigvec_lten = _mineig_minimize_locally(
-                leftvecs[pos], mpo[pos:pos_end], rightvecs[pos],
-                eigvec[pos:pos_end], eigs_opts)
-            eigvec[pos:pos_end] = eigvec_lten
+                leftvecs[pos], mpo.lt[pos:pos_end], rightvecs[pos],
+                eigvec.lt[pos:pos_end], eigs_opts)
+            eigvec.lt[pos:pos_end] = eigvec_lten
 
     return eigval, eigvec
 
