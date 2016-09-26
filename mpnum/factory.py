@@ -15,6 +15,7 @@ from six.moves import range
 from . import mparray as mp
 from . import mpsmpo
 from ._tools import global_to_local, matdot
+from .mpstruct import LocalTensors
 
 
 __all__ = ['eye', 'random_local_ham', 'random_mpa', 'random_mpdo',
@@ -269,7 +270,7 @@ def diagonal_mpa(entries, sites):
     ltens = it.chain((leftmost_ltens,), it.repeat(center_ltens, sites - 2),
                      (rightmost_ltens,))
 
-    return mp.MPArray(ltens, _lnormalized=sites - 1, _rnormalized=sites)
+    return mp.MPArray(LocalTensors(ltens, nform=(sites - 1, sites)))
 
 
 #########################
@@ -298,7 +299,7 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
 
     if hermitian:
         # make mpa Herimitan in place, without increasing bond dimension:
-        ltens = (l + l.swapaxes(1, 2).conj() for l in mpo)
+        ltens = (l + l.swapaxes(1, 2).conj() for l in mpo.lt)
         mpo = mp.MPArray(ltens)
     if normalized:
         # we do this with a copy to ensure the returned state is not
@@ -357,8 +358,8 @@ def random_mpdo(sites, ldim, bdim, randstate=np.random):
     # Scramble the local tensors
     for n, bdim in enumerate(rho.bdims):
         unitary = _unitary_haar(bdim, randstate)
-        rho[n] = matdot(rho[n], unitary)
-        rho[n + 1] = matdot(np.transpose(unitary).conj(), rho[n + 1])
+        rho.lt[n] = matdot(rho.lt[n], unitary)
+        rho.lt[n + 1] = matdot(np.transpose(unitary).conj(), rho.lt[n + 1])
 
     rho /= mp.trace(rho)
     return rho
