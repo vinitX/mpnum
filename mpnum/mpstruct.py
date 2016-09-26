@@ -23,6 +23,7 @@ class LocalTensors(object):
         self._lnormalized = lnormalized or 0
         self._rnormalized = rnormalized or len(self._ltens)
 
+        assert len(self._ltens) > 0
         assert 0 <= self._lnormalized < len(self._ltens)
         assert 0 < self._rnormalized <= len(self._ltens)
 
