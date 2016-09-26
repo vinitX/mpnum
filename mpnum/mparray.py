@@ -75,9 +75,6 @@ class MPArray(object):
               including each new `MPArray` instance, must take
               copies. Is this correct?
 
-    .. todo:: :func:`MPArray.copy()` adheres to the model from the
-              last item. Check whether this is the case everywhere.
-
     .. todo:: If we enable all special members (e.g. `__len__`) to be
               shown, we get things like `__dict__` with very long
               contents. Therefore, special members are hidden at the
@@ -1163,8 +1160,7 @@ def outer(mpas):
 
     """
     # TODO Make this normalization aware
-    # FIXME Is copying here a good idea?
-    return MPArray(sum(([ltens.copy() for ltens in mpa.lt] for mpa in mpas), []))
+    return MPArray(it.chain(*(mpa.lt for mpa in mpas)))
 
 
 def diag(mpa, axis=0):
@@ -1198,7 +1194,7 @@ def diag(mpa, axis=0):
         return np.array(mpas, dtype=object)
 
 
-#FXIME Why is outer not a special case of this?
+# FXIME Why is outer not a special case of this?
 def inject(mpa, pos, num, inject_ten=None):
     """Like outer(), but place second factor somewhere inside mpa.
 
