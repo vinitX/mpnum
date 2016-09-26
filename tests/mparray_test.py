@@ -84,6 +84,10 @@ def test_conjugations(nr_sites, local_dim, _, rgen, dtype):
     assert_array_almost_equal(np.conj(op), mpo.conj().to_array())
     assert mpo.conj().dtype == dtype
 
+    mpo.normalize()
+    mpo_c = mpo.conj()
+    assert_correct_normalization(mpo_c)
+
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
@@ -95,6 +99,10 @@ def test_transpose(nr_sites, local_dim, _, rgen, dtype):
         .reshape((local_dim,) * 2 * nr_sites)
     assert_array_almost_equal(opT, mpo_to_global(mpo.T))
     assert mpo.T.dtype == dtype
+
+    mpo.normalize()
+    mpo_T = mpo.T
+    assert_correct_normalization(mpo_T)
 
 
 def test_transpose_axes(rgen):
@@ -108,10 +116,11 @@ def test_transpose_axes(rgen):
     assert len(mps) == 1
 
     vec_t = vec.transpose(axes)
-    mpa_t = mps.transpose(axes)
-    mpa_t_to_vec = mpa_t.to_array()
+    mps_t = mps.transpose(axes)
+    mps_t_to_vec = mps_t.to_array()
     assert vec_t.shape == new_ldim
-    assert_array_equal(mpa_t_to_vec, vec_t)
+    assert_array_equal(mps_t_to_vec, vec_t)
+    assert_correct_normalization(mps_t)
 
     # Test with 3 sites
     nr_sites = 3
@@ -127,6 +136,7 @@ def test_transpose_axes(rgen):
     mpa_t_to_tensor = mpa_t.to_array()
     assert mpa_t.pdims == (new_ldim,) * nr_sites
     assert_array_almost_equal(mpa_t_to_tensor, tensor_t)
+    assert_correct_normalization(mpa_t)
 
 
 def test_dump_and_load(tmpdir):
@@ -721,7 +731,9 @@ def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
         assert_correct_normalization(mpa_t)
 
         mpa_t = mpa_t.pleg2bleg(pos)
-        mpa_t._lnormalized, mpa_t._rnormalized = mpa.normal_form
+        # This is an ugly hack, but necessary to use the assert_mpa_identical
+        # function. Normalization-awareness gets lost in the process!
+        mpa_t._lt._lnormalized, mpa_t._lt._rnormalized = mpa.normal_form
         assert_mpa_identical(mpa, mpa_t)
 
     if nr_sites > 1:
