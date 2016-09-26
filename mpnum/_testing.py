@@ -26,7 +26,7 @@ def assert_mpa_identical(mpa1, mpa2, decimal=np.infty):
     assert len(mpa1) == len(mpa2)
     assert mpa1.normal_form == mpa2.normal_form
 
-    for i, lten1, lten2 in zip(it.count(), mpa1, mpa2):
+    for i, lten1, lten2 in zip(it.count(), mpa1.lt, mpa2.lt):
         if decimal is np.infty:
             assert_array_equal(lten1, lten2,
                             err_msg='mismatch in lten {}'.format(i))
@@ -75,8 +75,8 @@ def assert_correct_normalization(mpo, lnormal_target=None, rnormal_target=None):
     assert_equal(rnormal, rnormal_target)
 
     for n in range(lnormal):
-        _assert_lcanonical(mpo[n], msg="Failure left canonical (n={}/{})"
+        _assert_lcanonical(mpo.lt[n], msg="Failure left canonical (n={}/{})"
                           .format(n, lnormal_target))
     for n in range(rnormal, len(mpo)):
-        _assert_rcanonical(mpo[n], msg="Failure right canonical (n={}/{})"
+        _assert_rcanonical(mpo.lt[n], msg="Failure right canonical (n={}/{})"
                           .format(n, rnormal_target))
