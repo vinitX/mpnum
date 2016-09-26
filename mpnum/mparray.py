@@ -98,50 +98,17 @@ class MPArray(object):
 
     def copy(self):
         """Makes a deep copy of the MPA"""
-        result = type(self)([ltens.copy() for ltens in self._ltens],
-                            _lnormalized=self._lnormalized,
-                            _rnormalized=self._rnormalized)
-        return result
+        return type(self)(self._lt.copy())
 
     def __len__(self):
-        return len(self._ltens)
+        return len(self._lt)
 
-    def __iter__(self):
-        """Use only for read-only access! Do not change arrays in place!
+    @property
+    def lt(self):
+        return self._lt
 
-        Subclasses should not override this method because it will
-        break basic MPA functionality such as :func:`dot`.
-
-        """
-        for ltens in self._ltens:
-            view = ltens.view()
-            view.setflags(write=False)
-            yield view
-
-    def __getitem__(self, index):
-        """Use only for read-only access! Do not change arrays in place!"""
-        if type(index) == tuple:
-            assert len(index) == len(self)
-            return MPArray(ltens[:, i, ..., :]
-                           for i, ltens in zip(index, self._ltens))
-        else:
-            # FIXME Maybe this should be moved to another Function
-            return self._ltens[index]
-
-    def __setitem__(self, index, value):
-        """Update a local tensor and keep track of normalization."""
-        if isinstance(index, slice):
-            start = index.start
-            stop = index.stop
-        else:
-            start = index
-            stop = index + 1
-        if self._lnormalized is not None:
-            self._lnormalized = min(self._lnormalized, start)
-        if self._rnormalized is not None:
-            self._rnormalized = max(self._rnormalized, stop)
-        self._ltens[index] = value
-
+    @property
+    def size(self):
     @property
     def lt(self):
         return self._lt
@@ -155,17 +122,17 @@ class MPArray(object):
     @property
     def dtype(self):
         """Returns the dtype that should be returned by to_array"""
-        return np.common_type(*self._ltens)
+        return np.common_type(*tuple(self._lt))
 
     @property
     def dims(self):
         """Tuple of shapes for the local tensors"""
-        return tuple(m.shape for m in self._ltens)
+        return tuple(m.shape for m in self._lt)
 
     @property
     def bdims(self):
         """Tuple of bond dimensions"""
-        return tuple(m.shape[0] for m in self._ltens[1:])
+        return tuple(m.shape[0] for m in self._lt[1:])
 
     # FIXME Rremove this function or rname to maxbdim
     @property
@@ -176,22 +143,22 @@ class MPArray(object):
     @property
     def pdims(self):
         """Tuple of physical dimensions"""
-        return tuple((m.shape[1:-1]) for m in self._ltens)
+        return tuple((m.shape[1:-1]) for m in self._lt)
 
     @property
     def legs(self):
         """Tuple of total number of legs per site"""
-        return tuple(lten.ndim for lten in self._ltens)
+        return tuple(lten.ndim for lten in self._lt)
 
     @property
     def plegs(self):
         """Tuple of number of physical legs per site"""
-        return tuple(lten.ndim - 2 for lten in self._ltens)
+        return tuple(lten.ndim - 2 for lten in self._lt)
 
     @property
     def normal_form(self):
         """Tensors which are currently in left/right-canonical form."""
-        return self._lnormalized or 0, self._rnormalized or len(self)
+        return self._lt.normal_form
 
     def dump(self, target):
         """Serializes MPArray to :code:`h5py.Group`. Recover using
