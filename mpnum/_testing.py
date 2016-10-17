@@ -62,6 +62,16 @@ def _assert_rcanonical(ltens, msg=''):
 
 
 def assert_correct_normalization(lt, lnormal_target=None, rnormal_target=None):
+    """Verify that normalization info in `lt` is correct
+
+    We check that `lt` is at least as normalized as specified by the
+    information. `lt` being "more normalized" than the information
+    specifies is admissible and not treated as an error.
+
+    If `[lr]normal_target` are not None, verify that normalization
+    info is exactly equal to the given values.
+
+    """
     if hasattr(lt, 'lt'):
         lt = lt.lt  # We got an MPArray in lt, retrieve mpa.lt
     lnormal, rnormal = lt.normal_form
