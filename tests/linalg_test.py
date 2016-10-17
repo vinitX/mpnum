@@ -14,7 +14,6 @@ import mpnum.factory as factory
 from mparray_test import MP_TEST_PARAMETERS
 
 
-@pt.mark.skip
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mineig(nr_sites, local_dim, bond_dim, rgen):
     # Need at least two sites
@@ -43,7 +42,6 @@ def test_mineig(nr_sites, local_dim, bond_dim, rgen):
     assert_almost_equal(1, abs(overlap))
 
 
-@pt.mark.skip
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
     # Need at least three sites for minimize_sites = 2

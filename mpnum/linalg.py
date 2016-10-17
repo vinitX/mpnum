@@ -245,6 +245,7 @@ def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
         # results" [Sch11_, Sec. 6.4, p. 74]
         eigvec_lten = mp.MPArray.from_array(eigvec_lten, 1, has_bond=True)
         eigvec_lten.compress(method='svd', bdim=eigvec_bonddim)
+        eigvec_lten = eigvec_lten.lt
     return eigval, eigvec_lten
 
 
