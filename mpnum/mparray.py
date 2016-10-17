@@ -119,7 +119,7 @@ class MPArray(object):
         60
 
         """
-        return sum(np.prod(shape) for shape in self.dims)
+        return sum(lt.size for lt in self._lt)
 
     @property
     def dtype(self):
