@@ -83,16 +83,6 @@ def nopovm(request, local_dim, rgen):
         raise ValueError('Unknown fixture name {}'.format(nopovm_name))
 
 
-@pt.mark.parametrize('nr_sites, local_dim', [(5, 2), (4, 3), (3, 4)])
-def test_mppovm_iter(nr_sites, nopovm):
-    # Check that MPPovm.__iter__ returns the local tensors we expect
-    # for an MPA.
-    want_lt = nopovm._elements[None, ..., None]
-    mpp = povm.MPPovm.from_local_povm(nopovm, width=nr_sites)
-    for lt in mpp:
-        assert_array_equal(lt, want_lt)
-
-
 @pt.mark.parametrize('dim', [(2), (3), (6), (7)])
 def test_povm_normalization_ic(dim):
     for name, constructor in ALL_POVMS.items():
