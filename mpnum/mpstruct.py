@@ -41,11 +41,27 @@ class LocalTensors(object):
         :returns: @todo
 
         """
+        if isinstance(index, slice):
+            indices = range(*index.indices(len(self)))
+            if (not unsafe) and indices.step == 1:
+                # Allow bond dimension changes if multiple consecutive
+                # local tensors are changed. Callers should switch to
+                # unsafe=True if the checks are too time-consuming.
+                tens = list(tens)
+                assert self[indices.start].shape[0] == tens[0].shape[0]
+                assert all(t.shape[-1] == u.shape[0] for t, u in zip(
+                    tens[:-1], tens[1:]))
+                assert self[indices.stop - 1].shape[-1] == tens[-1].shape[-1]
+                unsafe = True
+            for ten, pos in zip(tens, indices):
+                self.update(pos, ten, normalization, unsafe=unsafe)
+            return
+
         current = self._ltens[index]
         if not unsafe:
+            assert tens.ndim >= 2
             assert current.shape[0] == tens.shape[0]
             assert current.shape[-1] == tens.shape[-1]
-            assert tens.ndim >= 2
 
         self._ltens[index] = tens
         # If a normalized tensor is set next to a normalized slice,
@@ -85,13 +101,7 @@ class LocalTensors(object):
             return view
 
     def __setitem__(self, index, value):
-        if isinstance(index, slice):
-            for v, lten in zip(value, self._ltens[index]):
-                lten[:] = v
-                self._lnormalized = min(index.start, self._lnormalized)
-                self._rnormalized = max(index.stop or len(self) + 1, self._rnormalized)
-        else:
-            self.update(index, value)
+        self.update(index, value)
 
     @property
     def normal_form(self):
