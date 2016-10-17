@@ -649,11 +649,10 @@ class MPArray(object):
         lnormal, rnormal = self._lt.normal_form
         for site in range(lnormal, to_site):
             ltens = self._lt[site]
-            matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
-            q, r = qr(ltens.reshape(matshape))
+            q, r = qr(ltens.reshape((-1, ltens.shape[-1])))
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
             # can be accounted by adapting bond dimension here
-            self._lt.update(site, q.reshape(ltens.shape[:-1] + (-1, )),
+            self._lt.update(site, q.reshape(ltens.shape[:-1] + (-1,)),
                             normalization='left', unsafe=True)
             self._lt.update(site + 1, matdot(r, self._lt[site + 1]), unsafe=True)
 
@@ -669,11 +668,10 @@ class MPArray(object):
         lnormal, rnormal = self.normal_form
         for site in range(rnormal - 1, to_site - 1, -1):
             ltens = self._lt[site]
-            matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
-            q, r = qr(ltens.reshape(matshape).T)
+            q, r = qr(ltens.reshape((ltens.shape[0], -1)).T)
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
             # can be accounted by adapting bond dimension here
-            self._lt.update(site, q.T.reshape((-1, ) + ltens.shape[1:]),
+            self._lt.update(site, q.T.reshape((-1,) + ltens.shape[1:]),
                             normalization='right', unsafe=True)
             self._lt.update(site - 1, matdot(self._lt[site - 1], r.T), unsafe=True)
 
@@ -1621,8 +1619,7 @@ def _extract_factors(tens, plegs):
     elif tens.ndim < current + 2:
         raise AssertionError("Number of remaining legs insufficient.")
     else:
-        unitary, rest = qr(tens.reshape((np.prod(tens.shape[:current + 1]),
-                                         np.prod(tens.shape[current + 1:]))))
+        unitary, rest = qr(tens.reshape((np.prod(tens.shape[:current + 1]), -1)))
 
         unitary = unitary.reshape(tens.shape[:current + 1] + rest.shape[:1])
         rest = rest.reshape(rest.shape[:1] + tens.shape[current + 1:])
