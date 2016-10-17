@@ -508,8 +508,8 @@ class MPArray(object):
 
         """
         ltens = list(self._lt)
-        ltens[pos] = ltens[pos].reshape(ltens[pos].shape + (1,))
-        ltens[pos + 1] = ltens[pos + 1].reshape((1,) + ltens[pos + 1].shape)
+        ltens[pos] = ltens[pos][..., None]
+        ltens[pos + 1] = ltens[pos + 1][None]
 
         lnormal, rnormal = self.normal_form
         new_normal_form = min(lnormal, pos), max(rnormal, pos + 2)
@@ -525,8 +525,8 @@ class MPArray(object):
         ltens = list(self._lt)
         assert ltens[pos].shape[-1] == 1
         assert ltens[pos + 1].shape[0] == 1
-        ltens[pos] = ltens[pos].reshape(ltens[pos].shape[:-1])
-        ltens[pos + 1] = ltens[pos + 1].reshape(ltens[pos + 1].shape[1:])
+        ltens[pos] = ltens[pos][..., 0]
+        ltens[pos + 1] = ltens[pos + 1][0]
 
         lnormal, rnormal = self.normal_form
         new_normal_form = min(lnormal, pos), max(rnormal, pos + 1)
