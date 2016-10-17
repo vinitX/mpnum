@@ -110,7 +110,15 @@ class MPArray(object):
     @property
     def size(self):
         """Returns the number of floating point numbers used to represent the
-        MPArray"""
+        MPArray
+
+        >>> from .factory import zero
+        >>> zero(sites=3, ldim=4, bdim=3).dims
+        ((1, 4, 3), (3, 4, 3), (3, 4, 1))
+        >>> zero(sites=3, ldim=4, bdim=3).size
+        60
+
+        """
         return sum(np.prod(shape) for shape in self.dims)
 
     @property
