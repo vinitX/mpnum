@@ -61,22 +61,22 @@ def _assert_rcanonical(ltens, msg=''):
                               err_msg=msg)
 
 
-def assert_correct_normalization(mpo, lnormal_target=None, rnormal_target=None):
-    lnormal, rnormal = mpo.normal_form
+def assert_correct_normalization(lt, lnormal_target=None, rnormal_target=None):
+    if hasattr(lt, 'lt'):
+        lt = lt.lt  # We got an MPArray in lt, retrieve mpa.lt
+    lnormal, rnormal = lt.normal_form
 
-    # If no targets are given, verify that the data matches the
-    # information in `mpo.normal_form`.
-    lnormal_target = lnormal_target or lnormal
-    rnormal_target = rnormal_target or rnormal
+    # Verify that normalization info is correct
+    for n in range(lnormal):
+        _assert_lcanonical(lt[n], msg="Wrong left canonical (n={}/{})"
+                          .format(n, lnormal))
+    for n in range(rnormal, len(lt)):
+        _assert_rcanonical(lt[n], msg="Wrong right canonical (n={}/{})"
+                          .format(n, rnormal))
 
     # If targets are given, verify that the information in
-    # `mpo.normal_form` matches the targets.
-    assert_equal(lnormal, lnormal_target)
-    assert_equal(rnormal, rnormal_target)
-
-    for n in range(lnormal):
-        _assert_lcanonical(mpo.lt[n], msg="Failure left canonical (n={}/{})"
-                          .format(n, lnormal_target))
-    for n in range(rnormal, len(mpo)):
-        _assert_rcanonical(mpo.lt[n], msg="Failure right canonical (n={}/{})"
-                          .format(n, rnormal_target))
+    # `lt.normal_form` matches the targets.
+    if lnormal_target is not None:
+        assert_equal(lnormal, lnormal_target)
+    if rnormal_target is not None:
+        assert_equal(rnormal, rnormal_target)
