@@ -1884,7 +1884,14 @@ def full_bdim(ldims):
     :param ldims: @todo
     :returns: @todo
 
+    >>> full_bdim([3] * 5)
+    [3, 9, 9, 3]
+    >>> full_bdim([2] * 8)
+    [2, 4, 8, 16, 8, 4, 2]
+    >>> full_bdim([(2, 3)] * 4)
+    [6, 36, 6]
+
     """
-    ldims_raveled = list(np.prod(ldim) for ldim in ldims)
+    ldims_raveled = [np.prod(ldim) for ldim in ldims]
     return [min(np.prod(ldims_raveled[:cut]), np.prod(ldims_raveled[cut:]))
             for cut in range(1, len(ldims))]
