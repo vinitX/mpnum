@@ -1673,6 +1673,9 @@ def _local_add(ltenss):
     #      for lt in ltenss[1:]:
     #          assert_array_equal(shape[1:-1], lt.shape[1:-1])
 
+    # FIXME: Find out whether the following code does the same as
+    # :func:`block_diag()` used by :func:`_local_sum_identity` and
+    # which implementation is faster if so.
     newshape = (sum(lt.shape[0] for lt in ltenss), )
     newshape += shape[1:-1]
     newshape += (sum(lt.shape[-1] for lt in ltenss), )
