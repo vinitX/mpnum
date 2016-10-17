@@ -5,6 +5,8 @@ from __future__ import absolute_import, division, print_function
 import itertools as it
 import numpy as np
 
+from six.moves import range, zip
+
 
 def _roview(array):
     """Creates a read only view of the numpy array `view`."""
@@ -42,18 +44,20 @@ class LocalTensors(object):
 
         """
         if isinstance(index, slice):
-            indices = range(*index.indices(len(self)))
-            if (not unsafe) and indices.step == 1:
+            indices = index.indices(len(self))
+            # In Python 3, we can do range(*indices).start etc. Python 2 compat:
+            start, stop, step = indices
+            if (not unsafe) and step == 1:
                 # Allow bond dimension changes if multiple consecutive
                 # local tensors are changed. Callers should switch to
                 # unsafe=True if the checks are too time-consuming.
                 tens = list(tens)
-                assert self[indices.start].shape[0] == tens[0].shape[0]
+                assert self[start].shape[0] == tens[0].shape[0]
                 assert all(t.shape[-1] == u.shape[0] for t, u in zip(
                     tens[:-1], tens[1:]))
-                assert self[indices.stop - 1].shape[-1] == tens[-1].shape[-1]
+                assert self[stop - 1].shape[-1] == tens[-1].shape[-1]
                 unsafe = True
-            for ten, pos in zip(tens, indices):
+            for ten, pos in zip(tens, range(*indices)):
                 self.update(pos, ten, normalization, unsafe=unsafe)
             return
 
