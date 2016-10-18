@@ -437,6 +437,7 @@ class MPArray(object):
         :returns: Reshaped MPA
 
         """
+        # TODO Why is this here? What's wrong with the purne function?
         if newshapes == 'prune':
             newshapes = (tuple(s for s in pdim if s > 1) for pdim in self.pdims)
 
