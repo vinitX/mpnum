@@ -1073,7 +1073,7 @@ class MPArray(object):
 #############################################
 #  General functions to deal with MPArrays  #
 #############################################
-def dot(mpa1, mpa2, axes=(-1, 0)):
+def dot(mpa1, mpa2, axes=(-1, 0), astype=None):
     """Compute the matrix product representation of a.b over the given
     (physical) axes. [Sch11_, Sec. 4.2]
 
@@ -1085,6 +1085,8 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
         of `ax1` and `ax2` will be contracted. Very similar to the
         `axes` argument for `np.tensordot()`, but the default value is
         different.
+
+    :param astype: Return type. If `None`, use the type of `mpa1`
 
     :returns: Dot product of the physical arrays
 
@@ -1101,7 +1103,9 @@ def dot(mpa1, mpa2, axes=(-1, 0)):
 
     ltens = [_local_dot(l, r, axes) for l, r in zip(mpa1.lt, mpa2.lt)]
 
-    return MPArray(ltens)
+    if astype is None:
+        astype = type(mpa1)
+    return astype(ltens)
 
 
 def sumup(mpas, weights=None):
@@ -1201,16 +1205,22 @@ def inner(mpa1, mpa2):
     return _ltens_to_array(ltens_new)[0, ..., 0]
 
 
-def outer(mpas):
+def outer(mpas, astype=None):
     """Performs the tensor product of MPAs given in `*args`
 
     :param mpas: Iterable of MPAs same order as they should appear in the chain
+    :param astype: Return type. If `None`, use the type of the first MPA.
     :returns: MPA of length len(args[0]) + ... + len(args[-1])
 
     """
     # TODO Make this normalization aware
     # FIXME Is copying here a good idea?
-    return MPArray(sum(([ltens.copy() for ltens in mpa.lt] for mpa in mpas), []))
+    mpas = iter(mpas)
+    first = next(mpas)
+    rest = (lt.copy() for mpa in mpas for lt in mpa.lt)
+    if astype is None:
+        astype = type(first)
+    return astype(it.chain(first.lt.copy(), rest))
 
 
 def diag(mpa, axis=0):
