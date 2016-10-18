@@ -197,23 +197,23 @@ class MPPovm(mp.MPArray):
     def outdims(self):
         """Outcome dimensions"""
         # First physical leg dimension
-        return tuple(lt.shape[1] for lt in self._ltens)
+        return tuple(lt.shape[1] for lt in self._lt)
 
     @property
     def nsoutdims(self):
         """Non-singleton outcome dimensions (dimension larger one)"""
-        return tuple(lt.shape[1] for lt in self._ltens if lt.shape[1] > 1)
+        return tuple(lt.shape[1] for lt in self._lt if lt.shape[1] > 1)
 
     @property
     def nsoutpos(self):
         """Sites with non-singleton outcome dimension (dimension larger one)"""
-        return tuple(k for k, lt in enumerate(self._ltens) if lt.shape[1] > 1)
+        return tuple(k for k, lt in enumerate(self._lt) if lt.shape[1] > 1)
 
     @property
     def hdims(self):
         """Local Hilbert space dimensions"""
         # Second physical leg dimension (equals third physical leg dimension)
-        return tuple(lt.shape[2] for lt in self._ltens)
+        return tuple(lt.shape[2] for lt in self._lt)
 
     @property
     def elements(self):
@@ -345,8 +345,8 @@ class MPPovm(mp.MPArray):
         if n_last > 0:
             assert self.bdims[n_last - 1] == 1, \
                 "Partial repetition requires factorizing MP-POVM"
-        return MPPovm(mp.outer(
-            [self] * n_repeat + ([mp.MPArray(self[:n_last])] if n_last > 0 else [])))
+        return mp.outer([self] * n_repeat
+                        + ([MPPovm(self.lt[:n_last])] if n_last > 0 else []))
 
     def expectations(self, mpa, mode='auto'):
         """Computes the exp. values of the POVM elements with given state
@@ -458,21 +458,24 @@ class MPPovm(mp.MPArray):
         tr = mp.MPArray.from_kron([
             np.eye(outdim, dtype=lt.dtype)
             if keep else np.ones((1, outdim), dtype=lt.dtype)
-            for keep, lt, outdim in zip(keep_outdims, other, other.outdims)
+            for keep, lt, outdim in zip(keep_outdims, other.lt, other.outdims)
         ])
-        other = MPPovm(mp.dot(tr, other))
+        other = MPPovm(mp.dot(tr, other).lt)
 
         # Compute all inner products between elements from self and other
-        inner = mp.dot(self.conj(), other, axes=((1, 2), (1, 2)))
+        inner = mp.dot(self.conj(), other,
+                       axes=((1, 2), (1, 2)), astype=mp.MPArray)
         # Compute squared norms of all elements from inner products
-        snormsq = mp.dot(self.conj(), self, axes=((1, 2), (1, 2)))
+        snormsq = mp.dot(self.conj(), self,
+                         axes=((1, 2), (1, 2)), astype=mp.MPArray)
         eye3d = mp.MPArray.from_kron(
             # Drop inner products between different elements
             np.fromfunction(lambda i, j, k: (i == j) & (j == k), [outdim] * 3)
             for outdim in self.outdims
         )
         snormsq = mp.dot(eye3d, snormsq, axes=((1, 2), (0, 1)))
-        onormsq = mp.dot(other.conj(), other, axes=((1, 2), (1, 2)))
+        onormsq = mp.dot(other.conj(), other,
+                         axes=((1, 2), (1, 2)), astype=mp.MPArray)
         eye3d = mp.MPArray.from_kron(
             # Drop inner products between different elements
             np.fromfunction(lambda i, j, k: (i == j) & (j == k), [outdim] * 3)
@@ -525,7 +528,7 @@ class MPPovm(mp.MPArray):
             # `n_out + n_group` sites.
             p = marginal_pmf[min(n_sites, n_out + n_group)]
             # Obtain conditional probab. from joint `p` and marginal `out_p`
-            p = p[tuple(out[:n_out]) + (slice(None),) * (len(p) - n_out)]
+            p = p.get_phys(tuple(out[:n_out]) + (slice(None),) * (len(p) - n_out))
             p = check_pmf(mp.prune(p).to_array() / out_p, eps, eps)
             # Sample from conditional probab. for next `n_group` sites
             choice = rng.choice(p.size, p=p.flat)
@@ -533,7 +536,7 @@ class MPPovm(mp.MPArray):
             # Update probability of the partial output
             out_p *= np.prod(p.flat[choice])
         # Verify we have the correct partial output probability
-        p = marginal_pmf[-1][tuple(out)].to_array()
+        p = marginal_pmf[-1].get_phys(tuple(out)).to_array()
         assert abs(p - out_p) <= eps
 
     @classmethod
@@ -1400,5 +1403,5 @@ def pauli_mpps(nr_sites, local_dim):
     """
     from mpnum.povm import pauli_parts
     parts = [MPPovm.from_local_povm(x, 1) for x in pauli_parts(local_dim)]
-    return MPPovmList(MPPovm(mp.outer(factors))
+    return MPPovmList(mp.outer(factors)
                       for factors in it.product(parts, repeat=nr_sites))
