@@ -39,7 +39,7 @@ class PyTest(Command):
     ]
 
     def initialize_options(self):
-        self.selector = 'not long'
+        self.selector = '(not long) and (not verylong)'
         self.covreport = None
         self.pdb = False
         self.bench = False
@@ -49,8 +49,11 @@ class PyTest(Command):
 
     def run(self):
         import pytest
-        args = [] if not self.pdb else ['--pdb']
-        args += [] if self.bench else ['--benchmark-skip']
+        args = ['--strict']
+        if self.pdb:
+            args.append('--pdb')
+        if not self.bench:
+            args.append('--benchmark-skip')
 
         if self.covreport is None:
             # Run doctests afterwards because they auto-import things. We want
