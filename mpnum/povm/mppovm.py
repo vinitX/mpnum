@@ -291,10 +291,14 @@ class MPPovm(mp.MPArray):
             startsite + len(self))` and :func:`MPPovm.eye()` elsewhere
 
         """
-        left = MPPovm.eye([local_dim] * startsite)
         n_right = nr_sites - len(self) - startsite
-        right = MPPovm.eye([local_dim] * n_right)
-        return MPPovm(mp.outer([left, self, right]))
+        factors = []
+        if startsite > 0:
+            factors.append(MPPovm.eye([local_dim] * startsite))
+        factors.append(self)
+        if n_right > 0:
+            factors.append(MPPovm.eye([local_dim] * n_right))
+        return mp.outer(factors)
 
     def block(self, nr_sites):
         """Embed an MP-POVM on local blocks
