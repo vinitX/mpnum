@@ -24,8 +24,8 @@ def inner_prod_mps(mpa1, mpa2):
     assert all(pleg == 1 for pleg in mpa2.plegs)
 
     # asssume mpa1 is product
-    ltens1 = iter(mpa1)
-    ltens2 = iter(mpa2)
+    ltens1 = iter(mpa1.lt)
+    ltens2 = iter(mpa2.lt)
 
     res = np.dot(next(ltens1)[0, :, 0].conj(), next(ltens2))
     for l1, l2 in zip(ltens1, ltens2):
@@ -62,7 +62,7 @@ def sumup(mpas, weights=None, target_bdim=None, max_bdim=None,
 
     if length == 1:
         # The code below assumes at least two sites.
-        return mp.MPArray((sum(w * mpa[0] for w, mpa in zip(weights, mpas)),))
+        return mp.MPArray((sum(w * mpa.lt[0] for w, mpa in zip(weights, mpas)),))
 
     assert all(mpa.bdim == 1 for mpa in mpas)
     return _sum_n_compress(mpas, weights, 1, target_bdim, max_bdim, compargs)
@@ -86,7 +86,7 @@ def _sum_n_compress(mpas, weights, current_bdim, target_bdim, max_bdim, compargs
     length = len(mpas[0])
     # no subpartition ne
     if (max_bdim is None) or (len(mpas) * current_bdim <= max_bdim):
-        ltensiter = [iter(mpa) for mpa in mpas]
+        ltensiter = [iter(mpa.lt) for mpa in mpas]
         if weights is None:
             ltens = [np.concatenate([next(lt) for lt in ltensiter], axis=-1)]
         else:

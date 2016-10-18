@@ -200,7 +200,7 @@ def reductions_mpo(mpa, width=None, startsites=None, stopsites=None):
         except KeyError:
             rem = get_remainder(rem_cache, num_sites - 1, end)
             last_pos = num_sites - 1 if end == 1 else -num_sites
-            add = np.trace(mpa[last_pos], axis1=1, axis2=2)
+            add = np.trace(mpa.lt[last_pos], axis1=1, axis2=2)
             if end == -1:
                 rem, add = add, rem
 
@@ -213,9 +213,7 @@ def reductions_mpo(mpa, width=None, startsites=None, stopsites=None):
         # multiplication would have side effects. We could make the
         # affected arrays read-only to turn unnoticed side effects into
         # errors.
-        # Is there something like a "lazy copy" or "copy-on-write"-copy?
-        # I believe not.
-        ltens = [lten.copy() for lten in mpa[start:stop]]
+        ltens = [lten for lten in mpa.lt[start:stop]]
         rem = get_remainder(rem_left, start, 1)
         ltens[0] = matdot(rem, ltens[0])
         rem = get_remainder(rem_right, num_sites - stop, -1)
@@ -241,13 +239,13 @@ def reductions_pmps(pmps, width=None, startsites=None, stopsites=None):
         pmps.normalize(left=start, right=stop)
 
         # leftmost site
-        lten = pmps[start]
+        lten = pmps.lt[start]
         left_bd, system, ancilla, right_bd = lten.shape
         newshape = (1, system, left_bd * ancilla, right_bd)
-        ltens = [lten.swapaxes(0, 1).copy().reshape(newshape)]
+        ltens = [lten.swapaxes(0, 1).reshape(newshape)]
 
         # central sites and last site
-        ltens += (lten.copy() for lten in pmps[start + 1:stop])
+        ltens += (lten for lten in pmps.lt[start + 1:stop])
 
         # fix up the last site -- may be the same as the first site
         left_bd, system, ancilla, right_bd = ltens[-1].shape
@@ -311,7 +309,7 @@ def mps_to_pmps(mps):
 
     """
     assert_array_equal(mps.plegs, 1)
-    ltens = (lten.reshape(lten.shape[0:2] + (1, lten.shape[2])) for lten in mps)
+    ltens = (lten.reshape(lten.shape[0:2] + (1, lten.shape[2])) for lten in mps.lt)
     return mp.MPArray(ltens)
 
 
