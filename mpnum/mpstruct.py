@@ -3,7 +3,7 @@
 from __future__ import absolute_import, division, print_function
 
 import itertools as it
-import numpy as np
+import collections
 
 from six.moves import range, zip
 
@@ -33,41 +33,11 @@ class LocalTensors(object):
             for i, (ten, nten) in enumerate(zip(self._ltens[:-1], self._ltens[1:])):
                 assert ten.shape[-1] == nten.shape[0]
 
-    def update(self, index, tens, normalization=None, unsafe=False):
-        """Replaces the local tensor at position `index` with the tensor `tens`.
-        by an in-place update
+    def _update(self, index, tens, normalization=None):
+        """ Actually updates
 
-        :param index: Position of the tensor in the chain
-        :param tens: New local tensor as numpy.ndarray
-        :param normalization: If `tens` is left-/right-normalized, pass `'left'`
-            /`'right'`, respectively. Otherwise, pass `None` (default `None`)
-        :returns: @todo
-
+        For parameters see :func:`update`.
         """
-        if isinstance(index, slice):
-            indices = index.indices(len(self))
-            # In Python 3, we can do range(*indices).start etc. Python 2 compat:
-            start, stop, step = indices
-            if (not unsafe) and step == 1:
-                # Allow bond dimension changes if multiple consecutive
-                # local tensors are changed. Callers should switch to
-                # unsafe=True if the checks are too time-consuming.
-                tens = list(tens)
-                assert self[start].shape[0] == tens[0].shape[0]
-                assert all(t.shape[-1] == u.shape[0] for t, u in zip(
-                    tens[:-1], tens[1:]))
-                assert self[stop - 1].shape[-1] == tens[-1].shape[-1]
-                unsafe = True
-            for ten, pos in zip(tens, range(*indices)):
-                self.update(pos, ten, normalization, unsafe=unsafe)
-            return
-
-        current = self._ltens[index]
-        if not unsafe:
-            assert tens.ndim >= 2
-            assert current.shape[0] == tens.shape[0]
-            assert current.shape[-1] == tens.shape[-1]
-
         self._ltens[index] = tens
         # If a normalized tensor is set next to a normalized slice,
         # the size of the normalized slice will increase by one
@@ -83,6 +53,41 @@ class LocalTensors(object):
             # normalized slices may decrease.
             self._lnormalized = min(index, self._lnormalized)
             self._rnormalized = max(index + 1, self._rnormalized)
+
+    def update(self, index, tens, normalization=None):
+        """Replaces the local tensor at position `index` with the tensor `tens`.
+        by an in-place update
+
+        :param index: Position of the tensor in the chain
+        :param tens: New local tensor as numpy.ndarray
+        :param normalization: If `tens` is left-/right-normalized, pass `'left'`
+            /`'right'`, respectively. Otherwise, pass `None` (default `None`)
+
+        """
+        if isinstance(index, slice):
+            indices = index.indices(len(self))
+            # In Python 3, we can do range(*indices).start etc. Python 2 compat:
+            start, stop, step = indices
+            # Allow bond dimension changes if multiple consecutive
+            # local tensors are changed. Callers should switch to
+            tens = list(tens)
+            assert self[start].shape[0] == tens[0].shape[0]
+            assert all(t.shape[-1] == u.shape[0] for t, u in zip(
+                tens[:-1], tens[1:]))
+            assert self[stop - 1].shape[-1] == tens[-1].shape[-1]
+
+            if not isinstance(normalization, collections.Sequence):
+                normalization = it.repeat(normalization)
+
+            for ten, pos, norm in zip(tens, range(*indices), normalization):
+                self._update(pos, ten, normalization=norm)
+
+        else:
+            current = self._ltens[index]
+            assert tens.ndim >= 2
+            assert current.shape[0] == tens.shape[0]
+            assert current.shape[-1] == tens.shape[-1]
+            self._update(index, tens, normalization=normalization)
 
     def __len__(self):
         return len(self._ltens)

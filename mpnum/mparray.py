@@ -649,9 +649,10 @@ class MPArray(object):
             q, r = qr(ltens.reshape((-1, ltens.shape[-1])))
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
             # can be accounted by adapting bond dimension here
-            self._lt.update(site, q.reshape(ltens.shape[:-1] + (-1,)),
-                            normalization='left', unsafe=True)
-            self._lt.update(site + 1, matdot(r, self._lt[site + 1]), unsafe=True)
+            newtens = (q.reshape(ltens.shape[:-1] + (-1,)),
+                       matdot(r, self._lt[site + 1]))
+            self._lt.update(slice(site, site + 2), newtens,
+                            normalization=('left', None))
 
     def _rnormalize(self, to_site):
         """Right-normalizes all local tensors _ltens[to_site:] in place
@@ -668,9 +669,10 @@ class MPArray(object):
             q, r = qr(ltens.reshape((ltens.shape[0], -1)).T)
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
             # can be accounted by adapting bond dimension here
-            self._lt.update(site, q.T.reshape((-1,) + ltens.shape[1:]),
-                            normalization='right', unsafe=True)
-            self._lt.update(site - 1, matdot(self._lt[site - 1], r.T), unsafe=True)
+            newtens = (matdot(self._lt[site - 1], r.T),
+                       q.T.reshape((-1,) + ltens.shape[1:]))
+            self._lt.update(slice(site - 1, site + 1), newtens,
+                            normalization=(None, 'right'))
 
     def compress(self, method='svd', **kwargs):
         r"""Compress `self`, modifying it in-place.
@@ -864,11 +866,10 @@ class MPArray(object):
             bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
             bdim_t = min(ltens.shape[0], v.shape[0], bdim, bdim_relerr)
 
-            newshape = (bdim_t, ) + ltens.shape[1:]
-            self._lt.update(site, v[:bdim_t, :].reshape(newshape),
-                            normalization='right', unsafe=True)
-            ltens_l = matdot(self._lt[site - 1], u[:, :bdim_t] * sv[None, :bdim_t])
-            self._lt.update(site - 1, ltens_l, unsafe=True)
+            newtens = (matdot(self._lt[site - 1], u[:, :bdim_t] * sv[None, :bdim_t]),
+                       v[:bdim_t, :].reshape((bdim_t, ) + ltens.shape[1:]))
+            self._lt.update(slice(site - 1, site + 1), newtens,
+                            normalization=(None, 'right'))
 
         return np.sum(np.abs(self._lt[0])**2)
 
@@ -891,11 +892,10 @@ class MPArray(object):
             bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
             bdim_t = min(ltens.shape[-1], u.shape[1], bdim, bdim_relerr)
 
-            newshape = ltens.shape[:-1] + (bdim_t, )
-            self._lt.update(site, u[:, :bdim_t].reshape(newshape),
-                            normalization='left', unsafe=True)
-            ltens_r = matdot(sv[:bdim_t, None] * v[:bdim_t, :], self._lt[site + 1])
-            self._lt.update(site + 1, ltens_r, unsafe=True)
+            newtens = (u[:, :bdim_t].reshape(ltens.shape[:-1] + (bdim_t, )),
+                       matdot(sv[:bdim_t, None] * v[:bdim_t, :], self._lt[site + 1]))
+            self._lt.update(slice(site, site + 2), newtens,
+                            normalization=('left', None))
 
         return np.sum(np.abs(self._lt[-1])**2)
 
