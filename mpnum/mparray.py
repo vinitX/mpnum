@@ -461,7 +461,7 @@ class MPArray(object):
         axes = (tuple(range(1, plegs + 1)) if ax is None
                 else tuple(a + 1 for a in ax)
                 for ax, plegs in zip(axes, self.plegs))
-        out = type(self)(lt.sum(ax) for ax, lt in zip(axes, self))
+        out = type(self)(lt.sum(ax) for ax, lt in zip(axes, self.lt))
         if sum(out.plegs) == 0:
             out = out.to_array()
         return out
@@ -1285,9 +1285,10 @@ def inject(mpa, pos, num=None, inject_ten=None):
         """num[i] is None requires a list of tensors at inject_ten[i]"""
     assert all(begin < end for begin, end in zip(pos[:-1], pos[1:]))
     pos = (0,) + pos + (len(mpa),)
-    pieces = tuple(mpa[begin:end] for begin, end in zip(pos[:-1], pos[1:]))
+    pieces = tuple(tuple(mpa.lt[begin:end])
+                   for begin, end in zip(pos[:-1], pos[1:]))
     bdims = (l[-1].shape[-1] if l else 1 for l in pieces[:-1])
-    pdims = (r[0].shape[1] if r else mpa[-1].shape[1] for r in pieces[1:])
+    pdims = (r[0].shape[1] if r else mpa.lt[-1].shape[1] for r in pieces[1:])
     inject_ten = (
         (
             np.rollaxis(np.tensordot(
