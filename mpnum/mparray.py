@@ -1551,7 +1551,7 @@ def embed_slice(length, slice_, mpa, embed_tensor=None):
     embed_ltens = _embed_ltens_identity(mpa, embed_tensor)
     left = it.repeat(embed_ltens, times=start)
     right = it.repeat(embed_ltens, times=length - stop)
-    return MPArray(it.chain(left, mpa, right))
+    return MPArray(it.chain(left, mpa.lt, right))
 
 
 def _local_sum_identity(mpas, embed_tensor=None):
@@ -1802,9 +1802,12 @@ def _ltens_to_array(ltens):
 
     """
     ltens = ltens if isinstance(ltens, collections.Iterator) else iter(ltens)
-    res = next(ltens)
+    res = first = next(ltens)
     for tens in ltens:
         res = matdot(res, tens)
+    if res is first:
+        # Always return a writable array, even if len(ltens) == 1.
+        res = res.copy()
     return res
 
 
