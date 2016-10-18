@@ -100,7 +100,7 @@ class MPArray(object):
     def __len__(self):
         return len(self._lt)
 
-    def get_phys(self, pind):
+    def get_phys(self, pind, astype=None):
         """Fix values for first physical leg
 
         :param pind: Length `len(self)` sequence of index values for
@@ -109,7 +109,9 @@ class MPArray(object):
 
         """
         assert len(pind) == len(self)
-        return type(self)(lt[:, i, ..., :] for i, lt in zip(pind, self._lt))
+        if astype is None:
+            astype = type(self)
+        return astype(lt[:, i, ..., :] for i, lt in zip(pind, self._lt))
 
     @property
     def lt(self):

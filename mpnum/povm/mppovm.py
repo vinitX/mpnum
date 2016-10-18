@@ -335,8 +335,8 @@ class MPPovm(mp.MPArray):
         >>> import mpnum.povm as mpp
         >>> x, y = (mpp.MPPovm.from_local_povm(lp(3), 1) for lp in
         ...         (mpp.x_povm, mpp.y_povm))
-        >>> xy = mpp.MPPovm(mp.outer((x, y)))
-        >>> xyxyx = mpp.MPPovm(mp.outer((x, y, x, y, x)))
+        >>> xy = mp.outer([x, y])
+        >>> xyxyx = mp.outer([x, y, x, y, x])
         >>> mp.norm(xyxyx - xy.repeat(5)) <= 1e-10
         True
 
@@ -1072,13 +1072,13 @@ class MPPovmList:
         >>> x, y = (mpp.MPPovm.from_local_povm(lp(ldim), 1) for lp in
         ...         (mpp.x_povm, mpp.y_povm))
         >>> e = mpp.MPPovm.eye([ldim])
-        >>> xx = mpp.MPPovm(mp.outer((x, x)))
-        >>> xy = mpp.MPPovm(mp.outer((x, y)))
+        >>> xx = mp.outer([x, x])
+        >>> xy = mp.outer([x, y])
         >>> mppl = mpp.MPPovmList((xx, xy))
-        >>> xxe = mpp.MPPovm(mp.outer((x, x, e)))
-        >>> xye = mpp.MPPovm(mp.outer((x, y, e)))
-        >>> exx = mpp.MPPovm(mp.outer((e, x, x)))
-        >>> exy = mpp.MPPovm(mp.outer((e, x, y)))
+        >>> xxe = mp.outer([x, x, e])
+        >>> xye = mp.outer([x, y, e])
+        >>> exx = mp.outer([e, x, x])
+        >>> exy = mp.outer([e, x, y])
         >>> expect = (xxe, xye, exx, exy)
         >>> [abs(mp.norm(a - b)) <= 1e-10
         ...  for a, b in zip(mppl.block(3).mpps, expect)]
@@ -1345,7 +1345,7 @@ class MPPovmList:
 
 
 def pauli_mpp(nr_sites, local_dim):
-    """Pauli POVM tensor product as MP-POVM
+    r"""Pauli POVM tensor product as MP-POVM
 
     The resulting MP-POVM will contain all tensor products of the
     elements of the local Pauli POVM from :func:`mpp.pauli_povm()`.
@@ -1362,7 +1362,8 @@ def pauli_mpp(nr_sites, local_dim):
     >>> pauli = pauli_mpp(nr_sites, local_dim)
     >>> xy = np.kron([1, -1], [1, -1j]) / 2
     >>> xyproj = np.outer(xy, xy.conj())
-    >>> proj = pauli[1, 3].to_array_global().reshape((4, 4))
+    >>> proj = pauli.get_phys([1, 3], astype=mp.MPArray) \
+    ...             .to_array_global().reshape((4, 4))
     >>> abs(proj - xyproj / 3**nr_sites).max() <= 1e-10
     True
 
