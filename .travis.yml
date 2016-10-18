@@ -38,3 +38,5 @@ install:
 
 script:
     - travis_wait 10 bash tests/travis.sh
+after_success:
+    coveralls

@@ -75,9 +75,6 @@ class MPArray(object):
               including each new `MPArray` instance, must take
               copies. Is this correct?
 
-    .. todo:: :func:`MPArray.copy()` adheres to the model from the
-              last item. Check whether this is the case everywhere.
-
     .. todo:: If we enable all special members (e.g. `__len__`) to be
               shown, we get things like `__dict__` with very long
               contents. Therefore, special members are hidden at the
@@ -491,6 +488,7 @@ class MPArray(object):
         :returns: Reshaped MPA
 
         """
+        # TODO Why is this here? What's wrong with the purne function?
         if newshapes == 'prune':
             newshapes = (tuple(s for s in pdim if s > 1) for pdim in self.pdims)
 
@@ -703,9 +701,10 @@ class MPArray(object):
             q, r = qr(ltens.reshape((-1, ltens.shape[-1])))
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
             # can be accounted by adapting bond dimension here
-            self._lt.update(site, q.reshape(ltens.shape[:-1] + (-1,)),
-                            normalization='left', unsafe=True)
-            self._lt.update(site + 1, matdot(r, self._lt[site + 1]), unsafe=True)
+            newtens = (q.reshape(ltens.shape[:-1] + (-1,)),
+                       matdot(r, self._lt[site + 1]))
+            self._lt.update(slice(site, site + 2), newtens,
+                            normalization=('left', None))
 
     def _rnormalize(self, to_site):
         """Right-normalizes all local tensors _ltens[to_site:] in place
@@ -722,9 +721,10 @@ class MPArray(object):
             q, r = qr(ltens.reshape((ltens.shape[0], -1)).T)
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
             # can be accounted by adapting bond dimension here
-            self._lt.update(site, q.T.reshape((-1,) + ltens.shape[1:]),
-                            normalization='right', unsafe=True)
-            self._lt.update(site - 1, matdot(self._lt[site - 1], r.T), unsafe=True)
+            newtens = (matdot(self._lt[site - 1], r.T),
+                       q.T.reshape((-1,) + ltens.shape[1:]))
+            self._lt.update(slice(site - 1, site + 1), newtens,
+                            normalization=(None, 'right'))
 
     def compress(self, method='svd', **kwargs):
         r"""Compress `self`, modifying it in-place.
@@ -764,7 +764,7 @@ class MPArray(object):
         :returns: Inner product :math:`\langle u \vert c \rangle \in
             (0, \infty)` of the original u and its compression c.
 
-        :param method: 'svd', 'svdsweep' or 'var'
+        :param method: 'svd' or 'var'
 
         .. rubric:: Parameters for 'svd':
 
@@ -779,9 +779,6 @@ class MPArray(object):
             (inverse) or `None` (choose depending on
             normalization). Default `None`.
 
-        .. rubric:: Parameters for 'svdsweep':
-
-        TODO
 
         .. rubric:: Parameters for 'var':
 
@@ -810,8 +807,6 @@ class MPArray(object):
         """
         if method == 'svd':
             return self._compress_svd(**kwargs)
-        elif method == 'swdsweep':
-            pass
         elif method == 'var':
             compr, overlap = self._compression_var(**kwargs)
             self._lt = compr._lt
@@ -861,29 +856,6 @@ class MPArray(object):
 
         raise ValueError('{} is not a valid direction'.format(direction))
 
-    def _compress_svdsweep(self, stages=None, bdim=None, relerr=0.0,
-                          num_sweeps=1):
-        """Compresses the MPA by sweeping & iterative SVD compression
-
-        :param stages: Iterator of (bdim, relerr) for iterative compression;
-            if None is passed, it is created from the following parameters
-        :param bdim: Maximal final bond dimension for the compressed MPA
-            (default max of current bond dimensions, i.e. no compression)
-        :param relerr: Maximal allowed final error for each truncation step,
-            that is the fraction of truncated singular values over their sum
-            (default 0.0, i.e. no compression)
-        :param num_sweeps: Number of distinct stages
-
-        """
-        if stages is None:
-            bdim = max(self.bdims) if bdim is None else bdim
-            bdims = np.linspace(bdim, max(self.bdims), num_sweeps,
-                                endpoint=False, dtype=int)
-            stages = [(bd, relerr / num_sweeps) for bd in bdims]
-        stages = reversed(sorted(stages))
-        for bdim, relerr in stages:
-            self._compress_svd(bdim, relerr)
-
     def _compression_var(self, startmpa=None, bdim=None, randstate=np.random,
                          num_sweeps=5, var_sites=1):
         """Return a compression from variational compression [Sch11_,
@@ -925,33 +897,6 @@ class MPArray(object):
         compr = compr.reshape(shape)
         return compr, overlap
 
-    def _compress_svd_r(self, bdim, relerr):
-        """Compresses the MPA in place from left to right using SVD;
-        yields a left-canonical state
-
-        See :func:`MPArray.compress` for parameters
-        """
-        assert self.normal_form == (0, 1)
-        assert bdim > 0, "Cannot compress to bdim={}".format(bdim)
-        assert (0. <= relerr) and (relerr <= 1.), \
-            "Relerr={} not allowed".format(relerr)
-
-        for site in range(len(self) - 1):
-            ltens = self._lt[site]
-            u, sv, v = svd(ltens.reshape((-1, ltens.shape[-1])))
-
-            svsum = np.cumsum(sv) / np.sum(sv)
-            bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
-            bdim_t = min(ltens.shape[-1], u.shape[1], bdim, bdim_relerr)
-
-            newshape = ltens.shape[:-1] + (bdim_t, )
-            self._lt.update(site, u[:, :bdim_t].reshape(newshape),
-                            normalization='left', unsafe=True)
-            ltens_r = matdot(sv[:bdim_t, None] * v[:bdim_t, :], self._lt[site + 1])
-            self._lt.update(site + 1, ltens_r, unsafe=True)
-
-        return np.sum(np.abs(self._lt[-1])**2)
-
     def _compress_svd_l(self, bdim, relerr):
         """Compresses the MPA in place from right to left using SVD;
         yields a right-canonical state
@@ -973,13 +918,38 @@ class MPArray(object):
             bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
             bdim_t = min(ltens.shape[0], v.shape[0], bdim, bdim_relerr)
 
-            newshape = (bdim_t, ) + ltens.shape[1:]
-            self._lt.update(site, v[:bdim_t, :].reshape(newshape),
-                            normalization='right', unsafe=True)
-            ltens_l = matdot(self._lt[site - 1], u[:, :bdim_t] * sv[None, :bdim_t])
-            self._lt.update(site - 1, ltens_l, unsafe=True)
+            newtens = (matdot(self._lt[site - 1], u[:, :bdim_t] * sv[None, :bdim_t]),
+                       v[:bdim_t, :].reshape((bdim_t, ) + ltens.shape[1:]))
+            self._lt.update(slice(site - 1, site + 1), newtens,
+                            normalization=(None, 'right'))
 
         return np.sum(np.abs(self._lt[0])**2)
+
+    def _compress_svd_r(self, bdim, relerr):
+        """Compresses the MPA in place from left to right using SVD;
+        yields a left-canonical state
+
+        See :func:`MPArray.compress` for parameters
+        """
+        assert self.normal_form == (0, 1)
+        assert bdim > 0, "Cannot compress to bdim={}".format(bdim)
+        assert (0. <= relerr) and (relerr <= 1.), \
+            "Relerr={} not allowed".format(relerr)
+
+        for site in range(len(self) - 1):
+            ltens = self._lt[site]
+            u, sv, v = svd(ltens.reshape((-1, ltens.shape[-1])))
+
+            svsum = np.cumsum(sv) / np.sum(sv)
+            bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
+            bdim_t = min(ltens.shape[-1], u.shape[1], bdim, bdim_relerr)
+
+            newtens = (u[:, :bdim_t].reshape(ltens.shape[:-1] + (bdim_t, )),
+                       matdot(sv[:bdim_t, None] * v[:bdim_t, :], self._lt[site + 1]))
+            self._lt.update(slice(site, site + 2), newtens,
+                            normalization=('left', None))
+
+        return np.sum(np.abs(self._lt[-1])**2)
 
     #  Possible TODOs:
     #
@@ -1225,13 +1195,12 @@ def outer(mpas, astype=None):
 
     """
     # TODO Make this normalization aware
-    # FIXME Is copying here a good idea?
     mpas = iter(mpas)
     first = next(mpas)
-    rest = (lt.copy() for mpa in mpas for lt in mpa.lt)
+    rest = (lt for mpa in mpas for lt in mpa.lt)
     if astype is None:
         astype = type(first)
-    return astype(it.chain(first.lt.copy(), rest))
+    return astype(it.chain(first.lt, rest))
 
 
 def diag(mpa, axis=0):
