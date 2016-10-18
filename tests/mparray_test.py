@@ -466,7 +466,7 @@ def test_operations_typesafety(nr_sites, local_dim, bond_dim, rgen):
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_summp(nr_sites, local_dim, bond_dim, rgen, dtype):
+def test_sumup(nr_sites, local_dim, bond_dim, rgen, dtype):
     mpas = [factory.random_mpa(nr_sites, local_dim, 3, dtype=dtype, randstate=rgen)
             for _ in range(bond_dim if bond_dim is not np.nan else 1)]
     sum_naive = ft.reduce(mp.MPArray.__add__, mpas)

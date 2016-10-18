@@ -28,43 +28,65 @@ def test_iter_readonly():
         raise AssertionError("Iterator over ltens should be read only")
 
 
-def test_update_normalization():
-    ltens = factory.random_mpa(4, 2, 1).lt
-    tensor = np.array([0, 0])[None, :, None]
+UPDATE_N_SITES = 4
+@pt.mark.parametrize(
+    'mpa_norm',
+    [(lnorm, rnorm)
+     for rnorm in range(UPDATE_N_SITES) for lnorm in range(rnorm)])
+@pt.mark.parametrize('upd_pos', range(UPDATE_N_SITES))
+@pt.mark.parametrize('upd_norm', [None, 'left', 'right'])
+def test_update_normalization(mpa_norm, upd_pos, upd_norm, rgen,
+                              n_sites=UPDATE_N_SITES):
+    """Verify normalization after local tensor update
 
-    # Replacing in unnormalized tensor
-    ltens.update(0, tensor)
-    assert ltens.normal_form == (0, 4)
-    ltens.update(3, tensor)
-    assert ltens.normal_form == (0, 4)
+    We test two things:
+    1. The normalization info after update is what we expect 
+       (in some special cases, see `norm_expected`)
+    2. The normalization info is actually correct (in all cases)
 
-    # Replacing in left-normalized part with unnormalized tensor
-    ltens._lnormalized, ltens._rnormalized = (3, 4)
-    ltens.update(3, tensor)
-    assert ltens.normal_form == (3, 4)
-    ltens.update(0, tensor)
-    assert ltens.normal_form == (0, 4)
+    """
+    n_sites = UPDATE_N_SITES
+    ldim = 4
+    bdim = 3
+    mpa = factory.random_mpa(n_sites, ldim, bdim, rgen)
+    assert_correct_normalization(mpa, 0, n_sites)
 
-    # Replacing in right-normalized part with unnormalized tensor
-    ltens._lnormalized, ltens._rnormalized = (0, 1)
-    ltens.update(0, tensor)
-    assert ltens.normal_form == (0, 1)
-    ltens.update(3, tensor)
-    assert ltens.normal_form == (0, 4)
+    mpa.normalize(*mpa_norm)
+    assert_correct_normalization(mpa, *mpa_norm)
 
-    # Replacing in left-normalized part with normalized tensor
-    ltens._lnormalized, ltens._rnormalized = (3, 4)
-    ltens.update(2, tensor, normalization='left')
-    assert ltens.normal_form == (3, 4)
-    ltens.update(2, tensor, normalization='right')
-    assert ltens.normal_form == (2, 4)
+    dims = mpa.dims[upd_pos]
+    tensor = factory._zrandn(dims, rgen)
+    if upd_norm == 'left':
+        tensor = tensor.reshape((-1, dims[-1]))
+        tensor, _ = np.linalg.qr(tensor)
+        tensor = tensor.reshape(dims)
+    elif upd_norm == 'right':
+        tensor = tensor.reshape((dims[0], -1)).T
+        tensor, _ = np.linalg.qr(tensor)
+        tensor = tensor.T.reshape(dims)
 
-    # Replacing in right-normalized part with normalized tensor
-    ltens._lnormalized, ltens._rnormalized = (0, 1)
-    ltens.update(2, tensor, normalization='right')
-    assert ltens.normal_form == (0, 1)
-    ltens.update(2, tensor, normalization='left')
-    assert ltens.normal_form == (0, 3)
+    norm_expected = {
+        # Replacing in unnormalized tensor
+        (0, n_sites, 0, None): (0, 4),
+        (0, n_sites, 3, None): (0, 4),
+        # Replacing in left-normalized part with unnormalized tensor
+        (3, n_sites, 3, 'left'): (3, 4),
+        (3, n_sites, 0, 'left'): (0, 4),
+        # Replacing in right-normalized part with unnormalized tensor
+        (0, 1, 0, None): (0, 1),
+        (0, 1, 3, None): (0, 4),
+        # Replacing in left-normalized part with normalized tensor
+        (3, 4, 2, 'left'): (3, 4),
+        (3, 4, 2, 'right'): (2, 4),
+        # Replacing in right-normalized part with normalized tensor
+        (0, 1, 2, 'right'): (0, 1),
+        (0, 1, 2, 'left'): (0, 3),
+    }
+    expected = norm_expected.get((mpa_norm[0], mpa_norm[1], upd_pos, upd_norm),
+                                 ())
+
+    mpa.lt.update(upd_pos, tensor, upd_norm)
+    assert_correct_normalization(mpa, *expected)
 
 
 def test_getitem():

@@ -107,8 +107,16 @@ class MPArray(object):
     @property
     def size(self):
         """Returns the number of floating point numbers used to represent the
-        MPArray"""
-        return sum(np.prod(shape) for shape in self.dims)
+        MPArray
+
+        >>> from .factory import zero
+        >>> zero(sites=3, ldim=4, bdim=3).dims
+        ((1, 4, 3), (3, 4, 3), (3, 4, 1))
+        >>> zero(sites=3, ldim=4, bdim=3).size
+        60
+
+        """
+        return sum(lt.size for lt in self._lt)
 
     @property
     def dtype(self):
@@ -497,8 +505,8 @@ class MPArray(object):
 
         """
         ltens = list(self._lt)
-        ltens[pos] = ltens[pos].reshape(ltens[pos].shape + (1,))
-        ltens[pos + 1] = ltens[pos + 1].reshape((1,) + ltens[pos + 1].shape)
+        ltens[pos] = ltens[pos][..., None]
+        ltens[pos + 1] = ltens[pos + 1][None]
 
         lnormal, rnormal = self.normal_form
         new_normal_form = min(lnormal, pos), max(rnormal, pos + 2)
@@ -514,8 +522,8 @@ class MPArray(object):
         ltens = list(self._lt)
         assert ltens[pos].shape[-1] == 1
         assert ltens[pos + 1].shape[0] == 1
-        ltens[pos] = ltens[pos].reshape(ltens[pos].shape[:-1])
-        ltens[pos + 1] = ltens[pos + 1].reshape(ltens[pos + 1].shape[1:])
+        ltens[pos] = ltens[pos][..., 0]
+        ltens[pos + 1] = ltens[pos + 1][0]
 
         lnormal, rnormal = self.normal_form
         new_normal_form = min(lnormal, pos), max(rnormal, pos + 1)
@@ -638,11 +646,10 @@ class MPArray(object):
         lnormal, rnormal = self._lt.normal_form
         for site in range(lnormal, to_site):
             ltens = self._lt[site]
-            matshape = (np.prod(ltens.shape[:-1]), ltens.shape[-1])
-            q, r = qr(ltens.reshape(matshape))
+            q, r = qr(ltens.reshape((-1, ltens.shape[-1])))
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
             # can be accounted by adapting bond dimension here
-            self._lt.update(site, q.reshape(ltens.shape[:-1] + (-1, )),
+            self._lt.update(site, q.reshape(ltens.shape[:-1] + (-1,)),
                             normalization='left', unsafe=True)
             self._lt.update(site + 1, matdot(r, self._lt[site + 1]), unsafe=True)
 
@@ -658,11 +665,10 @@ class MPArray(object):
         lnormal, rnormal = self.normal_form
         for site in range(rnormal - 1, to_site - 1, -1):
             ltens = self._lt[site]
-            matshape = (ltens.shape[0], np.prod(ltens.shape[1:]))
-            q, r = qr(ltens.reshape(matshape).T)
+            q, r = qr(ltens.reshape((ltens.shape[0], -1)).T)
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
             # can be accounted by adapting bond dimension here
-            self._lt.update(site, q.T.reshape((-1, ) + ltens.shape[1:]),
+            self._lt.update(site, q.T.reshape((-1,) + ltens.shape[1:]),
                             normalization='right', unsafe=True)
             self._lt.update(site - 1, matdot(self._lt[site - 1], r.T), unsafe=True)
 
@@ -1581,8 +1587,7 @@ def _extract_factors(tens, plegs):
     elif tens.ndim < current + 2:
         raise AssertionError("Number of remaining legs insufficient.")
     else:
-        unitary, rest = qr(tens.reshape((np.prod(tens.shape[:current + 1]),
-                                         np.prod(tens.shape[current + 1:]))))
+        unitary, rest = qr(tens.reshape((np.prod(tens.shape[:current + 1]), -1)))
 
         unitary = unitary.reshape(tens.shape[:current + 1] + rest.shape[:1])
         rest = rest.reshape(rest.shape[:1] + tens.shape[current + 1:])
@@ -1633,6 +1638,9 @@ def _local_add(ltenss):
     #      for lt in ltenss[1:]:
     #          assert_array_equal(shape[1:-1], lt.shape[1:-1])
 
+    # FIXME: Find out whether the following code does the same as
+    # :func:`block_diag()` used by :func:`_local_sum_identity` and
+    # which implementation is faster if so.
     newshape = (sum(lt.shape[0] for lt in ltenss), )
     newshape += shape[1:-1]
     newshape += (sum(lt.shape[-1] for lt in ltenss), )
@@ -1841,7 +1849,14 @@ def full_bdim(ldims):
     :param ldims: @todo
     :returns: @todo
 
+    >>> full_bdim([3] * 5)
+    [3, 9, 9, 3]
+    >>> full_bdim([2] * 8)
+    [2, 4, 8, 16, 8, 4, 2]
+    >>> full_bdim([(2, 3)] * 4)
+    [6, 36, 6]
+
     """
-    ldims_raveled = list(np.prod(ldim) for ldim in ldims)
+    ldims_raveled = [np.prod(ldim) for ldim in ldims]
     return [min(np.prod(ldims_raveled[:cut]), np.prod(ldims_raveled[cut:]))
             for cut in range(1, len(ldims))]
