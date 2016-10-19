@@ -1651,14 +1651,17 @@ def local_sum(mpas, embed_tensor=None, length=None, slices=None):
     :returns: An MPA.
 
     """
+    # Check whether we can fall back to :func:`_local_sum_identity`
+    # even though `slices` is given.
+    if slices is not None:
+        assert length is not None
+        slices = tuple(slices)
+        reg = regular_slices(length, slices[0].stop - slices[0].start, offset=1)
+        if all(s == t for s, t in zip_longest(slices, reg)):
+            slices = None
+    # If `slices` is not given, use :func:`_local_sum_identity`.
     if slices is None:
         return _local_sum_identity(tuple(mpas), embed_tensor)
-
-    assert length is not None
-    slices = tuple(slices)
-    reg = regular_slices(length, slices[0].stop - slices[0].start, offset=1)
-    if all(s == t for s, t in zip_longest(slices, reg)):
-        slices = None
 
     mpas = (embed_slice(length, slice_, mpa, embed_tensor)
             for mpa, slice_ in zip(mpas, slices))
