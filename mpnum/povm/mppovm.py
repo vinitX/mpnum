@@ -145,6 +145,21 @@ import mpnum.mpsmpo as mpsmpo
 from mpnum._tools import check_pmf
 
 
+class _MPSCC:
+
+    "Represent a mixed state as convex combination of pure MPS (experimental)"
+
+    def __init__(self, weights, mps, eps=1e-10):
+        assert weights.dtype.kind == 'f'
+        assert abs(weights.sum() - 1.0) <= eps
+        assert all(len(m) == len(mps[0]) for m in mps)
+        self.weights = weights
+        self.mps = mps
+
+    def __len__(self):
+        return len(self.mps[0])
+
+
 class MPPovm(mp.MPArray):
     """MPArray representation of multipartite POVM
 
@@ -383,6 +398,18 @@ class MPPovm(mp.MPArray):
                 rho_red = mpsmpo.pmps_to_mpo(psi_red)
                 yield mp.dot(pmap, rho_red.ravel())
             return
+        elif mode == 'mpscc':
+            # TODO Refactor in order to avoid the "to_array()/weighted
+            # sum/from_array()" sequence in this part.
+            assert isinstance(mpa, _MPSCC)
+            out = [0.0] * (len(mpa.mps[0]) - len(self) + 1)
+            for weight, mps in zip(mpa.weights, mpa.mps):
+                reds = mpsmpo.reductions_mps_as_pmps(mps, len(self))
+                for pos, red in zip(it.count(), reds):
+                    red = mpsmpo.pmps_to_mpo(red)
+                    out[pos] += weight * mp.dot(pmap, red.ravel()).to_array()
+            for pmf in out:
+                yield mp.MPArray.from_array(pmf, plegs=1)
         else:
             raise ValueError("Could not understand data dype.")
 
