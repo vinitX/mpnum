@@ -33,6 +33,34 @@ def inner_prod_mps(mpa1, mpa2):
     return res[0, 0]
 
 
+def sumup2(mpas, weights=None, max_bdim=None, compargs=None,
+           min_overlap=None):
+    mpas = list(mpas)
+    if len(mpas) == 1:
+        return mpas[0] if weights is None else weights[0] * mpas[0]
+    weights_now = None
+    out = []
+    bdims = np.array([m.bdims for m in mpas])
+    old_n = len(mpas)
+    while mpas:
+        cbdims = np.cumsum(bdims, axis=0)
+        n = np.nonzero((cbdims <= max_bdim).all(axis=1))[0][-1] + 1
+        mpas_now, mpas = mpas[:n], mpas[n:]
+        bdims = bdims[n:]
+        if weights is not None:
+            weights_now, weights = weights[:n], weights[n:]
+        s = mp.sumup(mpas_now, weights_now)
+        s_norm = mp.norm(s)
+        overlap = abs(s.compress(**compargs))
+        s_norm2 = mp.norm(s)
+        overlap /= s_norm * s_norm2
+        if min_overlap is not None:
+            assert overlap >= min_overlap
+        s *= s_norm / s_norm2
+        out.append(s)
+    return sumup2(out, None, max_bdim, compargs, min_overlap)
+
+
 def sumup(mpas, weights=None, target_bdim=None, max_bdim=None,
           compargs={'method': 'svd'}):
     """Same as :func:`mparray.sumup`, but with extended weighting & compression
