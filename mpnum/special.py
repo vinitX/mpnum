@@ -49,15 +49,19 @@ def sumup2(mpas, weights=None, max_bdim=None, compargs=None,
         bdims = bdims[n:]
         if weights is not None:
             weights_now, weights = weights[:n], weights[n:]
+        print('summing', n, 'mps')
         s = mp.sumup(mpas_now, weights_now)
         s_norm = mp.norm(s)
         overlap = abs(s.compress(**compargs))
         s_norm2 = mp.norm(s)
         overlap /= s_norm * s_norm2
         if min_overlap is not None:
+            print('observed / minimal overl:', overlap, min_overlap)
+            print('observed / maximal error:', 1 - overlap, 1 - min_overlap)
             assert overlap >= min_overlap
         s *= s_norm / s_norm2
         out.append(s)
+    print('sumup2', old_n, '->', len(out), 'with bdim', [m.bdim for m in out])
     return sumup2(out, None, max_bdim, compargs, min_overlap)
 
 
