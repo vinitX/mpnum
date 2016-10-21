@@ -374,6 +374,12 @@ def mps_to_pmps(mps):
     return mp.MPArray(ltens)
 
 
+def pmps_to_mps(pmps):
+    assert all(l == 2 for l in pmps.plegs)
+    assert all(d[1] == 1 for d in pmps.pdims)
+    return pmps.reshape([(d[0],) for d in pmps.pdims])
+
+
 def mps_to_mpo(mps):
     """Convert a pure MPS to a mixed state MPO.
 

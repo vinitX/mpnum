@@ -159,6 +159,24 @@ class _MPSCC:
     def __len__(self):
         return len(self.mps[0])
 
+    def to_pmps(self, norm_eps=1e-6, **kwargs):
+        from mpnum.special import sumup2
+        n = len(self.mps)
+        def basempa(ldim, i):
+            a = np.zeros([ldim])
+            a[i] = 1.0
+            return mp.MPArray.from_array(a[None, :], plegs=2)
+        pmps = (
+            mp.partialdot(mpsmpo.mps_to_pmps(mps), basempa(n, i), start_at=0)
+            for i, mps in enumerate(self.mps)
+        )
+        res = sumup2(pmps, self.weights**0.5, **kwargs)
+        n = mp.norm(res)
+        # Assumes input MPS were normalized
+        assert abs(n - 1.0) <= norm_eps
+        res /= n
+        return res
+
 
 class MPPovm(mp.MPArray):
     """MPArray representation of multipartite POVM
