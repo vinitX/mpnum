@@ -409,10 +409,8 @@ class MPPovm(mp.MPArray):
             assert isinstance(mpa, _MPSCC)
             out = [0.0] * (len(mpa.mps[0]) - len(self) + 1)
             for weight, mps in zip(mpa.weights, mpa.mps):
-                reds = mpsmpo.reductions_mps_as_pmps(mps, len(self))
-                for pos, red in zip(it.count(), reds):
-                    red = mpsmpo.pmps_to_mpo(red)
-                    out[pos] += weight * mp.dot(pmap, red.ravel()).to_array()
+                for pos, pmf in enumerate(self.expectations(mps, 'mps')):
+                    out[pos] += weight * pmf.to_array()
             for pmf in out:
                 yield mp.MPArray.from_array(pmf, plegs=1)
         else:
