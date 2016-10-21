@@ -385,6 +385,13 @@ class MPPovm(mp.MPArray):
         pmap = self.probability_map
 
         if mode == 'mps':
+            if len(self) == len(mpa):
+                # The transpose in pmap does not matter for the reshape
+                pmap = pmap.reshape(self.pdims)
+                # Avoid MPS-to-MPO conversion. Depending on the bond
+                # dimension, this can save a lot of runtime.
+                yield mp.dot(mp.dot(pmap, mpa.conj()), mpa)
+                return
             for psi_red in mpsmpo.reductions_mps_as_pmps(mpa, len(self)):
                 rho_red = mpsmpo.pmps_to_mpo(psi_red)
                 yield mp.dot(pmap, rho_red.ravel())

@@ -175,7 +175,7 @@ def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim, nopovm, rgen):
 
 
 @pt.mark.parametrize('nr_sites, width, local_dim, bond_dim',
-                     [(6, 3, 2, 5), (4, 2, 3, 4)])
+                     [(6, 3, 2, 5), (4, 2, 3, 4), (4, 4, 3, 3)])
 def test_mppovm_expectation_pure(nr_sites, width, local_dim, bond_dim, rgen):
     paulis = povm.pauli_povm(local_dim)
     mppaulis = povm.MPPovm.from_local_povm(paulis, width)
