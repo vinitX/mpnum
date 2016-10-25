@@ -16,6 +16,7 @@ from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
+import mpnum.mpsmpo as mm
 from mpnum import _tools
 from mpnum._testing import (assert_correct_normalization,
                             assert_mpa_almost_equal, assert_mpa_identical,
@@ -995,6 +996,33 @@ def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim, rgen):
     mpo *= scalar
     assert_array_almost_equal(scalar * op, mpo_to_global(mpo))
     assert_correct_normalization(mpo, center - 1, center)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_singularvals(nr_sites, local_dim, bond_dim, rgen):
+    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
+                             force_bdim=True)
+    mps /= mp.norm(mps.copy())
+    psi = mps.to_array()
+    # Start from a non-normalized state
+    assert mps.normal_form == (0, nr_sites)
+    svals = list(mps.singularvals())
+    if nr_sites == 1:
+        assert mps.normal_form == (0, 1)
+    else:
+        # The last local tensor update from _compress_svd_r() is not
+        # carried out. This behaviour may change.
+        assert mps.normal_form == (nr_sites - 2, nr_sites - 1)
+    assert len(svals) == nr_sites - 1
+    for n_left in range(1, nr_sites):
+        sv = svals[n_left - 1]
+        mat = psi.reshape((local_dim**n_left, -1))
+        sv2 = np.linalg.svd(mat, full_matrices=False, compute_uv=False)
+        n_sv = min(len(sv), len(sv2))
+        # Output from `svd()` is always in descending order
+        assert_almost_equal(sv[n_sv:], 0.0)
+        assert_almost_equal(sv2[n_sv:], 0.0)
+        assert_array_almost_equal(sv[:n_sv], sv2[:n_sv])
 
 
 #####################################

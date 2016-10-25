@@ -851,7 +851,9 @@ class MPArray(object):
 
         if direction == 'right':
             self.normalize(right=1)
-            return self._compress_svd_r(bdim, relerr)
+            for item in self._compress_svd_r(bdim, relerr):
+                pass
+            return item
         elif direction == 'left':
             self.normalize(left=len(self) - 1)
             return self._compress_svd_l(bdim, relerr)
@@ -945,13 +947,37 @@ class MPArray(object):
             svsum = np.cumsum(sv) / np.sum(sv)
             bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
             bdim_t = min(ltens.shape[-1], u.shape[1], bdim, bdim_relerr)
+            yield sv, bdim_t
 
             newtens = (u[:, :bdim_t].reshape(ltens.shape[:-1] + (bdim_t, )),
                        matdot(sv[:bdim_t, None] * v[:bdim_t, :], self._lt[site + 1]))
             self._lt.update(slice(site, site + 2), newtens,
                             normalization=('left', None))
 
-        return np.sum(np.abs(self._lt[-1])**2)
+        yield np.sum(np.abs(self._lt[-1])**2)
+
+    def singularvals(self):
+        """Return singular values for all bipartitions
+
+        :returns: Iterator over `np.ndarray`s with singular values for
+            1, 2, ... len(self) - 1 sites on left hand side of
+            bipartition
+
+        .. note:: May decrease the bond dimension (without changing
+            the represented tensor).
+
+        """
+        if len(self) == 1:
+            return  # No bipartitions with two non-empty parts for a single site
+        self.normalize(right=1)
+        iterator = self._compress_svd_r(self.bdim, 0.0)
+        # We want everything from the iterator except for the last element.
+        for _, (sv, bdim) in zip(range(len(self) - 1), iterator):
+            # We could verify that `bdim` did not decrease but it may
+            # decrease because of zero singular values -- let's trust
+            # that relerr=0.0 behaves as intended.
+            #assert old_bdim == bdim
+            yield sv
 
     #  Possible TODOs:
     #
