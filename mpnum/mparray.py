@@ -856,7 +856,9 @@ class MPArray(object):
             return item
         elif direction == 'left':
             self.normalize(left=len(self) - 1)
-            return self._compress_svd_l(bdim, relerr)
+            for item in self._compress_svd_l(bdim, relerr):
+                pass
+            return item
 
         raise ValueError('{} is not a valid direction'.format(direction))
 
@@ -921,13 +923,14 @@ class MPArray(object):
             svsum = np.cumsum(sv) / np.sum(sv)
             bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
             bdim_t = min(ltens.shape[0], v.shape[0], bdim, bdim_relerr)
+            yield sv, bdim_t
 
             newtens = (matdot(self._lt[site - 1], u[:, :bdim_t] * sv[None, :bdim_t]),
                        v[:bdim_t, :].reshape((bdim_t, ) + ltens.shape[1:]))
             self._lt.update(slice(site - 1, site + 1), newtens,
                             normalization=(None, 'right'))
 
-        return np.sum(np.abs(self._lt[0])**2)
+        yield np.sum(np.abs(self._lt[0])**2)
 
     def _compress_svd_r(self, bdim, relerr):
         """Compresses the MPA in place from left to right using SVD;
