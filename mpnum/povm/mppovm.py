@@ -705,6 +705,7 @@ class MPPovm(mp.MPArray):
 
         """
         pmf = mp.prune(self.pmf(state, mode), True).to_array()
+        pmf = check_pmf(pmf, eps, eps)
         n_out = np.prod(self.nsoutdims)
         if funs is not None:
             out = np.array(np.unravel_index(range(n_out), self.nsoutdims)) \
