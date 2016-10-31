@@ -754,8 +754,11 @@ class MPPovm(mp.MPArray):
             the expectation value
 
         """
-        pmf = mp.prune(self.pmf(state, mode), True).to_array()
-        pmf = check_pmf(pmf, eps, eps)
+        if mode == 'pmf_array':
+            pmf = state
+        else:
+            pmf = mp.prune(self.pmf(state, mode), True).to_array()
+            pmf = check_pmf(pmf, eps, eps)
         n_out = np.prod(self.nsoutdims)
         if funs is not None:
             out = np.array(np.unravel_index(range(n_out), self.nsoutdims)) \
@@ -1362,8 +1365,13 @@ class MPPovmList:
         if other_weights is None:
             other_weights = np.ones(len(other.mpps))
         coeff, funs = self._lfun_estimator(other, coeff, other_weights, eps)
+        if mode == 'pmf_array_list':
+            mode = 'pmf_array'
+            state = iter(state)
+        else:
+            state = it.repeat(state)
         est, var = zip(*(
-            mpp.lfun(np.array(c, float), f, state, mode, eps)
+            mpp.lfun(np.array(c, float), f, next(state), mode, eps)
             for mpp, c, f in zip(other.mpps, coeff, funs)))
         return sum(est), sum(var)
 
