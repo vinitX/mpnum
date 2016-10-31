@@ -878,8 +878,11 @@ class MPPovm(mp.MPArray):
            or (funs is not None and len(funs) == 0):
             return 0., 0.  # The empty sum is equal to zero with certainty.
 
-        pmf = mp.prune(self.pmf(state, mode), True).to_array()
-        pmf = check_pmf(pmf, eps, eps)
+        if mode == 'pmf_array':
+            pmf = state
+        else:
+            pmf = mp.prune(self.pmf(state, mode), True).to_array()
+            pmf = check_pmf(pmf, eps, eps)
         n_out = np.prod(self.nsoutdims)
         if funs is not None:
             out = np.array(np.unravel_index(range(n_out), self.nsoutdims)) \
@@ -1500,8 +1503,13 @@ class MPPovmList:
         # If a single probability cannot be computed, we cannot return anything.
         if any((n[c != 0.0] == 0).any() for n, c in zip(n_sam, coeff)):
             return np.nan, np.nan
+        if mode == 'pmf_array_list':
+            mode = 'pmf_array'
+            state = iter(state)
+        else:
+            state = it.repeat(state)
         est, var = zip(*(
-            mpp.lfun(np.array(c, float), f, state, mode, eps)
+            mpp.lfun(np.array(c, float), f, next(state), mode, eps)
             for mpp, c, f in zip(other.mpps, f_coeff, funs)))
         return sum(est), sum(var)
 
