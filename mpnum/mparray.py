@@ -471,7 +471,8 @@ class MPArray(object):
         axes = (tuple(range(1, plegs + 1)) if ax is None
                 else tuple(a + 1 for a in ax)
                 for ax, plegs in zip(axes, self.plegs))
-        out = type(self)(lt.sum(ax) for ax, lt in zip(axes, self.lt))
+        out = type(self)(lt.sum(ax) if ax else lt
+                         for ax, lt in zip(axes, self.lt))
         if sum(out.plegs) == 0:
             out = out.to_array()
         return out
