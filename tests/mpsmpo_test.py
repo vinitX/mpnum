@@ -25,6 +25,54 @@ def _get_reductions(red_fun, mpa, max_red_width):
     return start, stop, red_fun(mpa, startsites=start, stopsites=stop)
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', [(6, 2, 4), (4, 3, 5)])
+def test_pmps_dm_to_array(nr_sites, local_dim, bond_dim, rgen):
+    
+    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              randstate=rgen)
+    mpo = mm.pmps_to_mpo(pmps)
+    op = mpo.to_array()
+    op2 = mm.pmps_dm_to_array(pmps)
+    assert_array_almost_equal(op2, op)
+    op = mpo.to_array_global()
+    op2 = mm.pmps_dm_to_array(pmps, True)
+    assert_array_almost_equal(op2, op)
+
+
+@pt.mark.parametrize(
+    'nr_sites, local_dim, bond_dim, keep',
+    [(6, 2, 3, (1, 2, 4)), (4, 2, 3, (0, 2)), (4, 2, 3, (1, 3)),
+     (4, 2, 3, (1, 2)), (4, 2, 3, (0, 3))])
+def test_pmps_reduction(nr_sites, local_dim, bond_dim, keep, rgen):
+    
+    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              randstate=rgen)
+    pmps /= mp.norm(pmps)
+    rho = mm.pmps_to_mpo(pmps).to_array_global()
+    traceout = [pos for pos in range(nr_sites) if pos not in keep]
+    red = _tools.partial_trace(rho, traceout)
+    pmps_red = mm.pmps_reduction(pmps, keep)
+    red2 = mm.pmps_to_mpo(pmps_red).to_array_global()
+    red2 = red2.reshape([local_dim] * (2 * len(keep)))
+    assert_array_almost_equal(red2, red)
+
+
+@pt.mark.parametrize(
+    'nr_sites, local_dim, bond_dim, keep',
+    [(6, 2, 3, (1, 2, 4)), (4, 2, 3, (0, 2)), (4, 2, 3, (1, 3)),
+     (4, 2, 3, (1, 2)), (4, 2, 3, (0, 3))])
+def test_pmps_reduction_dm_to_array(nr_sites, local_dim, bond_dim, keep, rgen):
+    
+    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              randstate=rgen)
+    rho = mm.pmps_to_mpo(pmps).to_array_global()
+    traceout = [pos for pos in range(nr_sites) if pos not in keep]
+    red = _tools.partial_trace(rho, traceout)
+    pmps_red = mm.pmps_reduction(pmps, keep)
+    red2 = mm.pmps_dm_to_array(pmps_red, True)
+    assert_array_almost_equal(red2, red)
+
+
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, max_red_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_reductions_mpo(nr_sites, local_dim, bond_dim, max_red_width, rgen):

@@ -130,10 +130,11 @@ from numpy.testing import assert_array_equal
 from six.moves import range
 
 from . import mparray as mp
-from ._tools import matdot
+from ._tools import local_to_global, matdot
 
 
-__all__ = ['mps_to_mpo', 'mps_to_pmps', 'pmps_to_mpo', 'reductions_mpo',
+__all__ = ['mps_to_mpo', 'mps_to_pmps', 'pmps_dm_to_array',
+           'pmps_reduction', 'pmps_to_mpo', 'reductions_mpo',
            'reductions_mps_as_mpo', 'reductions_mps_as_pmps',
            'reductions_pmps']
 
@@ -155,6 +156,66 @@ def _check_reductions_args(nr_sites, width, startsites, stopsites):
         assert width is None
         assert startsites is not None
     return startsites, stopsites
+
+
+def pmps_dm_to_array(pmps, global_=False):
+    """Convert PMPS to full array representation of the density matrix
+
+    The runtime of this method scales with D**3 instead of D**6 where
+    D is the bond and D**6 is the scaling of using :func:`pmps_to_mpo`
+    and :func:`to_array`. This is useful for obtaining reduced states
+    of a PMPS on non-consecutive sites, as normalizing before using
+    :func:`pmps_to_mpo` may not be sufficient to reduce the bond
+    dimension in that case.
+
+    .. note:: The resulting array will have dimension-1 physical legs removed.
+
+    """
+    out = np.ones((1, 1, 1))
+    # Axes: 0 phys, 1 upper bond, 2 lower bond
+    for lt in pmps.lt:
+        out = np.tensordot(out, lt, axes=(1, 0))
+        # Axes: 0 phys, 1 lower bond, 2 phys, 3 anc, 4 upper bond
+        out = np.tensordot(out, lt.conj(), axes=((1, 3), (0, 2)))
+        # Axes: 0 phys, 1 phys, 2 upper bond, 3 phys, 4 lower bond
+        out = np.rollaxis(out, 3, 2)
+        # Axes: 0 phys, 1 phys, 2 phys, 3 upper bound, 4 lower bond
+        out = out.reshape((-1, out.shape[3], out.shape[4]))
+        # Axes: 0 phys, 1 upper bond, 2 lower bond
+    out_shape = [dim for dim, _ in pmps.pdims for rep in (1, 2) if dim > 1]
+    out = out.reshape(out_shape)
+    if global_:
+        assert len(set(out_shape)) == 1
+        out = local_to_global(out, sites=len(out_shape) // 2)
+    return out
+
+
+def pmps_reduction(pmps, support):
+    """Convert a PMPS to a PMPS representation of a local reduced state
+
+    :param support: Set of sites to keep
+
+    :returns: Sites traced out at the beginning or end of the chain
+        are removed using :func:`reduction_pmps` and a suitable
+        normalization. Sites traced out in the middle of the chain are
+        converted to sites with physical dimension 1 and larger
+        ancilla dimension.
+
+    """
+    n_sites = len(pmps)
+    assert len(support) > 0
+    assert all(0 <= s < n_sites for s in support)
+    start_at = min(support)
+    stop_at = max(support) + 1
+    red = next(reductions_pmps(pmps, startsites=[start_at], stopsites=[stop_at]))
+    width = stop_at - start_at
+    if len(support) == width:
+        return red
+    support = [pos - start_at for pos in support]
+    return mp.MPArray(
+        lt if pos in support else lt.reshape((lt.shape[0], 1, -1, lt.shape[-1]))
+        for pos, lt in enumerate(red.lt)
+    )
 
 
 def reductions_mpo(mpa, width=None, startsites=None, stopsites=None):
