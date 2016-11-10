@@ -139,7 +139,6 @@ from __future__ import absolute_import, division, print_function
 import collections
 import itertools as it
 import numpy as np
-import pandas as pd
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
@@ -736,6 +735,44 @@ class MPPovm(mp.MPArray):
         else:
             return counts
 
+    @staticmethod
+    def _matches(n_sites, supp, supp2, supp12, fun_out, fun_out2):
+        # supp, supp2 and supp12 must be sorted in ascending order
+        supp, supp2 = np.array(supp, int), np.array(supp2, int)
+        out = np.zeros(n_sites, int)
+        out[supp] = 1
+        sel1 = np.flatnonzero(out[supp])
+        union_pos1 = np.flatnonzero(out[supp12])
+        out[supp2] = 1
+        out[supp] = 0
+        sel2 = np.flatnonzero(out[supp2])
+        union_pos2 = np.flatnonzero(out[supp12])
+
+        n1, n2 = fun_out.shape[0], fun_out2.shape[0]
+        if len(supp) + len(supp2) == len(supp12):
+            mpos1 = np.repeat(np.arange(n1), n2)
+            mpos2 = np.tile(np.arange(n2), n1)
+        else:
+            out[:] = 0
+            out[np.intersect1d(supp, supp2)] = 1
+            sel1int = np.flatnonzero(out[supp])
+            sel2int = np.flatnonzero(out[supp2])
+            red_out = fun_out[:, sel1int].copy()
+            red_out2 = fun_out2[:, sel2int].copy()
+            mpos1, mpos2 = np.zeros((2, n1 * n2), int)
+            n_matches = 0
+            for pos, out in enumerate(red_out):
+                mpos2_add = np.flatnonzero((red_out2 == out[None, :]).all(1))
+                num_add = len(mpos2_add)
+                mpos2[n_matches:n_matches + num_add] = mpos2_add
+                mpos1[n_matches:n_matches + num_add] = pos
+                n_matches += num_add
+            mpos1, mpos2 = mpos1[:n_matches], mpos2[:n_matches]
+        mout = np.zeros([len(mpos1), len(supp12)], dtype=np.uint8)
+        mout[:, union_pos1] = fun_out[:, sel1][mpos1, :]
+        mout[:, union_pos2] = fun_out2[:, sel2][mpos2, :]
+        return mpos1, mpos2, mout
+
     def _lfun_direct(self, coeff, funs_list, state, mode, eps):
         """Implementation of :func:`lfun` which avoids computing the entire PMF
 
@@ -770,24 +807,17 @@ class MPPovm(mp.MPArray):
             s_pmf = check_pmf(mp.prune(s_pmf).to_array(), eps, eps)
             assert (s_pmf.shape == outdims[np.array(supp)]).all()
             cov[fun_pos, fun_pos] = ept[fun_pos] = s_pmf[tuple(fun_out.T)]
-            fun_out = pd.DataFrame(fun_out, columns=supp)
-            fun_out['pos1'] = fun_out.index
-            fun_out['dummy'] = 0
             for supp2, (fun_pos2, fun_out2) in funs.items():
-                if supp2 < supp:
+                if supp2 <= supp:
                     continue
                 supp12 = np.union1d(supp, supp2)
-                fun_out2 = pd.DataFrame(fun_out2, columns=supp2)
-                fun_out2['pos2'] = fun_out2.index
-                fun_out2['dummy'] = 0
                 # Compute mixed second moments: For compatible observations,
-                # we simply need the corresponding probability.
-                matches = pd.merge(fun_out, fun_out2)
-                del matches['dummy']
-                mpos1 = fun_pos[matches.pop('pos1')]
-                mpos2 = fun_pos2[matches.pop('pos2')]
-                matches = np.array(matches.loc[:, supp12])
-                s_pmf = pmf.sum([() if p in supp12 else (0,) for p in range(n_sites)])
+                # the mixed second moment is the corresponding probability.
+                mpos1, mpos2, matches = self._matches(
+                    n_sites, supp, supp2, supp12, fun_out, fun_out2)
+                mpos1, mpos2 = fun_pos[mpos1], fun_pos2[mpos2]
+                s_pmf = pmf.sum([() if p in supp12 else (0,)
+                                 for p in range(n_sites)])
                 s_pmf = check_pmf(mp.prune(s_pmf).to_array(), eps, eps)
                 p = s_pmf[tuple(matches.T)]
                 cov[mpos1, mpos2] = p
@@ -828,7 +858,7 @@ class MPPovm(mp.MPArray):
         """
         if hasattr(funs[0], 'support') and hasattr(funs[0], 'outcome'):
             return self._lfun_direct(coeff, funs, state, mode, eps)
-        
+
         if mode == 'pmf_array':
             pmf = state
         else:
