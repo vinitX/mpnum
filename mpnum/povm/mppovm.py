@@ -136,8 +136,10 @@ Class and function reference
 
 from __future__ import absolute_import, division, print_function
 
+import collections
 import itertools as it
 import numpy as np
+import pandas as pd
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
@@ -854,6 +856,76 @@ class MPPovm(mp.MPArray):
         else:
             return counts
 
+    def _lfun_direct(self, coeff, funs_list, state, mode, eps):
+        """Implementation of :func:`lfun` which avoids computing the entire PMF
+
+        :func:`lfun` below computes the entire PMF as an array which
+        is a problem for large systems. Indeed, this in unnecessary if
+        the list of functions is simple and small. This function
+        provides a more efficient implementation for functions which
+        declare that they compare the measurement outcome against a
+        certain value on a certain support.
+
+        """
+        assert funs_list is not None, "to be implemented"
+        funs = collections.OrderedDict()
+        for pos, fun in enumerate(funs_list):
+            try:
+                s_funs = funs[fun.support]
+            except KeyError:
+                s_funs = funs[fun.support] = [[], []]
+            s_funs[0].append(pos)
+            s_funs[1].append(fun.outcome)
+        for supp, (pos, outcomes) in funs.items():
+            funs[supp] = (np.array(pos, int), np.array(outcomes, np.uint8))
+        pmf = self.pmf(state, mode)
+        n_sites = len(self)
+        outdims = np.array(self.nsoutdims, int)
+        ept = np.zeros(len(funs_list), float)
+        ept[:] = np.nan
+        cov = np.zeros([len(funs_list)] * 2, float)
+        for supp, (fun_pos, fun_out) in funs.items():
+            # Compute expectation value and second moment of each function
+            s_pmf = pmf.sum([() if p in supp else (0,) for p in range(n_sites)])
+            s_pmf = check_pmf(mp.prune(s_pmf).to_array(), eps, eps)
+            assert (s_pmf.shape == outdims[np.array(supp)]).all()
+            cov[fun_pos, fun_pos] = ept[fun_pos] = s_pmf[tuple(fun_out.T)]
+            fun_out = pd.DataFrame(fun_out, columns=supp)
+            fun_out['pos1'] = fun_out.index
+            fun_out['dummy'] = 0
+            for supp2, (fun_pos2, fun_out2) in funs.items():
+                if supp2 < supp:
+                    continue
+                supp12 = np.union1d(supp, supp2)
+                fun_out2 = pd.DataFrame(fun_out2, columns=supp2)
+                fun_out2['pos2'] = fun_out2.index
+                fun_out2['dummy'] = 0
+                # Compute mixed second moments: For compatible observations,
+                # we simply need the corresponding probability.
+                matches = pd.merge(fun_out, fun_out2)
+                del matches['dummy']
+                mpos1 = fun_pos[matches.pop('pos1')]
+                mpos2 = fun_pos2[matches.pop('pos2')]
+                matches = np.array(matches.loc[:, supp12])
+                s_pmf = pmf.sum([() if p in supp12 else (0,) for p in range(n_sites)])
+                s_pmf = check_pmf(mp.prune(s_pmf).to_array(), eps, eps)
+                p = s_pmf[tuple(matches.T)]
+                cov[mpos1, mpos2] = p
+                cov[mpos2, mpos1] = p
+        assert not np.isnan(ept).any()
+        cov -= np.outer(ept, ept)
+        if coeff is None:
+            return ept, cov
+
+        # Expectation value
+        est = np.inner(coeff, ept)
+        # Variance
+        var_est = np.inner(coeff, np.dot(cov, coeff))
+        assert var_est >= -eps
+        if var_est < 0:
+            var_est = 0
+        return est, var_est
+
     def lfun(self, coeff, funs, state, mode='auto', eps=1e-10):
         """Evaluate a linear combination of functions of POVM outcomes
 
@@ -877,6 +949,8 @@ class MPPovm(mp.MPArray):
         if (coeff is not None and len(coeff) == 0) \
            or (funs is not None and len(funs) == 0):
             return 0., 0.  # The empty sum is equal to zero with certainty.
+        if hasattr(funs[0], 'support') and hasattr(funs[0], 'outcome'):
+            return self._lfun_direct(coeff, funs, state, mode, eps)
 
         if mode == 'pmf_array':
             pmf = state
@@ -1027,6 +1101,8 @@ class MPPovm(mp.MPArray):
                 # on sites specified by `support`.
                 est_funs[pos].append(
                     lambda s, out=out[None, :], supp=support: (s[:, supp] == out).all(1))
+                est_funs[pos][-1].support = support
+                est_funs[pos][-1].outcome = out
                 # To compute the final coefficient, we need to know
                 # how many samples from (possibly many) `mpp`s have
                 # contributed to a given probability specified by `my_out`.
