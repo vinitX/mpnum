@@ -979,7 +979,7 @@ class MPPovm(mp.MPArray):
         if (coeff is not None and len(coeff) == 0) \
            or (funs is not None and len(funs) == 0):
             return 0., 0.  # The empty sum is equal to zero with certainty.
-        if hasattr(funs[0], 'support') and hasattr(funs[0], 'outcome'):
+        if False and hasattr(funs[0], 'support') and hasattr(funs[0], 'outcome'):
             return self._lfun_direct(coeff, funs, state, mode, eps)
 
         if mode == 'pmf_array':
