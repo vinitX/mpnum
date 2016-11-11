@@ -856,7 +856,7 @@ class MPPovm(mp.MPArray):
             the expectation value
 
         """
-        if hasattr(funs[0], 'support') and hasattr(funs[0], 'outcome'):
+        if False and hasattr(funs[0], 'support') and hasattr(funs[0], 'outcome'):
             return self._lfun_direct(coeff, funs, state, mode, eps)
 
         if mode == 'pmf_array':
