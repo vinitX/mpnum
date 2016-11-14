@@ -34,8 +34,9 @@ def inner_prod_mps(mpa1, mpa2):
 
 
 def sumup2(mpas, weights=None, max_bdim=None, compargs=None,
-           min_overlap=None):
+           min_overlap=None, max_n_sum=None):
     mpas = list(mpas)
+    assert len(mpas) > 0
     if len(mpas) == 1:
         return mpas[0] if weights is None else weights[0] * mpas[0]
     weights_now = None
@@ -45,6 +46,8 @@ def sumup2(mpas, weights=None, max_bdim=None, compargs=None,
     while mpas:
         cbdims = np.cumsum(bdims, axis=0)
         n = np.nonzero((cbdims <= max_bdim).all(axis=1))[0][-1] + 1
+        if max_n_sum is not None:
+            n = min(max_n_sum, n)
         mpas_now, mpas = mpas[:n], mpas[n:]
         bdims = bdims[n:]
         if weights is not None:
@@ -52,17 +55,19 @@ def sumup2(mpas, weights=None, max_bdim=None, compargs=None,
         print('summing', n, 'mps')
         s = mp.sumup(mpas_now, weights_now)
         s_norm = mp.norm(s)
+        old_bdim = s.bdim
         overlap = abs(s.compress(**compargs))
         s_norm2 = mp.norm(s)
         overlap /= s_norm * s_norm2
         if min_overlap is not None:
+            print('comp bdim {} -> {}'.format(old_bdim, s.bdim))
             print('observed / minimal overl:', overlap, min_overlap)
             print('observed / maximal error:', 1 - overlap, 1 - min_overlap)
             assert overlap >= min_overlap
         s *= s_norm / s_norm2
         out.append(s)
     print('sumup2', old_n, '->', len(out), 'with bdim', [m.bdim for m in out])
-    return sumup2(out, None, max_bdim, compargs, min_overlap)
+    return sumup2(out, None, max_bdim, compargs, min_overlap, max_n_sum)
 
 
 def sumup(mpas, weights=None, target_bdim=None, max_bdim=None,
