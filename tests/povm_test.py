@@ -229,6 +229,66 @@ def test_mppovm_pmf_as_array_pmps(nr_sites, local_dim, bond_dim, rgen):
     assert_array_almost_equal(expect_rho, expect_pmps2)
 
 
+@pt.mark.benchmark(group='pmf_as_array_pmps')
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', [(10, 2, 16)])
+def test_mppovm_pmf_as_array_pmps_slow(nr_sites, local_dim, bond_dim, rgen,
+                                       benchmark):
+    pauli_y = povm.pauli_parts(local_dim)[1]
+    mpp_y = povm.MPPovm.from_local_povm(pauli_y, nr_sites)
+    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen)
+    pmps /= mp.norm(pmps)
+    benchmark(
+        lambda: _tools.check_pmf(
+            mp.prune(mpp_y.pmf(pmps, 'pmps'), singletons=True).to_array())
+    )
+
+
+@pt.mark.benchmark(group='pmf_as_array_pmps')
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', [(10, 2, 16)])
+def test_mppovm_pmf_as_array_pmps_fast(nr_sites, local_dim, bond_dim, rgen,
+                                       benchmark):
+    pauli_y = povm.pauli_parts(local_dim)[1]
+    mpp_y = povm.MPPovm.from_local_povm(pauli_y, nr_sites)
+    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen)
+    pmps /= mp.norm(pmps)
+    benchmark(lambda: mpp_y.pmf_as_array(pmps, 'pmps'))
+
+
+@pt.mark.benchmark(group='pmf_as_array_pmps2')
+@pt.mark.parametrize(
+    'nr_sites, local_dim, bond_dim, startsite, width',
+    [(32, 2, 20, 10, 6)])
+def test_mppovm_pmf_as_array_pmps2_slow(
+        nr_sites, local_dim, bond_dim, startsite, width, rgen, benchmark):
+    pauli_y = povm.pauli_parts(local_dim)[1]
+    mpp_y = povm.MPPovm.from_local_povm(pauli_y, width) \
+                       .embed(nr_sites, startsite, local_dim)
+    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen)
+    pmps /= mp.norm(pmps)
+    benchmark(
+        lambda: _tools.check_pmf(
+            mp.prune(mpp_y.pmf(pmps, 'pmps'), singletons=True).to_array())
+    )
+
+
+@pt.mark.benchmark(group='pmf_as_array_pmps2')
+@pt.mark.parametrize(
+    'nr_sites, local_dim, bond_dim, startsite, width',
+    [(32, 2, 20, 10, 6)])
+def test_mppovm_pmf_as_array_pmps2_fast(
+        nr_sites, local_dim, bond_dim, startsite, width, rgen, benchmark):
+    pauli_y = povm.pauli_parts(local_dim)[1]
+    mpp_y = povm.MPPovm.from_local_povm(pauli_y, width) \
+                       .embed(nr_sites, startsite, local_dim)
+    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen)
+    pmps /= mp.norm(pmps)
+    benchmark(lambda: mpp_y.pmf_as_array(pmps, 'pmps'))
+
+
 @pt.mark.parametrize(
     'nr_sites, n_small, small_startsite, local_dim',
     [(5, 2, 1, 2), (5, 2, 0, 2), (5, 2, 3, 2),
