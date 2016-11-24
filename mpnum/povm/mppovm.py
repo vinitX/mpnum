@@ -756,6 +756,10 @@ class MPPovm(mp.MPArray):
             the expectation value
 
         """
+        if (coeff is not None and len(coeff) == 0) \
+           or (funs is not None and len(funs) == 0):
+            return 0., 0.  # The empty sum is equal to zero with certainty.
+
         pmf = mp.prune(self.pmf(state, mode), True).to_array()
         pmf = check_pmf(pmf, eps, eps)
         n_out = np.prod(self.nsoutdims)
@@ -877,8 +881,11 @@ class MPPovm(mp.MPArray):
         :param coeff: A linear function of `self` probabilities is
             specified by `coeff`
 
-        :returns: None (output is added to the parameters `est_coeff`
-            and `est_fun`)
+        :returns: `n_samples`: A shape `self.nsoutdims` array which
+            specifies how many samples very available for each probability.
+
+        .. note:: Output is also added to the parameters `est_coeff`
+            and `est_fun`.
 
         """
         assert coeff.shape == self.nsoutdims
@@ -915,6 +922,7 @@ class MPPovm(mp.MPArray):
         for pos, myout, c in zip(fun_mpp, fun_myout, fun_coeff):
             # Complete the weighted average
             est_coeff[pos].append(c / myout_n_samples[myout])
+        return myout_n_samples
 
     def _fill_outcome_mpa_holes(self, support, outcome_mpa):
         """Fill holes in an MPA on some of the outcome physical legs
@@ -1320,9 +1328,12 @@ class MPPovmList:
         and `coeff`.  See :func:`MPPovm._mppl_lfun_estimator()` for
         `n_samples`.
 
-        :returns: `(est_coeff, `est_funs`): `est_coeff[i]` and
+        :returns: `(n_sam, est_coeff, `est_funs)`: `est_coeff[i]` and
             `est_funs[i]` specify an estimator in the format used by
-            :func:`MPPovm.est_lfun()` on `other.mpps[i]`.
+            :func:`MPPovm.est_lfun()` on `other.mpps[i]`. `n_sam` is a
+            shape `self.nsoutdims` array providing the number of
+            samples available for each probability of `self`; zero
+            indicates that a probability cannot be estimated.
 
         This method aggregates the results from
         :func:`MPPovm._mppl_lfun_estimator()` on each `self.mpps[i]`.
@@ -1330,12 +1341,15 @@ class MPPovmList:
         """
         assert len(n_samples) == len(other.mpps)
         assert len(coeff) == len(self.mpps)
+        # These two have length len(other.mpps)
         est_coeff = tuple([] for _ in range(len(other.mpps)))
         est_funs = tuple([] for _ in range(len(other.mpps)))
+        # This one will have length len(self.mpps) at the end.
+        n_sam = []
         for c, mpp in zip(coeff, self.mpps):
-            mpp._mppl_lfun_estimator(est_coeff, est_funs, other, n_samples, c,
-                                    eps=eps)
-        return est_coeff, est_funs
+            n_sam.append(mpp._mppl_lfun_estimator(est_coeff, est_funs, other,
+                                                  n_samples, c, eps=eps))
+        return n_sam, est_coeff, est_funs
 
     def lfun_from(self, other, coeff, state, mode='auto', other_weights=None,
                   eps=1e-10):
@@ -1358,15 +1372,19 @@ class MPPovmList:
         POVMs in `other`.
 
         :returns: `(value, var)`: Expectation value and variance of
-            the expectation value
+            the expectation value. Return `(np.nan, np.nan)` if
+            `other` is not sufficient to estimate the function.
 
         """
         if other_weights is None:
             other_weights = np.ones(len(other.mpps))
-        coeff, funs = self._lfun_estimator(other, coeff, other_weights, eps)
+        n_sam, f_coeff, funs = self._lfun_estimator(other, coeff, other_weights, eps)
+        # If a single probability cannot be computed, we cannot return anything.
+        if any((n[c != 0.0] == 0).any() for n, c in zip(n_sam, coeff)):
+            return np.nan, np.nan
         est, var = zip(*(
             mpp.lfun(np.array(c, float), f, state, mode, eps)
-            for mpp, c, f in zip(other.mpps, coeff, funs)))
+            for mpp, c, f in zip(other.mpps, f_coeff, funs)))
         return sum(est), sum(var)
 
     def est_lfun_from(self, other, coeff, samples, eps=1e-10):
@@ -1386,11 +1404,15 @@ class MPPovmList:
         :param samples: A sequence of samples for `other`
 
         :returns: `(est, var)`: Estimated value and estimated variance
-            of the estimated value
+            of the estimated value. Return `(np.nan, np.nan)` if
+            `other` is not sufficient to estimate the function.
 
         """
         n_samples = [s.shape[0] for s in samples]
-        est_coeff, funs = self._lfun_estimator(other, coeff, n_samples, eps)
+        n_sam, est_coeff, funs = self._lfun_estimator(other, coeff, n_samples, eps)
+        # If a single probability cannot be estimated, we cannot return anything.
+        if any((n[c != 0.0] == 0).any() for n, c in zip(n_sam, coeff)):
+            return np.nan, np.nan
         est, var = zip(*(
             mpp.est_lfun(np.array(c, float), f, s, eps=eps)
             for c, f, s, mpp in zip(est_coeff, funs, samples, other.mpps)))
