@@ -455,6 +455,54 @@ class MPPovm(mp.MPArray):
         assert len(self) == len(state)
         return next(self.expectations(state, mode))
 
+    def _pmf_as_array_pmps(self, pmps):
+        """PMF-as-array fast path for PMPS
+
+        Called automatically by :func:`pmf_as_array`.
+
+        Tensors and bonds::
+
+            +-----+  PMPS bond     +---------+     PMPS bond
+            |     |----------------| PMPS    |-------------------
+            |     |                +---------+
+            |     |                   |  |_______ system
+            |     |           ancilla |         |
+            |     |                   |         |
+            |     |  PMPS-cc bond  +---------+  |  PMPS-cc bond
+            |  p  |----------------| PMPS-cc |--|----------------
+            |     |                +---------+  |
+            |     |                   |         |
+            |     |           system' |   ______|
+            |     |                   |  |
+            |     |  POVM bond     +---------+     POVM bond
+            |     |----------------| MPPOVM  |-------------------
+            +-----+                +---------+
+              |                      |
+              | probab               | probab'
+
+        """
+        p = np.ones((1, 1, 1, 1), dtype=float)
+        # Axes: 0 probab, 1 POVM bond, 2 PMPS bond, 3 PMPS-cc bond
+        for povm_lt, pmps_lt in zip(self.lt, pmps.lt):
+            p = np.tensordot(p, pmps_lt, axes=(2, 0))
+            # 0 probab, 1 POVM bd, 2 PMPS-cc bd, 3 system, 4 ancilla, 5 PMPS bd
+            p = np.tensordot(p, pmps_lt.conj(), axes=((2, 4), (0, 2)))
+            # 0 probab, 1 POVM bd, 2 system, 3 PMPS bd, 4 system', 5 PMPS-cc bd
+            #
+            # NB: We basically transpose povm_lt by specifying suitable axes.
+            # The transpose is explained in localpovm.POVM.probability_map.
+            p = np.tensordot(p, povm_lt, axes=((1, 2, 4), (0, 3, 2)))
+            # 0 probab, 1 PMPS bond, 2 PMPS-cc bond, 3 probab', 4 POVM bond
+            p = p.transpose((0, 3, 4, 1, 2))
+            # 0 probab, 1 probab', 2 POVM bond, 3 PMPS bond, 4 PMPS-cc bond
+            s = p.shape
+            p = p.reshape((s[0] * s[1], s[2], s[3], s[4]))
+            # 0 probab, 1 POVM bond, 2 PMPS bond, 3 PMPS-cc bond
+        s = self.nsoutdims
+        assert p.shape == (np.prod(s), 1, 1, 1)
+        p = p.reshape(s)
+        return p
+
     def pmf_as_array(self, state, mode='auto', eps=1e-10):
         """Compute the POVM's PMF for `state` as full array
 
@@ -468,7 +516,11 @@ class MPPovm(mp.MPArray):
 
         """
         assert len(self) == len(state)
-        pmf = mp.prune(next(self.expectations(state, mode)), True).to_array()
+        if mode == 'pmps':
+            # FIXME: Call fast path also for mode = 'mps' and mode = 'auto'
+            pmf = self._pmf_as_array_pmps(state)
+        else:
+            pmf = mp.prune(next(self.expectations(state, mode)), True).to_array()
         return check_pmf(pmf, eps, eps)
 
     def match_elems(self, other, exclude_dup=(), eps=1e-10):
