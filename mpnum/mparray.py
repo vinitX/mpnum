@@ -30,8 +30,8 @@ from __future__ import absolute_import, division, print_function
 
 import sys
 
-import itertools as it
 import collections
+import itertools as it
 
 import numpy as np
 from numpy.linalg import qr, svd
@@ -39,6 +39,7 @@ from numpy.testing import assert_array_equal
 
 from six.moves import range, zip, zip_longest
 
+import mpnum as mp
 from ._named_ndarray import named_ndarray
 from ._tools import block_diag, global_to_local, local_to_global, matdot
 from .mpstruct import LocalTensors
@@ -982,6 +983,34 @@ class MPArray(object):
             # that relerr=0.0 behaves as intended.
             #assert old_bdim == bdim
             yield sv
+
+    def pad_bdim(self, bdim=None, force_bdim=False):
+        """Increase bond dimension by padding with zeros
+
+        This function is useful to prepare initial states for
+        variational compression. E.g. for a five-qubit pure state with
+        bond dimensions `(2, 2, 4, 2)` it is desirable to increase the
+        bond dimensions to `(2, 4, 4, 2)` before using it as an
+        initial state for variational compression.
+
+        :param bdim: Increase bond dimension to this value, use
+            `self.bdim` if `None`
+        :param force_bdim: Use full bond dimension even at the
+            beginning and end of the MPS (generally not useful)
+        :returns: MPA representation of the same array with increased
+            bond dimension
+
+        """
+        if bdim is None:
+            bdim = self.bdim
+        bdims = it.repeat(bdim)
+        if not force_bdim:
+            bdims = [min(f, b) for f, b in zip(full_bdim(self.pdims), bdims)]
+        pad = [max(s, b) - s for s, b in zip(self.bdims, bdims)]
+        lt = (np.pad(lt, [(0, lp)] + [(0, 0)] * (lt.ndim - 2) + [(0, rp)],
+                     'constant')
+              for lp, rp, lt in zip([0] + pad, pad + [0], self.lt))
+        return mp.MPArray(lt)        
 
     #  Possible TODOs:
     #

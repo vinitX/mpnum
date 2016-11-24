@@ -1025,6 +1025,18 @@ def test_singularvals(nr_sites, local_dim, bond_dim, rgen):
         assert_array_almost_equal(sv[:n_sv], sv2[:n_sv])
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_pad_bdim(nr_sites, local_dim, bond_dim, rgen):
+    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    mps /= mp.norm(mps)
+    mps2 = mps.pad_bdim(2 * bond_dim)
+    assert mps2.bdims == tuple(min(d, 2 * bond_dim) for d in mp.full_bdim(mps.pdims))
+    assert_almost_equal(mp.normdist(mps, mps2), 0.0)
+    mps2 = mps.pad_bdim(2 * bond_dim, force_bdim=True)
+    assert mps2.bdims == (2 * bond_dim,) * (nr_sites - 1)
+    assert_almost_equal(mp.normdist(mps, mps2), 0.0)
+
+
 #####################################
 #  SVD and variational compression  #
 #####################################
