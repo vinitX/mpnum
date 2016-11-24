@@ -205,6 +205,30 @@ def test_mppovm_expectation_pmps(nr_sites, width, local_dim, bond_dim, rgen):
         assert_array_almost_equal(e_rho.to_array(), e_psi.to_array())
 
 
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', [(4, 2, 3)])
+def test_mppovm_pmf_as_array_pmps(nr_sites, local_dim, bond_dim, rgen):
+    paulis = povm.pauli_povm(local_dim)
+    mppaulis = povm.MPPovm.from_local_povm(paulis, nr_sites)
+    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen)
+    pmps /= mp.norm(pmps)
+    rho = mpsmpo.pmps_to_mpo(pmps)
+    expect_rho = mppaulis.pmf_as_array(rho, 'mpdo')
+    expect_pmps0 = mp.prune(mppaulis.pmf(pmps, 'pmps'), singletons=True).to_array()
+    expect_pmps0 = _tools.check_pmf(expect_pmps0)
+    expect_pmps1 = mppaulis.pmf_as_array(pmps, 'pmps')
+    expect_pmps2 = mppaulis._pmf_as_array_pmps(pmps)
+    expect_pmps2 = _tools.check_pmf(expect_pmps2)
+
+    # Compare MPDO result (tested above) with manual PMPS computation
+    assert_array_almost_equal(expect_rho, expect_pmps0)
+    # Compare MPDO result (tested above) with pmf_as_array/PMPS
+    # (should call the fast path)
+    assert_array_almost_equal(expect_rho, expect_pmps1)
+    # Compare MPDO result (tested above) with fast path result
+    assert_array_almost_equal(expect_rho, expect_pmps2)
+
+
 @pt.mark.parametrize(
     'nr_sites, n_small, small_startsite, local_dim',
     [(5, 2, 1, 2), (5, 2, 0, 2), (5, 2, 3, 2),
