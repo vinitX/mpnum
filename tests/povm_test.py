@@ -679,11 +679,21 @@ def _get_povm(name, nr_sites, local_dim, local_width):
         return povm.pauli_mpps(local_width, local_dim).block(nr_sites)
     elif name == 'pauli':
         return povm.pauli_mpp(local_width, local_dim).block(nr_sites)
+    elif name == "all-y":
+        return povm.MPPovmList([povm.MPPovm.from_local_povm(
+            povm.pauli_parts(local_dim)[1], nr_sites)])
+    elif name == "local-x":
+        return povm.MPPovmList([
+            povm.MPPovm.from_local_povm(
+                povm.pauli_parts(local_dim)[0], local_width)
+            .embed(nr_sites, 0, local_dim)
+        ])
     else:
         raise ValueError('Unknown MP-POVM list {!r}'.format(name))
 
 POVM_COMBOS = [
     ('global', 'pauli'), ('splitpauli', 'pauli'), ('pauli', 'pauli'),
+    ('global', 'all-y'), ('all-y', 'local-x'), ('all-y', 'pauli'),
     pt.mark.verylong(('splitpauli', 'splitpauli')), ('pauli', 'splitpauli')
 ]
 POVM_IDS = ['+'.join(getattr(x, 'args', (x,))[0]) for x in POVM_COMBOS]
@@ -735,6 +745,8 @@ def test_mppovmlist_est_lfun_from(
     mps.normalize()
 
     sample_povm, fun_povm = povm_combo
+    estimation_impossible = sample_povm == "all-y" and \
+                            fun_povm in {"local-x", "pauli"}
     fromself = sample_povm == fun_povm and measure_width == local_width
     # s_povm: POVM used to obtain samples
     s_povm = _get_povm(sample_povm, nr_sites, local_dim, measure_width)
@@ -768,11 +780,15 @@ def test_mppovmlist_est_lfun_from(
     exact_est1, exact_var1 = f_povm.lfun([c.ravel() for c in coeff], None, mps, 'mps', eps)
     # Compute exact estimate and variance using the other POVM
     exact_est2, exact_var2 = f_povm.lfun_from(s_povm, coeff, mps, 'mps', eps=eps)
-    # Estimates must agree.
-    assert abs(exact_est1 - exact_est2) <= eps
-    if fromself:
-        # Variances can be different unless f_povm and s_povm are the same.
-        assert abs(exact_var1 - exact_var2) <= eps
+    if estimation_impossible:
+        assert np.isnan(exact_est2)
+        assert np.isnan(exact_var2)
+    else:
+        # Estimates must agree.
+        assert abs(exact_est1 - exact_est2) <= eps
+        if fromself:
+            # Variances can be different unless f_povm and s_povm are the same.
+            assert abs(exact_var1 - exact_var2) <= eps
 
     est, var = f_povm.est_lfun_from(s_povm, coeff, samples, eps)
 
@@ -795,11 +811,15 @@ def test_mppovmlist_est_lfun_from(
     # (and not the "effective samples" for the `f_povm` probability
     # estimation returned by :func:`f_povm.est_pmf_from()`).
     exact_est = sum(np.inner(c.flat, p.flat) for c, p in zip(coeff, exact_prob))
-    assert abs(exact_est - exact_est2) <= eps
-    assert abs(est - exact_est) <= 6 / n_samples_eff**0.5
-    if function == 'ones':
-        assert abs(exact_est - 1) <= eps
-        assert abs(est - exact_est) <= eps
+    if estimation_impossible:
+        assert np.isnan(est)
+    else:
+        assert abs(exact_est - exact_est2) <= eps
+        bound = 20 if fun_povm == 'all-y' else 6
+        assert abs(est - exact_est) <= bound / n_samples_eff**0.5
+        if function == 'ones':
+            assert abs(exact_est - 1) <= eps
+            assert abs(est - exact_est) <= eps
 
     # The code below will only work for small systems. Probably
     # nr_sites = 16 will work, but let's stay safe.
@@ -817,7 +837,7 @@ def test_mppovmlist_est_lfun_from(
     # Convert from matching functions + coefficients to coefficients
     # for each probability.
     n_samples2 = [s.shape[0] for s in samples]
-    est_coeff, est_funs = f_povm._lfun_estimator(s_povm, coeff, n_samples2, eps)
+    _, est_coeff, est_funs = f_povm._lfun_estimator(s_povm, coeff, n_samples2, eps)
     est_p_coeff = [np.zeros(mpp.nsoutdims, float) for mpp in s_povm.mpps]
     for fun_coeff, funs, p_coeff, mpp in zip(
             est_coeff, est_funs, est_p_coeff, s_povm.mpps):
@@ -830,21 +850,29 @@ def test_mppovmlist_est_lfun_from(
     exact_p_cov = (np.diag(p.flat) - np.outer(p.flat, p.flat) for p in exact_prob)
     exact_var = sum(np.inner(c.flat, np.dot(cov, c.flat))
                     for c, cov in zip(est_p_coeff, exact_p_cov))
-    assert abs(exact_var - exact_var2) <= eps
-    if fromself:
-        # `f_povm` and `s_povm` are equal. We must obtain exactly the
-        # same result without using the matching functions from above:
-        exact_prob = tuple(f_povm.pmf_as_array(mps, 'mps', eps))
-        exact_p_cov = (np.diag(p.flat) - np.outer(p.flat, p.flat) for p in exact_prob)
-        exact_var2 = sum(np.inner(c.flat, np.dot(cov, c.flat))
-                         for c, cov in zip(coeff, exact_p_cov))
+    if estimation_impossible:
+        assert np.isnan(var)
+    else:
         assert abs(exact_var - exact_var2) <= eps
-    # Convert variance to variance of the estimator (=average)
-    exact_var /= n_samples
+        if fromself:
+            # `f_povm` and `s_povm` are equal. We must obtain exactly the
+            # same result without using the matching functions from above:
+            exact_prob = tuple(f_povm.pmf_as_array(mps, 'mps', eps))
+            exact_p_cov = (np.diag(p.flat) - np.outer(p.flat, p.flat)
+                           for p in exact_prob)
+            exact_var2 = sum(np.inner(c.flat, np.dot(cov, c.flat))
+                             for c, cov in zip(coeff, exact_p_cov))
+            assert abs(exact_var - exact_var2) <= eps
+        # Convert variance to variance of the estimator (=average)
+        exact_var /= n_samples
 
-    bound = 6 if sample_povm == 'pauli' else 1
-    assert n_samples * abs(var - exact_var) <= bound / n_samples_eff**0.5
-    if function == 'ones':
-        assert abs(exact_var) <= eps
-        assert abs(var - exact_var) <= eps
-
+        if sample_povm == 'pauli':
+            bound = 6
+        elif fun_povm == 'all-y':
+            bound = 10
+        else:
+            bound = 1
+        assert n_samples * abs(var - exact_var) <= bound / n_samples_eff**0.5
+        if function == 'ones':
+            assert abs(exact_var) <= eps
+            assert abs(var - exact_var) <= eps
