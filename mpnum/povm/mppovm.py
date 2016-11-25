@@ -460,12 +460,14 @@ class MPPovm(mp.MPArray):
         assert len(self) == len(state)
         return next(self.expectations(state, mode))
 
-    def _pmf_as_array_pmps(self, pmps):
+    def _pmf_as_array_pmps_ltr(self, pmps, partial=False):
         """PMF-as-array fast path for PMPS
 
         Called automatically by :func:`pmf_as_array`.
 
-        Tensors and bonds::
+        This function contracts the following tensor network from top
+        to bottom and from left to right along the chain::
+
 
             +-----+  PMPS bond     +---------+     PMPS bond
             |     |----------------| PMPS    |-------------------
@@ -503,15 +505,71 @@ class MPPovm(mp.MPArray):
             s = p.shape
             p = p.reshape((s[0] * s[1], s[2], s[3], s[4]))
             # 0 probab, 1 POVM bond, 2 PMPS bond, 3 PMPS-cc bond
+        if partial:
+            return p
         s = self.nsoutdims
         assert p.shape == (np.prod(s), 1, 1, 1)
         p = p.reshape(s)
         return p
 
-    def pmf_as_array(self, state, mode='auto', eps=1e-10):
+    def _pmf_as_array_pmps_symm(self, state):
+        """PMF-as-array fast path for PMPS (uses less memory)
+
+        This function contracts the same tensor network as
+        :func:`self._pmf_as_array_pmps_ltr`, but it starts at both
+        ends of the chain and proceeds to a certain position in the
+        middle of the chain. We choose the position such that the
+        maximal size of all intermediate results is minimal. This
+        might also minimize runtime in some cases.
+
+        """
+        # Axes of p_left and p_right (below):
+        # 0 probab, 1 POVM bond, 2 PMPS bond, 3 PMPS-cc bond
+        #
+        # p_size[i, j] will contain the p_left.size (i = 0) or
+        # p_right.size (i = 1) for j + 1 probabilities in p_left and
+        # the rest in p_right.
+        cp = np.cumprod(self.outdims, dtype=int)
+        p_size = np.array([cp[:-1], cp[-1] // cp[:-1]])
+        bdims = np.array(state.bdims, int)**2 * np.array(self.bdims, int)
+        p_size *= bdims[None, :]
+        # For a given possible choice of n_left, compute the maximum
+        # value of max(p_left.size, p_right.size) encountered during
+        # the computation. Considering all sizes during the
+        # computation can become necessary in some cases. See the
+        # benchmark tests for possible advantages.
+        p_size_max = [max(it.chain(p_size[0, :i], p_size[1, i:]))
+                      for i in range(p_size.shape[1])]
+        # Choose the n_left with the minimal maximum array size.
+        n_left = np.argmin(p_size_max) + 1
+
+        left = MPPovm(self.lt[:n_left])
+        p_left = left._pmf_as_array_pmps_ltr(state, partial=True)
+        p_left = p_left.reshape((p_left.shape[0], -1))
+
+        right = MPPovm(self.lt[n_left:]).reverse()
+        state_right = mp.MPArray(state.lt[n_left:]).reverse()
+        p_right = right._pmf_as_array_pmps_ltr(state_right, partial=True)
+        s_right = tuple(d for d in self.outdims[:n_left - 1:-1] if d > 1)
+        assert p_right.shape[0] == np.prod(s_right)
+        p_right = p_right.reshape(s_right + (-1,)).transpose()
+
+        # We could verify that we predicted the number of elements correctly:
+        #
+        # assert p_left.size == p_size[0, n_left - 1]
+        # assert p_right.size == p_size[1, n_left - 1]
+
+        p = np.tensordot(p_left, p_right, axes=(1, 0))
+        return p.reshape(self.nsoutdims)
+
+    def pmf_as_array(self, state, mode='auto', eps=1e-10, impl='auto'):
         """Compute the POVM's PMF for `state` as full array
 
         Parameters: See :func:`MPPovm.pmf`.
+
+        :param impl: `'auto'`, `'default'`, `'pmps-symm'` or
+            `'pmps-ltr'`. `'auto'` will use `'pmps-symm'` for mode
+            `'pmps'` and `'default'` otherwise.
 
         :returns: PMF as shape `self.nsoutdims` ndarray
 
@@ -521,11 +579,16 @@ class MPPovm(mp.MPArray):
 
         """
         assert len(self) == len(state)
-        if mode == 'pmps':
-            # FIXME: Call fast path also for mode = 'mps' and mode = 'auto'
-            pmf = self._pmf_as_array_pmps(state)
-        else:
+        if impl == 'auto':
+            impl = 'pmps-symm' if mode == 'pmps' else 'default'
+        if impl == 'pmps-symm':
+            pmf = self._pmf_as_array_pmps_symm(state)
+        elif impl == 'pmps-ltr':
+            pmf = self._pmf_as_array_pmps_ltr(state)
+        elif impl == 'default':
             pmf = mp.prune(next(self.expectations(state, mode)), True).to_array()
+        else:
+            raise ValueError('Implementation {!r} unknown'.format(impl))
         return check_pmf(pmf, eps, eps)
 
     def match_elems(self, other, exclude_dup=(), eps=1e-10):
