@@ -101,7 +101,7 @@ def _sum_n_compress(mpas, weights, current_bdim, target_bdim, max_bdim, compargs
 
     else:
         nodes = max(max_bdim // target_bdim, 1)
-        stride = ceil(len(mpas) / nodes)
+        stride = int(ceil(len(mpas) / nodes))
         partition = [slice(n * stride, (n + 1) * stride) for n in range(nodes)
                      if n * stride < len(mpas)]
         mpas = [_sum_n_compress(mpas[sel], weights[sel], 1, target_bdim,
