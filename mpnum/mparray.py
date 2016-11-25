@@ -607,6 +607,12 @@ class MPArray(object):
                         nform=(max(0, lnorm - pos), max(0, rnorm - pos - 1)))
         return type(self)(ltens_l), type(self)(ltens_r)
 
+    def reverse(self):
+        return type(self)(
+            lt.transpose([lt.ndim - 1] + list(range(1, lt.ndim - 1)) + [0])
+            for lt in self.lt[::-1]
+        )
+
     ################################
     #  Normalizaton & Compression  #
     ################################
