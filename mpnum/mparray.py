@@ -1468,7 +1468,7 @@ def prune(mpa, singletons=False):
     return MPArray(_prune_ltens(mpa.lt))
 
 
-def partialtrace(mpa, axes=(0, 1)):
+def partialtrace(mpa, axes=(0, 1), mptype=None):
     """Computes the trace or partial trace of an MPA.
 
     By default (axes=(0, 1)) compute the trace and return the value as
@@ -1501,7 +1501,7 @@ def partialtrace(mpa, axes=(0, 1)):
     ltens = (
         lten if ax is None else np.trace(lten, axis1=ax[0], axis2=ax[1])
         for lten, ax in zip(mpa.lt, axes))
-    return type(mpa)(_prune_ltens(ltens))
+    return (mptype or type(mpa))(_prune_ltens(ltens))
 
 
 def trace(mpa, axes=(0, 1)):
