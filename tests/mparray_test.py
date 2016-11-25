@@ -804,6 +804,19 @@ def test_split_sites(nr_sites, local_dim, bond_dim, sites_per_group, rgen):
     assert_array_almost_equal(op, split_op)
 
 
+@pt.mark.parametrize('plegs', [1, 2, 3])
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_reverse(nr_sites, local_dim, bond_dim, plegs, rgen):
+    mpa = factory.random_mpa(nr_sites, (local_dim,) * plegs, bond_dim, rgen,
+                             normalized=True)
+    arr = mpa.to_array()
+    rev_arr = arr.transpose(np.arange(nr_sites * plegs)
+                            .reshape((nr_sites, plegs))[::-1, :].ravel())
+    rev_mpa = mpa.reverse()
+    rev_arr2 = rev_mpa.to_array()
+    assert_almost_equal(rev_arr, rev_arr2)
+
+
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
     mpa = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
