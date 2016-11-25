@@ -8,11 +8,12 @@ from inspect import isfunction
 
 import numpy as np
 import pytest as pt
-from numpy.testing import assert_array_almost_equal, assert_array_equal
+from numpy.testing import (
+    assert_almost_equal, assert_array_almost_equal, assert_array_equal)
 from six.moves import range, zip, zip_longest
 from _pytest.mark import matchmark
 
-import mpnum.mparray as mp
+import mpnum as mp
 import mpnum.povm as povm
 import mpnum.povm.mppovm as mppovm
 import mpnum.factory as factory
@@ -172,6 +173,42 @@ def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim, nopovm, rgen):
 
         assert_array_almost_equal(evals_ten, evals)
         assert_array_almost_equal(evals_mp.to_array(), evals)
+
+
+@pt.mark.parametrize(
+    'nr_sites, local_dim, bond_dim, startsite, width',
+    [(4, 2, 3, 0, 4), (7, 2, 3, 1, 3), (6, (7, 3, 2, 5, 2, 3), 3, 2, 3)]
+)
+def test_mppovm_embed_expectation(
+        nr_sites, local_dim, bond_dim, startsite, width, rgen):
+    if hasattr(local_dim, '__iter__'):
+        local_dim2 = local_dim
+    else:
+        local_dim2 = [local_dim] * nr_sites
+    local_dim2 = list(zip(local_dim2, local_dim2))
+
+    # Create a local POVM `red_povm`, embed it onto a larger chain
+    # (`full_povm`), and go back to the reduced POVM.
+    red_povm = mp.outer(
+        mp.povm.MPPovm.from_local_povm(mp.povm.pauli_povm(d), 1)
+        for d, _ in local_dim2[startsite:startsite + width]
+    )
+    full_povm = red_povm.embed(nr_sites, startsite, local_dim)
+    axes = [(1, 2) if i < startsite or i >= startsite + width else None
+            for i in range(nr_sites)]
+    red_povm2 = mp.partialtrace(full_povm, axes, mp.MPArray)
+    red_povm2 = mp.prune(red_povm2, singletons=True)
+    red_povm2 /= np.prod([d for i, (d, _) in enumerate(local_dim2)
+                          if i < startsite or i >= startsite + width])
+    assert_almost_equal(mp.normdist(red_povm, red_povm2), 0.0)
+
+    # Test with an arbitrary random MPO instead of an MPDO
+    mpo = mp.factory.random_mpa(nr_sites, local_dim2, bond_dim, rgen,
+                                normalized=True)
+    mpo_red = next(mp.reductions_mpo(mpo, width, startsites=[startsite]))
+    ept = mp.prune(full_povm.pmf(mpo, 'mpdo'), singletons=True).to_array()
+    ept_red = red_povm.pmf(mpo_red, 'mpdo').to_array()
+    assert_array_almost_equal(ept, ept_red)
 
 
 @pt.mark.parametrize('nr_sites, width, local_dim, bond_dim',

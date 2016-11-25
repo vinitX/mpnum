@@ -325,13 +325,18 @@ class MPPovm(mp.MPArray):
             startsite + len(self))` and :func:`MPPovm.eye()` elsewhere
 
         """
+        local_dim = tuple(local_dim) if hasattr(local_dim, '__iter__') \
+                    else (local_dim,) * nr_sites
+        assert len(local_dim) == nr_sites
         n_right = nr_sites - len(self) - startsite
+        assert n_right >= 0, "Embedding position not possible"
+
         factors = []
         if startsite > 0:
-            factors.append(MPPovm.eye([local_dim] * startsite))
+            factors.append(MPPovm.eye(local_dim[:startsite]))
         factors.append(self)
         if n_right > 0:
-            factors.append(MPPovm.eye([local_dim] * n_right))
+            factors.append(MPPovm.eye(local_dim[-n_right:]))
         return mp.outer(factors)
 
     def block(self, nr_sites):
