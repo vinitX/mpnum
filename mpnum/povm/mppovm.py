@@ -662,9 +662,14 @@ class MPPovm(mp.MPArray):
         p = marginal_pmf[-1].get_phys(tuple(out)).to_array()
         assert abs(p - out_p) <= eps
 
-    @classmethod
-    def _sample_cond(cls, rng, pmf, n_samples, n_group, out, eps):
+    def _sample_cond(self, rng, state, mode, n_samples, n_group, out, eps):
         """Sample using conditional probabilities (call :func:`self.sample`)"""
+        pmf = mp.prune(self.pmf(state, mode), singletons=True)
+        pmf_sum = pmf.sum()
+        # For large numbers of sites, NaNs appear. Why?
+        assert abs(pmf_sum.imag) <= eps
+        assert abs(1.0 - pmf_sum.real) <= eps
+
         # marginal_pmf[k] will contain the marginal probability
         # distribution p(i_1, ..., i_k) for outcomes on sites 1, ..., k.
         marginal_pmf = [None] * (len(pmf) + 1)
@@ -677,11 +682,11 @@ class MPPovm(mp.MPArray):
             marginal_pmf[n_sites] = p
         assert abs(marginal_pmf[0] - 1.0) <= eps
         for i in range(n_samples):
-            cls._sample_cond_single(rng, marginal_pmf, n_group, out[i, :], eps)
+            self._sample_cond_single(rng, marginal_pmf, n_group, out[i, :], eps)
 
-    def _sample_direct(self, rng, pmf, n_samples, out, eps):
+    def _sample_direct(self, rng, state, mode, n_samples, out, eps):
         """Sample from full pmfilities (call :func:`self.sample`)"""
-        pmf = check_pmf(mp.prune(pmf, singletons=True).to_array(), eps, eps)
+        pmf = self.pmf_as_array(state, mode, eps)
         choices = rng.choice(pmf.size, n_samples, p=pmf.flat)
         for pos, c in enumerate(np.unravel_index(choices, pmf.shape)):
             out[:, pos] = c
@@ -722,21 +727,15 @@ class MPPovm(mp.MPArray):
 
         """
         assert len(self) == len(state)
-        pmf = mp.prune(self.pmf(state, mode), singletons=True)
-        pmf_sum = pmf.sum()
-        # For large numbers of sites, NaNs appear. Why?
-        assert abs(pmf_sum.imag) <= eps
-        assert abs(1.0 - pmf_sum.real) <= eps
-
         # The value 255 means "data missing". The values 0..254 are
         # available for measurement outcomes.
         assert all(dim <= 255 for dim in self.outdims)
-        out = np.zeros((n_samples, len(pmf)), dtype=np.uint8)
+        out = np.zeros((n_samples, len(self.nsoutdims)), dtype=np.uint8)
         out[...] = 0xff
         if method == 'cond':
-            self._sample_cond(rng, pmf, n_samples, n_group, out, eps)
+            self._sample_cond(rng, state, mode, n_samples, n_group, out, eps)
         elif method == 'direct':
-            self._sample_direct(rng, pmf, n_samples, out, eps)
+            self._sample_direct(rng, state, mode, n_samples, out, eps)
         else:
             raise ValueError('Unknown method {!r}'.format(method))
         assert (out < np.array(self.nsoutdims)[None, :]).all()
