@@ -196,7 +196,7 @@ def pmps_reduction(pmps, support):
     :param support: Set of sites to keep
 
     :returns: Sites traced out at the beginning or end of the chain
-        are removed using :func:`reduction_pmps` and a suitable
+        are removed using :func:`reductions_pmps` and a suitable
         normalization. Sites traced out in the middle of the chain are
         converted to sites with physical dimension 1 and larger
         ancilla dimension.
