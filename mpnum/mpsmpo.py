@@ -134,9 +134,9 @@ from ._tools import local_to_global, matdot
 
 
 __all__ = ['mps_to_mpo', 'mps_to_pmps', 'pmps_dm_to_array',
-           'pmps_reduction', 'pmps_to_mpo', 'reductions_mpo',
-           'reductions_mps_as_mpo', 'reductions_mps_as_pmps',
-           'reductions_pmps']
+           'pmps_reduction', 'pmps_to_mpo', 'pmps_to_mps',
+           'reductions_mpo', 'reductions_mps_as_mpo',
+           'reductions_mps_as_pmps', 'reductions_pmps']
 
 
 def _check_reductions_args(nr_sites, width, startsites, stopsites):
@@ -372,6 +372,18 @@ def mps_to_pmps(mps):
     assert_array_equal(mps.plegs, 1)
     ltens = (lten.reshape(lten.shape[0:2] + (1, lten.shape[2])) for lten in mps.lt)
     return mp.MPArray(ltens)
+
+
+def pmps_to_mps(pmps):
+    """Convert a PMPS with unit ancilla dimensions to a simple MPS
+
+    If all ancilla dimensions of the PMPS are equal to unity, they are
+    removed. Otherwise, an AssertionError is raised.
+
+    """
+    assert all(l == 2 for l in pmps.plegs)
+    assert all(d[1] == 1 for d in pmps.pdims)
+    return pmps.reshape([(d[0],) for d in pmps.pdims])
 
 
 def mps_to_mpo(mps):
