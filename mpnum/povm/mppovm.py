@@ -529,6 +529,9 @@ class MPPovm(mp.MPArray):
         """
         assert len(self) == len(state)
         if impl == 'auto':
+            if mode == 'mps':
+                mode = 'pmps'
+                state = mpsmpo.mps_to_pmps(state)
             impl = 'pmps-symm' if mode == 'pmps' else 'default'
         if impl == 'pmps-symm':
             pmf = self._pmf_as_array_pmps_symm(state)
