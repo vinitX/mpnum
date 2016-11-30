@@ -1269,31 +1269,23 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
         assert_array_almost_equal(alt_compr, compr)
 
 
-@pt.mark.skip(reason="Depends strongly on initial guess, work in progress")
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@compr_test_params
-def test_var_no_worse_than_svd(nr_sites, local_dims, bond_dim, normalize,
-                                comparg, rgen, dtype):
-    """Var: If we perform enough sweeps (enough = empirical value), we
-    expect to be at least as good as SVD compression (up to a small
-    tolerance)."""
-    if (comparg['method'] != 'var'):
-        return
-
-    # Below, we want to check that var is at least as good as SVD
-    # compression.  This requires a big enough number of sweeps.
-    # Because a big number of sweeps is not required in any other
-    # test, we override the number of sweeps here.
-    comparg = update_copy_of(comparg, {'num_sweeps': 20 // comparg['var_sites']})
-
-    mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 5,
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_var_no_worse_than_svd(nr_sites, local_dim, bond_dim, rgen, dtype):
+    """Variational compresssion should always improve the overlap of the
+    compressed mpa with the original one -- we test this by running a single
+    variational compression sweep after an SVD compression and check that
+    the overlap did not become smaller"""
+    mpa = 4.2 * factory.random_mpa(nr_sites, local_dim, 5 * bond_dim,
                                    normalized=True, randstate=rgen, dtype=dtype)
-    mpa.compress()
-    _, overlap_var = call_compression(mpa.copy(), comparg, bond_dim, rgen)
+    mpa_svd, overlap_svd = mpa.compression(method='svd', bdim=bond_dim)
+    overlap_svd /= mp.norm(mpa.copy()) * mp.norm(mpa_svd)
 
-    for direction in ('left', 'right'):
-        _, overlap_svd = mpa.compression(method='svd', bdim=bond_dim)
-        assert overlap_var >= overlap_svd * (1 - 1e-6)
+    mpa_var, overlap_var = mpa.compression(method='var', bdim=bond_dim,
+                                           startmpa=mpa_svd, num_sweeps=1)
+    overlap_var /= mp.norm(mpa) * mp.norm(mpa_var)
+
+    assert overlap_var > overlap_svd * (1 - 1e-14)
 
 
 @compr_test_params
