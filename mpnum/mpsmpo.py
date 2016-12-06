@@ -136,7 +136,7 @@ from ._tools import local_to_global, matdot
 __all__ = ['mps_to_mpo', 'mps_to_pmps', 'pmps_dm_to_array',
            'pmps_reduction', 'pmps_to_mpo', 'pmps_to_mps',
            'reductions_mpo', 'reductions_mps_as_mpo',
-           'reductions_mps_as_pmps', 'reductions_pmps']
+           'reductions_mps_as_pmps', 'reductions_pmps', 'reductions']
 
 
 def _check_reductions_args(nr_sites, width, startsites, stopsites):
@@ -342,6 +342,18 @@ def reductions_mps_as_mpo(mps, width=None, startsites=None, stopsites=None):
 
     """
     return map(pmps_to_mpo, reductions_mps_as_pmps(mps, width, startsites, stopsites))
+
+
+def reductions(state, mode, **kwargs):
+    """.. todo:: Add docstring"""
+    if mode == 'mps':
+        return reductions_mps_as_pmps(state, **kwargs), 'pmps'
+    elif mode == 'pmps':
+        return reductions_pmps(state, **kwargs), 'pmps'
+    elif mode == 'mpdo':
+        return reductions_mpo(state, **kwargs), 'mpdo'
+    else:
+        raise ValueError('Unknown mode {!r}'.format(mode))
 
 
 def pmps_to_mpo(pmps):

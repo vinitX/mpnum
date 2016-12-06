@@ -543,6 +543,21 @@ class MPPovm(mp.MPArray):
             raise ValueError('Implementation {!r} unknown'.format(impl))
         return check_pmf(pmf, eps, eps)
 
+    def pmfs_as_array(self, states, mode, asarray=False, eps=1e-10):
+        """.. todo:: Add docstring"""
+        pmfs = (self.pmf_as_array(state, mode, eps) for state in states)
+        if asarray:
+            pmfs = np.array(list(pmfs))
+        return pmfs
+
+    def block_pmfs_as_array(self, state, mode, asarray=False, eps=1e-10,
+                            **redarg):
+        """.. todo:: Add docstring"""
+        if len(redarg) == 0:
+            redarg['width'] = len(self)
+        states, newmode = mpsmpo.reductions(state, mode, **redarg)
+        return self.pmfs_as_array(states, newmode, asarray, eps)
+
     def match_elems(self, other, exclude_dup=(), eps=1e-10):
         """Find POVM elements in `other` which have information on `self`
 
