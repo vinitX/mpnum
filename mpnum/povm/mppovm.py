@@ -533,6 +533,9 @@ class MPPovm(mp.MPArray):
                 mode = 'pmps'
                 state = mpsmpo.mps_to_pmps(state)
             impl = 'pmps-symm' if mode == 'pmps' else 'default'
+        if len(self) == 1 and impl == 'pmps-symm':
+            # pmps-symm does not work for len(self) = 1. Use pmps-ltr instead.
+            impl = 'pmps-ltr'
         if impl == 'pmps-symm':
             pmf = self._pmf_as_array_pmps_symm(state)
         elif impl == 'pmps-ltr':
