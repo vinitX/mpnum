@@ -1253,6 +1253,25 @@ def inner(mpa1, mpa2):
     return _ltens_to_array(ltens_new)[0, ..., 0]
 
 
+def sandwich(mpo, mps):
+    """Compute <mps|MPO|mps> efficiently
+
+    The runtime of this method scales with `D**3 Dp + D**2 Dp**3`
+    where `D` and `Dp` are the bond dimensions of `mps` and `mpo`. This
+    is more efficient than `inner(mps, dot(mpo, mps))`, whose runtime
+    scales with `D**4 Dp**3`, and also more efficient that
+    `dot(mps.conj(), dot(mpo, mps)).to_array()`, whose runtime scales
+    with `D**6 Dp**3`.
+
+    """
+    # Fortunately, the contraction has been implemented already:
+    arr = np.ones((1, 1, 1))
+    for mpo_lt, mps_lt in zip(mpo.lt, mps.lt):
+        arr = mp.linalg._mineig_leftvec_add(arr, mpo_lt, mps_lt)
+    assert arr.size == 1
+    return arr.flat[0]
+
+
 def outer(mpas, astype=None):
     """Performs the tensor product of MPAs given in `*args`
 
