@@ -573,7 +573,7 @@ def mineig_sum(mpas,
     leftvecs = [[np.array(1, ndmin=1 + pl) for pl in plegs]]
     leftvecs.extend([None] * nr_mpas for _ in range(nr_sites - minimize_sites))
     rightvecs = [[None] * nr_mpas for _ in range(nr_sites - minimize_sites)]
-    rightvecs.append(leftvecs[0].copy())
+    rightvecs.append(leftvecs[0][:])
     for pos in reversed(range(nr_sites - minimize_sites)):
         _mineig_sum_rightvec_add(
             mpas, plegs, rightvecs[pos], rightvecs[pos + 1],
