@@ -47,7 +47,8 @@ from .mpstruct import LocalTensors
 
 __all__ = ['MPArray', 'dot', 'inject', 'inner', 'local_sum', 'louter',
            'norm', 'normdist', 'outer', 'partialdot', 'partialtrace',
-           'prune', 'regular_slices', 'embed_slice', 'trace', 'diag', 'sumup']
+           'prune', 'regular_slices', 'sandwich', 'embed_slice',
+           'trace', 'diag', 'sumup']
 
 
 class MPArray(object):
