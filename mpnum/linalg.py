@@ -319,6 +319,9 @@ def mineig(mpo,
         startvec = random_mpa(nr_sites, pdims, startvec_bonddim,
                               randstate=randstate)
         startvec /= mp.norm(startvec)
+    else:
+        # Do not modify the `startvec` argument.
+        startvec = startvec.copy()
     # Can we avoid this overly complex check by improving
     # _mineig_minimize_locally()? eigs() will fail under the excluded
     # conditions because of too small matrices.
