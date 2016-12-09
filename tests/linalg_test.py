@@ -71,6 +71,38 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_mineig_sum_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
+    # Need at least three sites for minimize_sites = 2
+    if nr_sites < 3:
+        return
+    bond_dim = max(1, bond_dim // 2)
+    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
+                             hermitian=True, normalized=True)
+    mpo.normalize()
+    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    mps /= mp.norm(mps)
+    mpas = [mpo, mps]
+
+    vec = mps.to_array().ravel()
+    op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
+    op += np.outer(vec, vec.conj())
+    eigvals, eigvec = np.linalg.eig(op)
+
+    # Eigenvals should be real for a hermitian matrix
+    assert (np.abs(eigvals.imag) < 1e-10).all(), str(eigvals.imag)
+    mineig_pos = eigvals.argmin()
+    mineig, mineig_eigvec = eigvals[mineig_pos], eigvec[:, mineig_pos]
+    mineig_mp, mineig_eigvec_mp = mpnum.linalg.mineig_sum(
+        mpas, startvec_bonddim=5 * bond_dim, randstate=rgen,
+        minimize_sites=2)
+    mineig_eigvec_mp = mineig_eigvec_mp.to_array().flatten()
+
+    overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec_mp)
+    assert_almost_equal(mineig_mp, mineig)
+    assert_almost_equal(abs(overlap), 1)
+
+
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mineig_eigs_opts(nr_sites, local_dim, bond_dim, rgen):
     """Verify correct operation if eigs_opts() is specified
 

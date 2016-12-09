@@ -9,6 +9,7 @@ and eigenvector).
 
 from __future__ import absolute_import, division, print_function
 
+import itertools as it
 import numpy as np
 from scipy.sparse.linalg import eigs
 
@@ -19,7 +20,7 @@ from . import _tools
 from ._named_ndarray import named_ndarray
 from .factory import random_mpa
 
-__all__ = ['mineig']
+__all__ = ['mineig', 'mineig_sum']
 
 
 def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten, mps_lten2=None):
@@ -126,6 +127,54 @@ def _mineig_rightvec_add(rightvec, mpo_lten, mps_lten):
     return rightvec
 
 
+def _mineig_leftvec_add_mps(lv, lt1, lt2):
+    """Add one column to the left vector (MPS version)"""
+    # MPS 1: Interpreted as |psiXpsi| part of the operator
+    # MPS 2: The current eigvectector candidate
+    # NB: It would be more efficient to store lt1.conj() instead of lt1.
+    # lv axes: 0: mps1 bond, 1: mps2 bond
+    lv = np.tensordot(lv, lt1.conj(), axes=(0, 0))
+    # lv axes: 0: mps2 bond, 1: physical leg, 2: mps1 bond
+    lv = np.tensordot(lv, lt2, axes=((0, 1), (0, 1)))
+    # lv axes: 0: mps1 bond, 1: mps2 bond
+    return lv
+
+
+def _mineig_rightvec_add_mps(rv, lt1, lt2):
+    """Add one column to the right vector (MPS version)"""
+    # rv axes: 0: mps1 bond, 1: mps2 bond
+    rv = np.tensordot(rv, lt1.conj(), axes=(0, 2))
+    # rv axes: 0: mps2 bond, 1: mps1 bond, 2: physical leg
+    rv = np.tensordot(rv, lt2, axes=((0, 2), (2, 1)))
+    # rv axes: 0: mps1 bond, 1: mps2 bond
+    return rv
+
+
+def _mineig_sum_leftvec_add(
+        mpas, mpas_plegs, leftvec_out, leftvec, pos, mps_lten):
+    """Add one column to the left vector (MPA list dispatching)"""
+    for i, mpa, plegs, lv in zip(it.count(), mpas, mpas_plegs, leftvec):
+        if plegs == 2:
+            leftvec_out[i] = _mineig_leftvec_add(lv, mpa.lt[pos], mps_lten)
+        elif plegs == 1:
+            leftvec_out[i] = _mineig_leftvec_add_mps(lv, mpa.lt[pos], mps_lten)
+        else:
+            raise ValueError('plegs = {!r} not supported'.format(plegs))
+
+
+def _mineig_sum_rightvec_add(
+        mpas, mpas_plegs, rightvec_out, rightvec, pos, mps_lten):
+    """Add one column to the right vector (MPA list dispatching)"""
+    for i, mpa, plegs, rv in zip(it.count(), mpas, mpas_plegs, rightvec):
+        if plegs == 2:
+            rightvec_out[i] = _mineig_rightvec_add(rv, mpa.lt[pos], mps_lten)
+        elif plegs == 1:
+            rightvec_out[i] = _mineig_rightvec_add_mps(rv, mpa.lt[pos], mps_lten)
+        else:
+            raise ValueError('plegs = {!r} not supported'.format(plegs))
+    return rightvec
+
+
 def _mineig_local_op(leftvec, mpo_ltens, rightvec):
     """Create the operator for local eigenvalue minimization on one site.
 
@@ -187,9 +236,34 @@ def _mineig_local_op(leftvec, mpo_ltens, rightvec):
     return op
 
 
+def _mineig_local_op_mps(lv, ltens, rv):
+    """Local operator contribution from an MPS"""
+    # MPS 1 / ltens: Interpreted as |psiXpsi| part of the operator
+    # MPS 2: The current eigvectector candidate
+    op = lv.T
+    # op axes: 0 mps2 bond, 1: mps1 bond
+    s = op.shape
+    op = op.reshape((s[0], 1, s[1]))
+    # op axes: 0 mps2 bond, 1: physical legs, 2: mps1 bond
+    for lt in ltens:
+        # op axes: 0: mps2 bond, 1: physical legs, 2: mps1 bond
+        op = np.tensordot(op, lt.conj(), axes=(2, 0))
+        # op axes: 0: mps2 bond, 1, 2: physical legs, 3: mps1 bond
+        s = op.shape
+        op = op.reshape((s[0], -1, s[3]))
+        # op axes: 0: mps2 bond, 1: physical legs, 2: mps1 bond
+    op = np.tensordot(op, rv, axes=(2, 0))
+    # op axes: 0: mps2 bond, 1: physical legs, 2: mps2 bond
+    op = np.outer(op.conj(), op)
+    # op axes:
+    # 0: (0a: left cc mps2 bond, 0b: physical row leg, 0c: right cc mps2 bond),
+    # 1: (1a: left mps2 bond, 1b: physical column leg, 1c: right mps2 bond)
+    return op
+
+
 def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
                              user_eigs_opts=None):
-    """Perform the local eigenvalue minimization on one site on one site.
+    """Perform the local eigenvalue minimization on one or more sites
 
     Return a new (expectedly smaller) eigenvalue and a new local
     tensor for the MPS eigenvector.
@@ -215,22 +289,27 @@ def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
     Middle row: MPO matrices with row (column) indices to bottom (top)
 
     """
-    # FIXME Do we really need this conversion?
-    mpo_ltens = list(mpo_ltens)
-    eigvec_ltens = list(eigvec_ltens)
+    op = _mineig_local_op(leftvec, list(mpo_ltens), rightvec)
+    return _mineig_minimize_locally2(op, list(eigvec_ltens), user_eigs_opts)
 
+
+def _mineig_minimize_locally2(local_op, eigvec_ltens, user_eigs_opts):
+    """Implement the main part of :func:`_mineig_minimize_locally`
+
+    See :func:`_mineig_minimize_locally` for a description.
+
+    """
     eigs_opts = {'k': 1, 'which': 'SR', 'tol': 1e-6}
     if user_eigs_opts is not None:
         eigs_opts.update(user_eigs_opts)
     if eigs_opts['k'] != 1:
         raise ValueError('Supplying k != 1 in requires changes in the code, '
                          'k={} was requested'.format(user_eigs_opts['k']))
-    op = _mineig_local_op(leftvec, mpo_ltens, rightvec)
     eigvec_bonddim = max(lten.shape[0] for lten in eigvec_ltens)
     eigvec_lten = eigvec_ltens[0]
     for lten in eigvec_ltens[1:]:
         eigvec_lten = _tools.matdot(eigvec_lten, lten)
-    eigvals, eigvecs = eigs(op, v0=eigvec_lten.flatten(), **eigs_opts)
+    eigvals, eigvecs = eigs(local_op, v0=eigvec_lten.flatten(), **eigs_opts)
     eigval_pos = eigvals.real.argmin()
     eigval = eigvals[eigval_pos]
     eigvec_lten = eigvecs[:, eigval_pos].reshape(eigvec_lten.shape)
@@ -249,6 +328,24 @@ def _mineig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
         eigvec_lten.compress(method='svd', bdim=eigvec_bonddim)
         eigvec_lten = eigvec_lten.lt
     return eigval, eigvec_lten
+
+
+def _mineig_sum_minimize_locally(
+        mpas, mpas_plegs, leftvec, pos, rightvec, eigvec_ltens,
+        user_eigs_opts=None):
+    """Local minimization (MPA list dispatching)"""
+    # Our task is quite simple: Compute the local operator for each
+    # contribution in the sum and sum the results, then minimize.
+    op = 0
+    for mpa, plegs, lv, rv in zip(mpas, mpas_plegs, leftvec, rightvec):
+        if plegs == 2:
+            op += _mineig_local_op(lv, list(mpa.lt[pos]), rv)
+        elif plegs == 1:
+            op += _mineig_local_op_mps(lv, list(mpa.lt[pos]), rv)
+        else:
+            raise ValueError('plegs = {!r} not supported'.format(pdims))
+
+    return _mineig_minimize_locally2(op, list(eigvec_ltens), user_eigs_opts)
 
 
 def mineig(mpo,
@@ -355,8 +452,8 @@ def mineig(mpo,
     rightvecs = [None] * (nr_sites - minimize_sites) + [np.array(1, ndmin=3)]
     for pos in reversed(range(nr_sites - minimize_sites)):
         rightvecs[pos] = _mineig_rightvec_add(rightvecs[pos + 1],
-                                                 mpo.lt[pos + minimize_sites],
-                                                 eigvec.lt[pos + minimize_sites])
+                                              mpo.lt[pos + minimize_sites],
+                                              eigvec.lt[pos + minimize_sites])
 
     # The iteration pattern is very similar to
     # :func:`mpnum.mparray.MPArray._adapt_to()`. See there for more
@@ -390,6 +487,132 @@ def mineig(mpo,
                     rightvecs[pos + 1], mpo.lt[pos_end], eigvec.lt[pos_end])
             eigval, eigvec_lten = _mineig_minimize_locally(
                 leftvecs[pos], mpo.lt[pos:pos_end], rightvecs[pos],
+                eigvec.lt[pos:pos_end], eigs_opts)
+            eigvec.lt[pos:pos_end] = eigvec_lten
+
+    return eigval, eigvec
+
+
+def mineig_sum(mpas,
+           startvec=None, startvec_bonddim=None, randstate=None,
+           max_num_sweeps=5, eigs_opts=None, minimize_sites=1):
+    """Iterative search for smallest eigenvalue+vector of a sum
+
+    Try to compute the ground state of the sum of the objects in
+    `mpas`. MPOs are taken as-is. An MPS |psi> is interpreted as
+    |psiXpsi| in the sum.
+
+    This function executes exactly the same algorithm as
+    :func:`mineig` applied to an uncompressed MPO sum of the elements
+    in `mpas`, but it obtains the ingredients for the local
+    optimization steps using less memory and execution time. In
+    particular, this function does not have to convert an MPS in
+    `mpas` to an MPO.
+
+    .. todo:: Add information on how the runtime of :func:`mineig` and
+        :func:`mineig_sum` with the the different bond dimensions.
+
+    :param mpas: A sequence of MPOs or MPSs
+
+    Remaining parameters and description: See :func:`mineig`.
+
+    Algorithm: [Sch11_, Sec. 6.3]
+
+    """
+    # Possible TODOs: See :func:`mineig`
+    mpas = list(mpas)
+    nr_mpas = len(mpas)
+    nr_sites = len(mpas[0])
+    assert all(len(m) == nr_sites for m in mpas)
+    plegs = [m.plegs[0] for m in mpas]
+    assert nr_sites - minimize_sites > 0, (
+        'Require ({} =) nr_sites > minimize_sites (= {})'
+        .format(nr_sites, minimize_sites))
+
+    if startvec is None:
+        pdims = max(dim[0] for dim in mpas[0].pdims)  # FIXME (also in mineig())
+        if startvec_bonddim is None:
+            raise ValueError(
+                'At least one of startvec and startvec_bonddim is required')
+        if startvec_bonddim == 1:
+            raise ValueError('startvec_bonddim must be at least 2')
+
+        startvec = random_mpa(nr_sites, pdims, startvec_bonddim,
+                              randstate=randstate)
+        startvec /= mp.norm(startvec)
+    else:
+        # Do not modify the `startvec` argument.
+        startvec = startvec.copy()
+    # Can we avoid this overly complex check by improving
+    # _mineig_minimize_locally()? eigs() will fail under the excluded
+    # conditions because of too small matrices.
+    assert not any(bdim12 == (1, 1) for bdim12 in
+                   zip((1,) + startvec.bdims, startvec.bdims + (1,))), \
+        'startvec must not contain two consecutive bonds of dimension 1, ' \
+        'bdims including dummy bonds = (1,) + {!r} + (1,)' \
+            .format(startvec.bdims)
+    # For
+    #
+    #   pos in range(nr_sites - minimize_sites),
+    #
+    # we find the ground state of an operator supported on
+    #
+    #   range(pos, pos_end),  pos_end = pos + minimize_sites
+    #
+    # leftvecs[pos] and rightvecs[pos] contain the vectors needed to
+    # construct that operator for that. Therefore, leftvecs[pos] is
+    # constructed from matrices on
+    #
+    #   range(0, pos - 1)
+    #
+    # and rightvecs[pos] is constructed from matrices on
+    #
+    #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
+    eigvec = startvec
+    eigvec.normalize(right=1)
+    leftvecs = [[np.array(1, ndmin=1 + pl) for pl in plegs]]
+    leftvecs.extend([None] * nr_mpas for _ in range(nr_sites - minimize_sites))
+    rightvecs = [[None] * nr_mpas for _ in range(nr_sites - minimize_sites)]
+    rightvecs.append(leftvecs[0].copy())
+    for pos in reversed(range(nr_sites - minimize_sites)):
+        _mineig_sum_rightvec_add(
+            mpas, plegs, rightvecs[pos], rightvecs[pos + 1],
+            pos + minimize_sites, eigvec.lt[pos + minimize_sites])
+
+    # The iteration pattern is very similar to
+    # :func:`mpnum.mparray.MPArray._adapt_to()`. See there for more
+    # comments.
+    for num_sweep in range(max_num_sweeps):
+        # Sweep from left to right
+        for pos in range(nr_sites - minimize_sites + 1):
+            if pos == 0 and num_sweep > 0:
+                # Don't do first site again if we are not in the first sweep.
+                continue
+
+            if pos > 0:
+                eigvec.normalize(left=pos)
+                rightvecs[pos - 1] = [None] * nr_mpas
+                _mineig_sum_leftvec_add(
+                    mpas, plegs, leftvecs[pos], leftvecs[pos - 1],
+                    pos - 1, eigvec.lt[pos - 1])
+            pos_end = pos + minimize_sites
+            eigval, eigvec_lten = _mineig_sum_minimize_locally(
+                mpas, plegs, leftvecs[pos], slice(pos, pos_end), rightvecs[pos],
+                eigvec.lt[pos:pos_end], eigs_opts)
+            eigvec.lt[pos:pos_end] = eigvec_lten
+
+        # Sweep from right to left (don't do last site again)
+        for pos in reversed(range(nr_sites - minimize_sites)):
+            pos_end = pos + minimize_sites
+            if pos < nr_sites - minimize_sites:
+                # We always do this, because we don't do the last site again.
+                eigvec.normalize(right=pos_end)
+                leftvecs[pos + 1] = [None] * nr_mpas
+                _mineig_sum_rightvec_add(
+                    mpas, plegs, rightvecs[pos], rightvecs[pos + 1],
+                    pos_end, eigvec.lt[pos_end])
+            eigval, eigvec_lten = _mineig_sum_minimize_locally(
+                mpas, plegs, leftvecs[pos], slice(pos, pos_end), rightvecs[pos],
                 eigvec.lt[pos:pos_end], eigs_opts)
             eigvec.lt[pos:pos_end] = eigvec_lten
 
