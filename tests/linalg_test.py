@@ -102,6 +102,45 @@ def test_mineig_sum_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
     assert_almost_equal(abs(overlap), 1)
 
 
+BENCHMARK_MINEIG_PARAMS = [(20, 2, 12, 12)] 
+
+@pt.mark.benchmark(group='mineig_sum', min_rounds=2)
+@pt.mark.parametrize(
+    'nr_sites, local_dim, bond_dim, ev_bond_dim', BENCHMARK_MINEIG_PARAMS)
+def test_mineig_benchmark(
+        nr_sites, local_dim, bond_dim, ev_bond_dim, rgen, benchmark):
+    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
+                             hermitian=True, normalized=True)
+    mpo.normalize()
+    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    mps /= mp.norm(mps)
+    mpo = mpo + mp.mps_to_mpo(mps)
+
+    benchmark(
+        mpnum.linalg.mineig,
+        mpo, startvec_bonddim=ev_bond_dim, randstate=rgen,
+        minimize_sites=1, max_num_sweeps=1,
+    )
+
+
+@pt.mark.benchmark(group='mineig_sum', min_rounds=2)
+@pt.mark.parametrize(
+    'nr_sites, local_dim, bond_dim, ev_bond_dim', BENCHMARK_MINEIG_PARAMS)
+def test_mineig_sum_benchmark(
+        nr_sites, local_dim, bond_dim, ev_bond_dim, rgen, benchmark):
+    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
+                             hermitian=True, normalized=True)
+    mpo.normalize()
+    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    mps /= mp.norm(mps)
+
+    benchmark(
+        mpnum.linalg.mineig_sum,
+        [mpo, mps], startvec_bonddim=ev_bond_dim, randstate=rgen,
+        minimize_sites=1, max_num_sweeps=1,
+    )
+
+
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mineig_eigs_opts(nr_sites, local_dim, bond_dim, rgen):
     """Verify correct operation if eigs_opts() is specified
