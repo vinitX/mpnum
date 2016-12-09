@@ -408,9 +408,12 @@ def test_inner_mat(nr_sites, local_dim, bond_dim, rgen, dtype):
 def test_sandwich(nr_sites, local_dim, bond_dim, rgen, dtype):
     mps = factory.random_mpa(nr_sites, local_dim, bond_dim,
                              randstate=rgen, dtype=dtype)
+    mps2 = factory.random_mpa(nr_sites, local_dim, bond_dim,
+                              randstate=rgen, dtype=dtype)
     mpo = factory.random_mpa(nr_sites, [local_dim] * 2, bond_dim,
                              randstate=rgen, dtype=dtype)
     mps /= mp.norm(mps)
+    mps2 /= mp.norm(mps2)
     mpo.normalize()
     mpo /= mp.trace(mpo)
     mpo.normalize()
@@ -418,13 +421,18 @@ def test_sandwich(nr_sites, local_dim, bond_dim, rgen, dtype):
     vec = mps.to_array().ravel()
     op = mpo.to_array_global().reshape([local_dim**nr_sites] * 2)
     res_arr = np.vdot(vec, np.dot(op, vec))
-
     res_mpo = mp.inner(mps, mp.dot(mpo, mps))
     res_sandwich = mp.sandwich(mpo, mps)
-
     assert_almost_equal(res_mpo, res_arr)
     assert_almost_equal(res_sandwich, res_arr)
-    
+
+    vec2 = mps2.to_array().ravel()
+    res_arr = np.vdot(vec2, np.dot(op, vec))
+    res_mpo = mp.inner(mps2, mp.dot(mpo, mps))
+    res_sandwich = mp.sandwich(mpo, mps, mps2)
+    assert_almost_equal(res_mpo, res_arr)
+    assert_almost_equal(res_sandwich, res_arr)
+
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)

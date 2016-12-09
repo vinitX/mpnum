@@ -1254,7 +1254,7 @@ def inner(mpa1, mpa2):
     return _ltens_to_array(ltens_new)[0, ..., 0]
 
 
-def sandwich(mpo, mps):
+def sandwich(mpo, mps, mps2=None):
     """Compute <mps|MPO|mps> efficiently
 
     The runtime of this method scales with `D**3 Dp + D**2 Dp**3`
@@ -1264,11 +1264,13 @@ def sandwich(mpo, mps):
     `dot(mps.conj(), dot(mpo, mps)).to_array()`, whose runtime scales
     with `D**6 Dp**3`.
 
+    If `mps2` is given, <mps2|MPO|mps> is computed instead.
+
     """
     # Fortunately, the contraction has been implemented already:
     arr = np.ones((1, 1, 1))
-    for mpo_lt, mps_lt in zip(mpo.lt, mps.lt):
-        arr = mp.linalg._mineig_leftvec_add(arr, mpo_lt, mps_lt)
+    for mpo_lt, mps_lt, mps2_lt in zip(mpo.lt, mps.lt, (mps2 or mps).lt):
+        arr = mp.linalg._mineig_leftvec_add(arr, mpo_lt, mps_lt, mps2_lt)
     assert arr.size == 1
     return arr.flat[0]
 

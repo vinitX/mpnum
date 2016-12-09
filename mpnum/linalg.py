@@ -22,7 +22,7 @@ from .factory import random_mpa
 __all__ = ['mineig']
 
 
-def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten):
+def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten, mps_lten2=None):
     """Add one column to the left vector.
 
     :param leftvec: existing left vector
@@ -59,6 +59,8 @@ def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten):
     leftvec = named_ndarray(leftvec, leftvec_names)
     mpo_lten = named_ndarray(mpo_lten, mpo_names)
     mps_lten = named_ndarray(mps_lten, mps_names)
+    mps_lten2 = mps_lten if mps_lten2 is None else named_ndarray(mps_lten2,
+                                                                 mps_names)
 
     contract_mps = (('mps_bond', 'left_mps_bond'),)
     leftvec = leftvec.tensordot(mps_lten, contract_mps)
@@ -72,7 +74,7 @@ def _mineig_leftvec_add(leftvec, mpo_lten, mps_lten):
     contract_cc_mps = (
         ('cc_mps_bond', 'left_mps_bond'),
         ('phys_row', 'phys'))
-    leftvec = leftvec.tensordot(mps_lten.conj(), contract_cc_mps)
+    leftvec = leftvec.tensordot(mps_lten2.conj(), contract_cc_mps)
     rename_mps_mpo = (
         ('right_mpo_bond', 'mpo_bond'),
         ('right_mps_bond', 'cc_mps_bond'))
