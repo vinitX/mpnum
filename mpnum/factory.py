@@ -19,8 +19,7 @@ from .mpstruct import LocalTensors
 
 
 __all__ = ['eye', 'random_local_ham', 'random_mpa', 'random_mpdo',
-           'random_mps', 'random_mpo', 'random_op', 'random_state',
-           'random_vec', 'zero', 'diagonal_mpa']
+           'random_mps', 'random_mpo', 'zero', 'diagonal_mpa']
 
 
 def _zrandn(shape, randstate=None):
@@ -48,7 +47,7 @@ def _randn(shape, randstate=None):
 _randfuncs = {np.float_: _randn, np.complex_: _zrandn}
 
 
-def random_vec(sites, ldim, randstate=None, dtype=np.complex_):
+def _random_vec(sites, ldim, randstate=None, dtype=np.complex_):
     """Returns a random complex vector (normalized to ||x||_2 = 1) of shape
     (ldim,) * sites, i.e. a pure state with local dimension `ldim` living on
     `sites` sites.
@@ -58,7 +57,7 @@ def random_vec(sites, ldim, randstate=None, dtype=np.complex_):
     :param randstate: numpy.random.RandomState instance or None
     :returns: numpy.ndarray of shape (ldim,) * sites
 
-    >>> psi = random_vec(5, 2); psi.shape
+    >>> psi = _random_vec(5, 2); psi.shape
     (2, 2, 2, 2, 2)
     >>> np.abs(np.vdot(psi, psi) - 1) < 1e-6
     True
@@ -69,7 +68,7 @@ def random_vec(sites, ldim, randstate=None, dtype=np.complex_):
     return psi
 
 
-def random_op(sites, ldim, hermitian=False, normalized=False, randstate=None,
+def _random_op(sites, ldim, hermitian=False, normalized=False, randstate=None,
               dtype=np.complex_):
     """Returns a random operator  of shape (ldim,ldim) * sites with local
     dimension `ldim` living on `sites` sites in global form.
@@ -81,7 +80,7 @@ def random_op(sites, ldim, hermitian=False, normalized=False, randstate=None,
     :param randstate: numpy.random.RandomState instance or None
     :returns: numpy.ndarray of shape (ldim,ldim) * sites
 
-    >>> A = random_op(3, 2); A.shape
+    >>> A = _random_op(3, 2); A.shape
     (2, 2, 2, 2, 2, 2)
     """
     op = _randfuncs[dtype]((ldim**sites,) * 2, randstate=randstate)
@@ -92,7 +91,7 @@ def random_op(sites, ldim, hermitian=False, normalized=False, randstate=None,
     return op.reshape((ldim,) * 2 * sites)
 
 
-def random_state(sites, ldim, randstate=None):
+def _random_state(sites, ldim, randstate=None):
     """Returns a random positive semidefinite operator of shape (ldim, ldim) *
     sites normalized to Tr rho = 1, i.e. a mixed state with local dimension
     `ldim` living on `sites` sites. Note that the returned state is positive
@@ -105,7 +104,7 @@ def random_state(sites, ldim, randstate=None):
     :returns: numpy.ndarray of shape (ldim, ldim) * sites
 
     >>> from numpy.linalg import eigvalsh
-    >>> rho = random_state(3, 2).reshape((2**3, 2**3))
+    >>> rho = _random_state(3, 2).reshape((2**3, 2**3))
     >>> all(eigvalsh(rho) >= 0)
     True
     >>> np.abs(np.trace(rho) - 1) < 1e-6
@@ -396,7 +395,7 @@ def random_local_ham(sites, ldim=2, intlen=2, randstate=None):
 
     """
     def get_local_ham():
-        op = random_op(intlen, ldim, hermitian=True, normalized=True)
+        op = _random_op(intlen, ldim, hermitian=True, normalized=True)
         op = global_to_local(op, sites=intlen)
         return mp.MPArray.from_array(op, plegs=2)
 

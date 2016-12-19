@@ -47,12 +47,12 @@ def update_copy_of(target, newvals):
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
 def test_from_full(nr_sites, local_dim, _, rgen, dtype):
-    psi = factory.random_vec(nr_sites, local_dim, randstate=rgen, dtype=dtype)
+    psi = factory._random_vec(nr_sites, local_dim, randstate=rgen, dtype=dtype)
     mps = mp.MPArray.from_array(psi, 1)
     assert_array_almost_equal(psi, mps.to_array())
     assert mps.dtype == dtype
 
-    op = factory.random_op(nr_sites, local_dim, randstate=rgen, dtype=dtype)
+    op = factory._random_op(nr_sites, local_dim, randstate=rgen, dtype=dtype)
     mpo = mp.MPArray.from_array(op, 2)
     assert_array_almost_equal(op, mpo.to_array())
     assert mpo.dtype == dtype
@@ -82,7 +82,7 @@ def test_from_kron(nr_sites, local_dim, bond_dim, dtype):
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
 def test_conjugations(nr_sites, local_dim, _, rgen, dtype):
-    op = factory.random_op(nr_sites, local_dim, randstate=rgen, dtype=dtype)
+    op = factory._random_op(nr_sites, local_dim, randstate=rgen, dtype=dtype)
     mpo = mp.MPArray.from_array(op, 2)
     assert_array_almost_equal(np.conj(op), mpo.conj().to_array())
     assert mpo.conj().dtype == dtype
@@ -95,7 +95,7 @@ def test_conjugations(nr_sites, local_dim, _, rgen, dtype):
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
 def test_transpose(nr_sites, local_dim, _, rgen, dtype):
-    op = factory.random_op(nr_sites, local_dim, randstate=rgen, dtype=dtype)
+    op = factory._random_op(nr_sites, local_dim, randstate=rgen, dtype=dtype)
     mpo = mp.MPArray.from_array(global_to_local(op, nr_sites), 2)
 
     opT = op.reshape((local_dim**nr_sites,) * 2).T \
@@ -904,7 +904,7 @@ def test_split(nr_sites, local_dim, bond_dim, rgen):
 ###############################################################################
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
 def test_normalization_from_full(nr_sites, local_dim, _, rgen):
-    op = factory.random_op(nr_sites, local_dim, randstate=rgen)
+    op = factory._random_op(nr_sites, local_dim, randstate=rgen)
     mpo = mp.MPArray.from_array(op, 2)
     assert_correct_normalization(mpo, nr_sites - 1, nr_sites)
 
