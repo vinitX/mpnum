@@ -415,8 +415,10 @@ def mineig(mpo,
         if startvec_bonddim == 1:
             raise ValueError('startvec_bonddim must be at least 2')
 
+        # FIXME Can we choose dtype as mpo.dtype? If so, also adapt mineig_sum
         startvec = random_mpa(nr_sites, pdims, startvec_bonddim,
-                              randstate=randstate)
+                              randstate=randstate, dtype=np.complex_)
+        startvec.normalize(right=1)
         startvec /= mp.norm(startvec)
     else:
         # Do not modify the `startvec` argument.
@@ -538,7 +540,8 @@ def mineig_sum(mpas,
             raise ValueError('startvec_bonddim must be at least 2')
 
         startvec = random_mpa(nr_sites, pdims, startvec_bonddim,
-                              randstate=randstate)
+                              randstate=randstate, dtype=np.complex_)
+        startvec.normalize(right=1)
         startvec /= mp.norm(startvec)
     else:
         # Do not modify the `startvec` argument.
