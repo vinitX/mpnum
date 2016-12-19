@@ -117,6 +117,10 @@ def _random_state(sites, ldim, randstate=None):
     return rho.reshape((ldim,) * 2 * sites)
 
 
+####################################
+#  Factory functions for MPArrays  #
+####################################
+
 def _generate(sites, ldim, bdim, func, force_bdim):
     """Returns a matrix product operator with identical number and dimensions
     of the physical legs. The local tensors are generated using `func`
@@ -171,7 +175,7 @@ def _generate(sites, ldim, bdim, func, force_bdim):
 
 
 def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
-               force_bdim=False, dtype=np.complex_):
+               force_bdim=False, dtype=np.float_):
     """Returns a MPA with randomly choosen local tensors
 
     :param sites: Number of sites
@@ -311,7 +315,7 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
 
     """
     mpo = random_mpa(sites, (ldim,) * 2, bdim, randstate=randstate,
-                     force_bdim=force_bdim)
+                     force_bdim=force_bdim, dtype=np.complex_)
 
     if hermitian:
         # make mpa Herimitan in place, without increasing bond dimension:
@@ -347,7 +351,7 @@ def random_mps(sites, ldim, bdim, randstate=None, force_bdim=False):
 
     """
     return random_mpa(sites, ldim, bdim, normalized=True, randstate=randstate,
-                      force_bdim=force_bdim)
+                      force_bdim=force_bdim, dtype=np.complex_)
 
 
 def random_mpdo(sites, ldim, bdim, randstate=np.random):
