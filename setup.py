@@ -27,53 +27,6 @@ except:
     version = "unknown"
 
 
-class PyTest(Command):
-    """Perform tests"""
-
-    description = "Runs test suite"
-    user_options = [
-        ('selector=', None, "Specifies the tests to run"),
-        ('covreport', None, "Run coverage report from tests"),
-        ('pdb', None, "Whether to run pdb on failure"),
-        ('bench', None, "Whether to run benchmarks"),
-    ]
-
-    def initialize_options(self):
-        self.selector = '(not long) and (not verylong)'
-        self.covreport = None
-        self.pdb = False
-        self.bench = False
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        import pytest
-        args = ['--strict']
-        if self.pdb:
-            args.append('--pdb')
-        if not self.bench:
-            args.append('--benchmark-skip')
-
-        if self.covreport is None:
-            # Run doctests afterwards because they auto-import things. We want
-            # to see missing imports.
-            errno = pytest.main(['-m', self.selector, 'tests'] + args)
-            if errno != 0:
-                raise SystemExit(errno)
-
-            errno = pytest.main(['--doctest-modules', 'mpnum'] + args)
-            if errno != 0:
-                raise SystemExit(errno)
-
-        else:
-            errno = pytest.main(['-m', self.selector, '--cov-report', 'term',
-                                 '--cov-report', 'html', '--cov=mpnum',
-                                 '--doctest-modules', 'mpnum', 'tests'] + args)
-            if errno != 0:
-                raise SystemExit(errno)
-
-
 _install_requires = [
     'SciPy>=0.15',
     'NumPy>=1.5.1',
@@ -113,6 +66,7 @@ if __name__ == '__main__':
         description=description,
         long_description=long_description,
         install_requires=_get_install_requires(_install_requires),
+        setup_requires=['pytest-runner'],
         package_dir={'mpnum': 'mpnum'},
         classifiers=[
             "Development Status :: 4 - Beta",
@@ -125,7 +79,4 @@ if __name__ == '__main__':
             "Intended Audience :: Science/Research"
         ],
         platforms=['ALL'],
-        cmdclass={
-            'test': PyTest
-        }
     )
