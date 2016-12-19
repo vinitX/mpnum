@@ -408,16 +408,13 @@ def test_inner_mat(nr_sites, local_dim, bond_dim, rgen, dtype):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_sandwich(nr_sites, local_dim, bond_dim, rgen, dtype):
     mps = factory.random_mpa(nr_sites, local_dim, bond_dim,
-                             randstate=rgen, dtype=dtype)
+                             randstate=rgen, dtype=dtype, normalized=True)
     mps2 = factory.random_mpa(nr_sites, local_dim, bond_dim,
-                              randstate=rgen, dtype=dtype)
+                              randstate=rgen, dtype=dtype, normalized=True)
     mpo = factory.random_mpa(nr_sites, [local_dim] * 2, bond_dim,
                              randstate=rgen, dtype=dtype)
-    mps /= mp.norm(mps)
-    mps2 /= mp.norm(mps2)
     mpo.normalize()
     mpo /= mp.trace(mpo)
-    mpo.normalize()
 
     vec = mps.to_array().ravel()
     op = mpo.to_array_global().reshape([local_dim**nr_sites] * 2)
@@ -1081,8 +1078,8 @@ def test_singularvals(nr_sites, local_dim, bond_dim, dtype, rgen):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_pad_bdim(nr_sites, local_dim, bond_dim, rgen):
-    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
-    mps /= mp.norm(mps)
+    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
+                             normalized=True)
     mps2 = mps.pad_bdim(2 * bond_dim)
     assert mps2.bdims == tuple(min(d, 2 * bond_dim) for d in mp.full_bdim(mps.pdims))
     assert_almost_equal(mp.normdist(mps, mps2), 0.0)

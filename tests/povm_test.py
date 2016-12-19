@@ -119,10 +119,9 @@ def test_povm_ic_mpa(nr_sites, local_dim, bond_dim, rgen):
     # Check linear inversion for a particular example MPA.
     # Linear inversion works for arbitrary matrices, not only for states,
     # so we test it for an arbitrary MPA.
-    mpa = factory.random_mpa(nr_sites, local_dim**2, bond_dim,
-                             dtype=np.complex_, randstate=rgen)
     # Normalize, otherwise the absolute error check below will not work.
-    mpa /= mp.norm(mpa)
+    mpa = factory.random_mpa(nr_sites, local_dim**2, bond_dim,
+                             dtype=np.complex_, randstate=rgen, normalized=True)
     probabs = mp.dot(probab_map, mpa)
     recons = mp.dot(inv_map, probabs)
     assert mp.norm(recons - mpa) < 1e-6
@@ -262,8 +261,7 @@ def test_mppovm_pmf_as_array_pmps(
         mppaulis = povm.MPPovm.from_local_povm(povm.pauli_povm(pdims), width)
     mppaulis = mppaulis.embed(nr_sites, startsite, pdims)
     pmps = factory.random_mpa(nr_sites, local_dim, bond_dim,
-                              dtype=np.complex_, randstate=rgen)
-    pmps /= mp.norm(pmps)
+                              dtype=np.complex_, randstate=rgen, normalized=True)
     rho = mpsmpo.pmps_to_mpo(pmps)
     expect_rho = mppaulis.pmf_as_array(rho, 'mpdo')
 
@@ -282,8 +280,7 @@ def test_mppovm_pmf_as_array_pmps_benchmark(
     mpp_y = povm.MPPovm.from_local_povm(pauli_y, width) \
                        .embed(nr_sites, startsite, local_dim)
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
-                              dtype=np.complex_, randstate=rgen)
-    pmps /= mp.norm(pmps)
+                              dtype=np.complex_, randstate=rgen, normalized=True)
     benchmark(lambda: mpp_y.pmf_as_array(pmps, 'pmps', impl=impl))
 
 
