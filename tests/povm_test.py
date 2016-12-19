@@ -119,9 +119,9 @@ def test_povm_ic_mpa(nr_sites, local_dim, bond_dim, rgen):
     # Check linear inversion for a particular example MPA.
     # Linear inversion works for arbitrary matrices, not only for states,
     # so we test it for an arbitrary MPA.
-    mpa = factory.random_mpa(nr_sites, local_dim**2, bond_dim, randstate=rgen)
     # Normalize, otherwise the absolute error check below will not work.
-    mpa /= mp.norm(mpa)
+    mpa = factory.random_mpa(nr_sites, local_dim**2, bond_dim,
+                             dtype=np.complex_, randstate=rgen, normalized=True)
     probabs = mp.dot(probab_map, mpa)
     recons = mp.dot(inv_map, probabs)
     assert mp.norm(recons - mpa) < 1e-6
@@ -146,7 +146,7 @@ def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim, nopovm, rgen):
     pmap = nopovm.probability_map
     mpnopovm = povm.MPPovm.from_local_povm(nopovm, width)
     # Use a random MPO rho for testing (instead of a positive MPO).
-    rho = factory.random_mpa(nr_sites, (local_dim,) * 2, bond_dim, rgen)
+    rho = factory.random_mpo(nr_sites, local_dim, bond_dim, rgen)
     reductions = mpsmpo.reductions_mpo(rho, width)
     # Compute expectation values with mpnopovm.expectations(), which
     # uses mpnopovm.probability_map.
@@ -204,7 +204,7 @@ def test_mppovm_embed_expectation(
 
     # Test with an arbitrary random MPO instead of an MPDO
     mpo = mp.factory.random_mpa(nr_sites, local_dim2, bond_dim, rgen,
-                                normalized=True)
+                                dtype=np.complex_, normalized=True)
     mpo_red = next(mp.reductions_mpo(mpo, width, startsites=[startsite]))
     ept = mp.prune(full_povm.pmf(mpo, 'mpdo'), singletons=True).to_array()
     ept_red = red_povm.pmf(mpo_red, 'mpdo').to_array()
@@ -231,10 +231,10 @@ def test_mppovm_expectation_pure(nr_sites, width, local_dim, bond_dim, rgen):
 def test_mppovm_expectation_pmps(nr_sites, width, local_dim, bond_dim, rgen):
     paulis = povm.pauli_povm(local_dim)
     mppaulis = povm.MPPovm.from_local_povm(paulis, width)
-    psi = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
-                             randstate=rgen)
-    rho = mpsmpo.pmps_to_mpo(psi)
-    expect_psi = list(mppaulis.expectations(psi, mode='pmps'))
+    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              dtype=np.complex_, randstate=rgen)
+    rho = mpsmpo.pmps_to_mpo(pmps)
+    expect_psi = list(mppaulis.expectations(pmps, mode='pmps'))
     expect_rho = list(mppaulis.expectations(rho))
 
     assert len(expect_psi) == len(expect_rho)
@@ -261,8 +261,7 @@ def test_mppovm_pmf_as_array_pmps(
         mppaulis = povm.MPPovm.from_local_povm(povm.pauli_povm(pdims), width)
     mppaulis = mppaulis.embed(nr_sites, startsite, pdims)
     pmps = factory.random_mpa(nr_sites, local_dim, bond_dim,
-                              randstate=rgen)
-    pmps /= mp.norm(pmps)
+                              dtype=np.complex_, randstate=rgen, normalized=True)
     rho = mpsmpo.pmps_to_mpo(pmps)
     expect_rho = mppaulis.pmf_as_array(rho, 'mpdo')
 
@@ -281,8 +280,7 @@ def test_mppovm_pmf_as_array_pmps_benchmark(
     mpp_y = povm.MPPovm.from_local_povm(pauli_y, width) \
                        .embed(nr_sites, startsite, local_dim)
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
-                              randstate=rgen)
-    pmps /= mp.norm(pmps)
+                              dtype=np.complex_, randstate=rgen, normalized=True)
     benchmark(lambda: mpp_y.pmf_as_array(pmps, 'pmps', impl=impl))
 
 

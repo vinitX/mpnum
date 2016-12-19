@@ -79,8 +79,8 @@ def test_mineig_sum_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
                              hermitian=True, normalized=True)
     mpo.normalize()
-    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
-    mps /= mp.norm(mps)
+    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
+                             dtype=np.complex_, normalized=True)
     mpas = [mpo, mps]
 
     vec = mps.to_array().ravel()
@@ -102,7 +102,7 @@ def test_mineig_sum_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
     assert_almost_equal(abs(overlap), 1)
 
 
-BENCHMARK_MINEIG_PARAMS = [(20, 2, 12, 12)] 
+BENCHMARK_MINEIG_PARAMS = [(20, 2, 12, 12)]
 
 @pt.mark.benchmark(group='mineig_sum', min_rounds=2)
 @pt.mark.parametrize(
@@ -112,8 +112,8 @@ def test_mineig_benchmark(
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
                              hermitian=True, normalized=True)
     mpo.normalize()
-    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
-    mps /= mp.norm(mps)
+    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
+                             dtype=np.complex_, normalized=True)
     mpo = mpo + mp.mps_to_mpo(mps)
 
     benchmark(
@@ -131,8 +131,8 @@ def test_mineig_sum_benchmark(
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
                              hermitian=True, normalized=True)
     mpo.normalize()
-    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
-    mps /= mp.norm(mps)
+    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
+                             dtype=np.complex_, normalized=True)
 
     benchmark(
         mpnum.linalg.mineig_sum,

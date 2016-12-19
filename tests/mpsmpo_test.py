@@ -29,7 +29,7 @@ def _get_reductions(red_fun, mpa, max_red_width):
 def test_pmps_dm_to_array(nr_sites, local_dim, bond_dim, rgen):
 
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
-                              randstate=rgen)
+                              randstate=rgen, dtype=np.complex_)
     mpo = mm.pmps_to_mpo(pmps)
     op = mpo.to_array()
     op2 = mm.pmps_dm_to_array(pmps)
@@ -44,8 +44,8 @@ def test_pmps_dm_to_array(nr_sites, local_dim, bond_dim, rgen):
 def test_pmps_dm_to_array_fast(nr_sites, local_dim, bond_dim, rgen, benchmark):
 
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              dtype=np.complex_, normalized=True,
                               randstate=rgen)
-    pmps /= mp.norm(pmps)
     benchmark(mm.pmps_dm_to_array, pmps)
 
 
@@ -54,8 +54,8 @@ def test_pmps_dm_to_array_fast(nr_sites, local_dim, bond_dim, rgen, benchmark):
 def test_pmps_dm_to_array_slow(nr_sites, local_dim, bond_dim, rgen, benchmark):
 
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              dtype=np.complex_, normalized=True,
                               randstate=rgen)
-    pmps /= mp.norm(pmps)
     benchmark(lambda x: mm.pmps_to_mpo(pmps).to_array(), pmps)
 
 
@@ -66,8 +66,8 @@ def test_pmps_dm_to_array_slow(nr_sites, local_dim, bond_dim, rgen, benchmark):
 def test_pmps_reduction(nr_sites, local_dim, bond_dim, keep, rgen):
 
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              dtype=np.complex_, normalized=True,
                               randstate=rgen)
-    pmps /= mp.norm(pmps)
     rho = mm.pmps_to_mpo(pmps).to_array_global()
     traceout = [pos for pos in range(nr_sites) if pos not in keep]
     red = _tools.partial_trace(rho, traceout)
@@ -86,8 +86,8 @@ def test_pmps_reduction(nr_sites, local_dim, bond_dim, keep, rgen):
 def test_pmps_reduction_array_fast(nr_sites, local_dim, bond_dim, keep, rgen,
                                    benchmark):
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              dtype=np.complex_, normalized=True,
                               randstate=rgen)
-    pmps /= mp.norm(pmps)
     benchmark(lambda: mm.pmps_dm_to_array(mm.pmps_reduction(pmps, keep)))
 
 
@@ -99,8 +99,8 @@ def test_pmps_reduction_array_fast(nr_sites, local_dim, bond_dim, keep, rgen,
 def test_pmps_reduction_array_slow_noprune(nr_sites, local_dim, bond_dim, keep, rgen,
                                    benchmark):
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              dtype=np.complex_, normalized=True,
                               randstate=rgen)
-    pmps /= mp.norm(pmps)
     # NB: The maximal distance between sites of the reduction is
     # limited by the fact that normal numpy builds support arrays with
     # at most 32 indices.
@@ -115,8 +115,8 @@ def test_pmps_reduction_array_slow_noprune(nr_sites, local_dim, bond_dim, keep, 
 def test_pmps_reduction_array_slow_prune(nr_sites, local_dim, bond_dim, keep, rgen,
                                    benchmark):
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                              dtype=np.complex_, normalized=True,
                               randstate=rgen)
-    pmps /= mp.norm(pmps)
     benchmark(
         lambda: mp.prune(mm.pmps_to_mpo(mm.pmps_reduction(pmps, keep)),
                          singletons=True).to_array()
@@ -130,7 +130,7 @@ def test_pmps_reduction_array_slow_prune(nr_sites, local_dim, bond_dim, keep, rg
 def test_pmps_reduction_dm_to_array(nr_sites, local_dim, bond_dim, keep, rgen):
 
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
-                              randstate=rgen)
+                              dtype=np.complex_, randstate=rgen)
     rho = mm.pmps_to_mpo(pmps).to_array_global()
     traceout = [pos for pos in range(nr_sites) if pos not in keep]
     red = _tools.partial_trace(rho, traceout)
@@ -142,7 +142,7 @@ def test_pmps_reduction_dm_to_array(nr_sites, local_dim, bond_dim, keep, rgen):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, max_red_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_reductions_mpo(nr_sites, local_dim, bond_dim, max_red_width, rgen):
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim,
                              randstate=rgen)
     op = mpo.to_array_global()
 
@@ -167,7 +167,7 @@ def test_reductions_mpo(nr_sites, local_dim, bond_dim, max_red_width, rgen):
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_reductions_pmps(nr_sites, local_dim, bond_dim, max_red_width, rgen):
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
-                              randstate=rgen)
+                              dtype=np.complex_, randstate=rgen)
     op = mm.pmps_to_mpo(pmps).to_array_global()
 
     start, stop, red = _get_reductions(mm.reductions_pmps, pmps, max_red_width)
@@ -193,8 +193,7 @@ def test_reductions_pmps(nr_sites, local_dim, bond_dim, max_red_width, rgen):
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim, width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_reductions_mps(nr_sites, local_dim, bond_dim, width, rgen):
-    mps = factory.random_mpa(nr_sites, (local_dim,), bond_dim,
-                             randstate=rgen)
+    mps = factory.random_mps(nr_sites, local_dim, bond_dim, randstate=rgen)
     mpo = mp.louter(mps, mps.conj())
 
     pmps_reds = mm.reductions_mps_as_mpo(mps, width)
@@ -210,7 +209,7 @@ def test_pmps_to_mpo(nr_sites, local_dim, bond_dim, rgen):
         return
     nr_sites = nr_sites // 2
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
-                              randstate=rgen)
+                              dtype=np.complex_, randstate=rgen)
     rho_mp = mm.pmps_to_mpo(pmps).to_array_global()
 
     # Local form is what we will use: One system site, one ancilla site, etc
@@ -228,7 +227,7 @@ def test_pmps_to_mpo(nr_sites, local_dim, bond_dim, rgen):
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_mps_to_mpo(nr_sites, local_dim, bond_dim, rgen):
-    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
+    mps = factory.random_mps(nr_sites, local_dim, bond_dim, randstate=rgen)
     # Instead of calling the two functions, we call mps_to_mpo(),
     # which does exactly that:
     #   mps_as_puri = mp.mps_as_local_purification_mps(mps)

@@ -25,6 +25,7 @@ def assert_mpa_identical(mpa1, mpa2, decimal=np.infty):
     """
     assert len(mpa1) == len(mpa2)
     assert mpa1.normal_form == mpa2.normal_form
+    assert mpa1.dtype == mpa2.dtype
 
     for i, lten1, lten2 in zip(it.count(), mpa1.lt, mpa2.lt):
         if decimal is np.infty:
