@@ -904,6 +904,14 @@ def test_split(nr_sites, local_dim, bond_dim, rgen):
         assert_correct_normalization(mpa_r)
 
 
+def test_reshape(rgen):
+    mpa = factory.random_mpa(4, [(3, 2), (4,), (2, 5), (24,)], 4)
+    mpa.normalize()
+    mpa_r = mpa.reshape([(2, 3), (2, 2), (10,), (3, 2, 4)])
+    assert all(s1 == s2 for s1, s2 in zip(mpa_r.pdims, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
+    assert_correct_normalization(mpa_r, *mpa.normal_form)
+
+
 ###############################################################################
 #                         Normalization & Compression                         #
 ###############################################################################

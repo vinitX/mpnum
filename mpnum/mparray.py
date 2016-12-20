@@ -501,8 +501,9 @@ class MPArray(object):
         if not isinstance(newshapes[0], collections.Iterable):
             newshapes = it.repeat(newshapes, times=len(self))
 
-        return MPArray([_local_reshape(lten, newshape)
-                       for lten, newshape in zip(self._lt, newshapes)])
+        ltens = [_local_reshape(lten, newshape)
+                for lten, newshape in zip(self._lt, newshapes)]
+        return MPArray(LocalTensors(ltens, nform=self.normal_form))
 
     def ravel(self):
         """Flatten the MPA to an MPS, shortcut for self.reshape((-1,))
@@ -1017,7 +1018,7 @@ class MPArray(object):
         lt = (np.pad(lt, [(0, lp)] + [(0, 0)] * (lt.ndim - 2) + [(0, rp)],
                      'constant')
               for lp, rp, lt in zip([0] + pad, pad + [0], self.lt))
-        return mp.MPArray(lt)        
+        return mp.MPArray(lt)
 
     #  Possible TODOs:
     #
