@@ -791,6 +791,11 @@ class MPArray(object):
             (inverse) or `None` (choose depending on
             normalization). Default `None`.
 
+        :param normalize: SVD compression works best when the MPA is
+            brought into full left-/right-cannonical form first. This variable
+            determines whether cannonical form is enforced before compression
+            (default: True)
+
 
         .. rubric:: Parameters for 'var':
 
@@ -844,7 +849,8 @@ class MPArray(object):
         else:
             raise ValueError('{!r} is not a valid method'.format(method))
 
-    def _compress_svd(self, bdim=None, relerr=0.0, direction=None):
+    def _compress_svd(self, bdim=None, relerr=0.0, direction=None,
+                      normalize=True):
         """Compress `self` using SVD [Sch11_, Sec. 4.5.1]
 
         Parameters: See :func:`MPArray.compress()`.
@@ -860,12 +866,14 @@ class MPArray(object):
         bdim = max(self.bdims) if bdim is None else bdim
 
         if direction == 'right':
-            self.normalize(right=1)
+            if normalize:
+                self.normalize(right=1)
             for item in self._compress_svd_r(bdim, relerr):
                 pass
             return item
         elif direction == 'left':
-            self.normalize(left=len(self) - 1)
+            if normalize:
+                self.normalize(left=len(self) - 1)
             for item in self._compress_svd_l(bdim, relerr):
                 pass
             return item
@@ -920,7 +928,6 @@ class MPArray(object):
         See :func:`MPArray.compress` for parameters
 
         """
-        assert self.normal_form == (len(self) - 1, len(self))
         assert bdim > 0, "Cannot compress to bdim={}".format(bdim)
         assert (0. <= relerr) and (relerr <= 1.), \
             "Relerr={} not allowed".format(relerr)
@@ -948,7 +955,6 @@ class MPArray(object):
 
         See :func:`MPArray.compress` for parameters
         """
-        assert self.normal_form == (0, 1)
         assert bdim > 0, "Cannot compress to bdim={}".format(bdim)
         assert (0. <= relerr) and (relerr <= 1.), \
             "Relerr={} not allowed".format(relerr)
