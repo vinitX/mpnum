@@ -79,19 +79,14 @@ def test_inner_slow(nr_sites, local_dim, bond_dim, benchmark, rgen):
 ########################
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_sumup(nr_sites, local_dim, bond_dim, rgen):
-
-    def svdfunc(A, k, **kwargs):
-        u, s, v = np.linalg.svd(A)
-        k_prime = min(k, len(s))
-        return u[:, :k_prime], s[:k_prime], v[:k_prime]
-
     bond_dim = bond_dim if bond_dim is not np.nan else 1
     mpas = [factory.random_mpa(nr_sites, local_dim, 1, dtype=np.float_, randstate=rgen)
             for _ in range(10 * bond_dim)]
     weights = rgen.randn(len(mpas))
 
     # parameters chosen such that only one round of compression occurs
-    summed_fast = mpsp.sumup(mpas, bond_dim, weights=weights, svdfunc=svdfunc)
+    summed_fast = mpsp.sumup(mpas, bond_dim, weights=weights,
+                             svdfunc=mpsp.truncated_svd)
     #  summed_slow = mp.sumup(mpa * w for mpa, w in zip(mpas, weights))
     summed_slow = mp.sumup(mpas, weights=weights)
     summed_slow.compress('svd', bdim=bond_dim, direction='right',

@@ -8,11 +8,41 @@ from math import ceil
 
 import numpy as np
 import scipy.sparse as ssp
-from sklearn.utils.extmath import randomized_svd
-
 
 from . import mparray as mp
 from .mpstruct import LocalTensors
+
+
+__all__ = ['truncated_svd', 'inner_prod_mps', 'sumup']
+
+
+def truncated_svd(A, k):
+    """Compute the truncated SVD of the matrix `A` i.e. the `k` largest
+    singular values as well as the corresponding singular vectors. It might
+    return less singular values/vectors, if one dimension of `A` is smaller
+    than `k`.
+
+    In the background it performs a full SVD. Therefore, it might be
+    inefficient when `k` is much smaller than the dimensions of `A`.
+
+    :param A: A real or complex matrix
+    :param k: Number of singular values/vectors to compute
+    :returns: u, s, v, where
+        u: left-singular vectors
+        s: singular values
+        v: right-singular vectors
+
+    """
+    u, s, v = np.linalg.svd(A)
+    k_prime = min(k, len(s))
+    return u[:, :k_prime], s[:k_prime], v[:k_prime]
+
+
+try:
+    from sklearn.utils.extmath import randomized_svd
+    default_svd = randomized_svd
+except ImportError:
+    default_svd = truncated_svd
 
 
 def inner_prod_mps(mpa1, mpa2):
@@ -37,22 +67,27 @@ def inner_prod_mps(mpa1, mpa2):
     return res[0, 0]
 
 
-def sumup(mpas, bdim, weights=None, svdfunc=randomized_svd):
-    """Same as :func:`mparray.sumup`, but with extended weighting & compression
-    options. Supports intermediate compression.
+def sumup(mpas, bdim, weights=None, svdfunc=default_svd):
+    """Same as :func:`mparray.sumup` with a consequent compression, but with
+    in-place svd compression.  Also, we use a sparse-matrix format for the
+    intermediate local tensors of the sum. Therefore, the memory footprint
+    scales only linearly in the number of summands (instead of quadratically).
 
-    Make sure that max_bdim >> target_bdim. Also, this function really flies
-    only with python optimizations enabled.
+    Right now, only the sum of product tensors is supported.
 
     :param mpas: Iterator over MPArrays
+    :param bdim: Bond dimension of the final result.
     :param weights: Iterator of same length as mpas containing weights for
-        computing weighted sum.
-    :param target_bdim: Bond dimension the result should have (default: `None`)
-    :param max_bdim: Maximum bond dimension the intermediate steps may assume
-        (default: `None`)
-    :param compargs: Arguments for compression function
-        (default: `{'method': 'svd'}`)
-    :returns: Sum of `mpas` with max. bond dimension `target_bdim`
+        computing weighted sum (default: None)
+    :param svdfunc: Function implementing the truncated svd, for required
+        signature see :func:`truncated_svd`. Possible values include
+        - :func:`truncated_svd`: Almost no speedup compared to the standard
+          sumup and compression, since it computes the full SVD
+        - :func:`scipy.sparse.linalg.svds`: Only computes the necessary
+          singular values/vectors, but slow if `bdim` is not small enough
+        - :func:`sklearn.utils.extmath.randomized_svd`: Randomized truncated
+          SVD, fast and efficient, but only approximation.
+    :returns: Sum of `mpas` with max. bond dimension `bdim`
 
     """
     mpas = list(mpas)
