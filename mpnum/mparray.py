@@ -1181,9 +1181,9 @@ def sumup(mpas, weights=None):
 
     if length == 1:
         if weights is None:
-            return MPArray((sum(mpa.lt[0] for mpa in mpas),))
+            return MPArray([sum(mpa.lt[0] for mpa in mpas)])
         else:
-            return MPArray((sum(w * mpa.lt[0] for w, mpa in zip(weights, mpas),)))
+            return MPArray([sum(w * mpa.lt[0] for w, mpa in zip(weights, mpas))])
 
     ltensiter = [iter(mpa.lt) for mpa in mpas]
     if weights is None:
