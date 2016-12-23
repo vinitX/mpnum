@@ -79,47 +79,70 @@ def test_inner_slow(nr_sites, local_dim, bond_dim, benchmark, rgen):
 ########################
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_sumup(nr_sites, local_dim, bond_dim, rgen):
+
+    def svdfunc(A, k, **kwargs):
+        u, s, v = np.linalg.svd(A)
+        k_prime = min(k, len(s))
+        return u[:, :k_prime], s[:k_prime], v[:k_prime]
+
     bond_dim = bond_dim if bond_dim is not np.nan else 1
     mpas = [factory.random_mpa(nr_sites, local_dim, 1, dtype=np.float_, randstate=rgen)
             for _ in range(10 * bond_dim)]
     weights = rgen.randn(len(mpas))
 
     # parameters chosen such that only one round of compression occurs
-    summed_fast = mpsp.sumup(mpas, weights=weights, target_bdim=bond_dim,
-                             max_bdim=10 * bond_dim)
-    summed_slow = mp.sumup(mpa * w for mpa, w in zip(mpas, weights))
-    summed_slow.compress('svd', bdim=bond_dim)
+    summed_fast = mpsp.sumup(mpas, bond_dim, weights=weights, svdfunc=svdfunc)
+    #  summed_slow = mp.sumup(mpa * w for mpa, w in zip(mpas, weights))
+    summed_slow = mp.sumup(mpas, weights=weights)
+    summed_slow.compress('svd', bdim=bond_dim, direction='right',
+                         normalize=False)
+
     assert_mpa_identical(summed_fast, summed_slow)
 
     try:
-        mpsp.sumup(mpas, weights=np.ones(bond_dim))
+        mpsp.sumup(mpas, bond_dim, weights=np.ones(bond_dim))
     except AssertionError:
         pass
     else:
         raise AssertionError("sumup did not catch unbalanced arguments")
 
 
-@pt.mark.long
-@pt.mark.benchmark(group="sumup", max_time=10)
-@pt.mark.parametrize('nr_sites, local_dim, samples, target_bdim, max_bdim', MP_SUMUP_PARAMETERS)
-def test_sumup_fast(nr_sites, local_dim, samples, target_bdim, max_bdim, rgen, benchmark):
-    mpas = [factory.random_mpa(nr_sites, local_dim, 1, dtype=np.float_, randstate=rgen)
-            for _ in range(samples)]
-    weights = rgen.randn(len(mpas))
+#  @pt.mark.long
+#  @pt.mark.benchmark(group="sumup", max_time=10)
+#  @pt.mark.parametrize('nr_sites, local_dim, samples, target_bdim, max_bdim', MP_SUMUP_PARAMETERS)
+#  def test_sumup_fast(nr_sites, local_dim, samples, target_bdim, max_bdim, rgen, benchmark):
+#      mpas = [factory.random_mpa(nr_sites, local_dim, 1, dtype=np.float_, randstate=rgen)
+#              for _ in range(samples)]
+#      weights = rgen.randn(len(mpas))
 
-    benchmark(mpsp.sumup, mpas, weights=weights, target_bdim=target_bdim,
-              max_bdim=max_bdim)
+#      benchmark(mpsp.sumup, mpas, weights=weights, target_bdim=target_bdim,
+#                max_bdim=max_bdim)
 
 
-@pt.mark.long
-@pt.mark.benchmark(group="sumup", max_time=10)
-@pt.mark.parametrize('nr_sites, local_dim, samples, target_bdim, _', MP_SUMUP_PARAMETERS)
-def test_sumup_slow(nr_sites, local_dim, samples, target_bdim, _, rgen, benchmark):
-    mpas = [factory.random_mpa(nr_sites, local_dim, 1, dtype=np.float_, randstate=rgen)
-            for _ in range(samples)]
-    weights = rgen.randn(len(mpas))
+#  @pt.mark.long
+#  @pt.mark.benchmark(group="sumup", max_time=10)
+#  @pt.mark.parametrize('nr_sites, local_dim, samples, target_bdim, _', MP_SUMUP_PARAMETERS)
+#  def test_sumup_slow(nr_, local_dim, samples, target_bdim, _, rgen, benchmark):
+#      mpas = [factory.random_mpa(nr_sites, local_dim, 1, dtype=np.float_, randstate=rgen)
+#              for _ in range(samples)]
+#      weights = rgen.randn(len(mpas))
 
-    @benchmark
-    def sumup_slow():
-        summed = mp.sumup(mpa * w for w, mpa in zip(weights, mpas))
-        summed.compress('svd', bdim=target_bdim)
+#      @benchmark
+#      def sumup_slow():
+#          summed = mp.sumup(mpa * w for w, mpa in zip(weights, mpas))
+#          summed.compress('svd', bdim=target_bdim)
+
+
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
+def test_local_add_sparse(nr_sites, local_dim, bond_dim, dtype, rgen):
+    # Just get some random number of summands, these parameters arent used
+    # anyway later on
+    nr_summands = nr_sites if bond_dim is np.nan else nr_sites * bond_dim
+    summands = [factory.random_mpa(1, local_dim, 1, dtype=dtype,
+                                   randstate=rgen).lt[0]
+                for _ in range(nr_summands)]
+    sum_slow = mp._local_add(summands).reshape((nr_summands, nr_summands * local_dim))
+    sum_fast = mpsp._local_add_sparse([s.ravel() for s in summands]).toarray() \
+
+    assert_array_almost_equal(sum_slow, sum_fast)
