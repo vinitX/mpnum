@@ -13,35 +13,14 @@ from . import mparray as mp
 from .mpstruct import LocalTensors
 
 
-__all__ = ['truncated_svd', 'inner_prod_mps', 'sumup']
-
-
-def truncated_svd(A, k):
-    """Compute the truncated SVD of the matrix `A` i.e. the `k` largest
-    singular values as well as the corresponding singular vectors. It might
-    return less singular values/vectors, if one dimension of `A` is smaller
-    than `k`.
-
-    In the background it performs a full SVD. Therefore, it might be
-    inefficient when `k` is much smaller than the dimensions of `A`.
-
-    :param A: A real or complex matrix
-    :param k: Number of singular values/vectors to compute
-    :returns: u, s, v, where
-        u: left-singular vectors
-        s: singular values
-        v: right-singular vectors
-
-    """
-    u, s, v = np.linalg.svd(A)
-    k_prime = min(k, len(s))
-    return u[:, :k_prime], s[:k_prime], v[:k_prime]
+__all__ = ['inner_prod_mps', 'sumup']
 
 
 try:
     from sklearn.utils.extmath import randomized_svd
     default_svd = randomized_svd
 except ImportError:
+    from ._tools import truncated_svd
     default_svd = truncated_svd
 
 

@@ -192,7 +192,7 @@ def check_nonneg_trunc(values, imag_eps=1e-10, real_eps=1e-10, real_trunc=0.0):
     :param float real_trunc: Replace positive real values smaller than
         or equal to `real_trunc` by zero.
 
-    :returns: An ndarray of real values (or a single real value). 
+    :returns: An ndarray of real values (or a single real value).
 
     If `values` is an array with complex type, a new array is
     returned. If `values` is an array with real type, it is modified
@@ -278,3 +278,25 @@ def compression_svd(array, bdim, direction='right', retproj=False):
         projectors = projectors.reverse()
 
     return (array, projectors) if retproj else array
+
+
+def truncated_svd(A, k):
+    """Compute the truncated SVD of the matrix `A` i.e. the `k` largest
+    singular values as well as the corresponding singular vectors. It might
+    return less singular values/vectors, if one dimension of `A` is smaller
+    than `k`.
+
+    In the background it performs a full SVD. Therefore, it might be
+    inefficient when `k` is much smaller than the dimensions of `A`.
+
+    :param A: A real or complex matrix
+    :param k: Number of singular values/vectors to compute
+    :returns: u, s, v, where
+        u: left-singular vectors
+        s: singular values
+        v: right-singular vectors
+
+    """
+    u, s, v = np.linalg.svd(A)
+    k_prime = min(k, len(s))
+    return u[:, :k_prime], s[:k_prime], v[:k_prime]

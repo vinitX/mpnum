@@ -86,7 +86,7 @@ def test_sumup(nr_sites, local_dim, bond_dim, rgen):
 
     # parameters chosen such that only one round of compression occurs
     summed_fast = mpsp.sumup(mpas, bond_dim, weights=weights,
-                             svdfunc=mpsp.truncated_svd)
+                             svdfunc=_tools.truncated_svd)
     #  summed_slow = mp.sumup(mpa * w for mpa, w in zip(mpas, weights))
     summed_slow = mp.sumup(mpas, weights=weights)
     summed_slow.compress('svd', bdim=bond_dim, direction='right',
