@@ -4,4 +4,4 @@ import pytest
 
 @pytest.fixture(scope="module")
 def rgen():
-    return numpy.random.RandomState(seed=52973992)
+    return numpy.random.RandomState(seed=3476583865)

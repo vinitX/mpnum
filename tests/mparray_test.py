@@ -544,6 +544,14 @@ def test_sumup(nr_sites, local_dim, bond_dim, rgen, dtype):
     assert all(bdim <= 3 * bond_dim for bdim in sum_mp.bdims)
     assert(sum_mp.dtype is dtype)
 
+    weights = rgen.randn(len(mpas))
+    summands = [w * mpa for w, mpa in zip(weights, mpas)]
+    sum_naive = ft.reduce(mp.MPArray.__add__, summands)
+    sum_mp = mp.sumup(mpas, weights = weights)
+    assert_array_almost_equal(sum_naive.to_array(), sum_mp.to_array())
+    assert all(bdim <= 3 * bond_dim for bdim in sum_mp.bdims)
+    assert(sum_mp.dtype is dtype)
+
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
@@ -902,6 +910,14 @@ def test_split(nr_sites, local_dim, bond_dim, rgen):
         mpa_l, mpa_r = mpa.split(nr_sites // 2 - 1)
         assert_correct_normalization(mpa_l)
         assert_correct_normalization(mpa_r)
+
+
+def test_reshape(rgen):
+    mpa = factory.random_mpa(4, [(3, 2), (4,), (2, 5), (24,)], 4)
+    mpa.normalize()
+    mpa_r = mpa.reshape([(2, 3), (2, 2), (10,), (3, 2, 4)])
+    assert all(s1 == s2 for s1, s2 in zip(mpa_r.pdims, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
+    assert_correct_normalization(mpa_r, *mpa.normal_form)
 
 
 ###############################################################################

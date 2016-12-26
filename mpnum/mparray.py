@@ -28,8 +28,6 @@ References:
 #      local tensors
 from __future__ import absolute_import, division, print_function
 
-import sys
-
 import collections
 import itertools as it
 
@@ -41,7 +39,8 @@ from six.moves import range, zip, zip_longest
 
 import mpnum as mp
 from ._named_ndarray import named_ndarray
-from ._tools import block_diag, global_to_local, local_to_global, matdot
+from ._tools import block_diag, global_to_local, local_to_global, matdot, \
+    truncated_svd
 from .mpstruct import LocalTensors
 
 
@@ -501,8 +500,9 @@ class MPArray(object):
         if not isinstance(newshapes[0], collections.Iterable):
             newshapes = it.repeat(newshapes, times=len(self))
 
-        return MPArray([_local_reshape(lten, newshape)
-                       for lten, newshape in zip(self._lt, newshapes)])
+        ltens = [_local_reshape(lten, newshape)
+                for lten, newshape in zip(self._lt, newshapes)]
+        return MPArray(LocalTensors(ltens, nform=self.normal_form))
 
     def ravel(self):
         """Flatten the MPA to an MPS, shortcut for self.reshape((-1,))
@@ -790,6 +790,11 @@ class MPArray(object):
             (inverse) or `None` (choose depending on
             normalization). Default `None`.
 
+        :param normalize: SVD compression works best when the MPA is
+            brought into full left-/right-cannonical form first. This variable
+            determines whether cannonical form is enforced before compression
+            (default: True)
+
 
         .. rubric:: Parameters for 'var':
 
@@ -843,7 +848,8 @@ class MPArray(object):
         else:
             raise ValueError('{!r} is not a valid method'.format(method))
 
-    def _compress_svd(self, bdim=None, relerr=0.0, direction=None):
+    def _compress_svd(self, bdim=None, relerr=None, direction=None,
+                      normalize=True, svdfunc=truncated_svd):
         """Compress `self` using SVD [Sch11_, Sec. 4.5.1]
 
         Parameters: See :func:`MPArray.compress()`.
@@ -859,13 +865,15 @@ class MPArray(object):
         bdim = max(self.bdims) if bdim is None else bdim
 
         if direction == 'right':
-            self.normalize(right=1)
-            for item in self._compress_svd_r(bdim, relerr):
+            if normalize:
+                self.normalize(right=1)
+            for item in self._compress_svd_r(bdim, relerr, svdfunc):
                 pass
             return item
         elif direction == 'left':
-            self.normalize(left=len(self) - 1)
-            for item in self._compress_svd_l(bdim, relerr):
+            if normalize:
+                self.normalize(left=len(self) - 1)
+            for item in self._compress_svd_l(bdim, relerr, svdfunc):
                 pass
             return item
 
@@ -912,26 +920,29 @@ class MPArray(object):
         compr = compr.reshape(shape)
         return compr, overlap
 
-    def _compress_svd_l(self, bdim, relerr):
+    def _compress_svd_l(self, bdim, relerr, svdfunc):
         """Compresses the MPA in place from right to left using SVD;
         yields a right-canonical state
 
         See :func:`MPArray.compress` for parameters
 
         """
-        assert self.normal_form == (len(self) - 1, len(self))
         assert bdim > 0, "Cannot compress to bdim={}".format(bdim)
-        assert (0. <= relerr) and (relerr <= 1.), \
+        assert (relerr is None) or ((0. <= relerr) and (relerr <= 1.)), \
             "Relerr={} not allowed".format(relerr)
 
         for site in range(len(self) - 1, 0, -1):
             ltens = self._lt[site]
             matshape = (ltens.shape[0], -1)
-            u, sv, v = svd(ltens.reshape(matshape))
+            if relerr is None:
+                u, sv, v = svdfunc(ltens.reshape(matshape), bdim)
+                bdim_t = len(sv)
+            else:
+                u, sv, v = svd(ltens.reshape(matshape))
+                svsum = np.cumsum(sv) / np.sum(sv)
+                bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
+                bdim_t = min(ltens.shape[0], v.shape[0], bdim, bdim_relerr)
 
-            svsum = np.cumsum(sv) / np.sum(sv)
-            bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
-            bdim_t = min(ltens.shape[0], v.shape[0], bdim, bdim_relerr)
             yield sv, bdim_t
 
             newtens = (matdot(self._lt[site - 1], u[:, :bdim_t] * sv[None, :bdim_t]),
@@ -941,24 +952,28 @@ class MPArray(object):
 
         yield np.sum(np.abs(self._lt[0])**2)
 
-    def _compress_svd_r(self, bdim, relerr):
+    def _compress_svd_r(self, bdim, relerr, svdfunc):
         """Compresses the MPA in place from left to right using SVD;
         yields a left-canonical state
 
         See :func:`MPArray.compress` for parameters
         """
-        assert self.normal_form == (0, 1)
         assert bdim > 0, "Cannot compress to bdim={}".format(bdim)
-        assert (0. <= relerr) and (relerr <= 1.), \
+        assert (relerr is None) or ((0. <= relerr) and (relerr <= 1.)), \
             "Relerr={} not allowed".format(relerr)
 
         for site in range(len(self) - 1):
             ltens = self._lt[site]
-            u, sv, v = svd(ltens.reshape((-1, ltens.shape[-1])))
+            matshape = (-1, ltens.shape[-1])
+            if relerr is None:
+                u, sv, v = svdfunc(ltens.reshape(matshape), bdim)
+                bdim_t = len(sv)
+            else:
+                u, sv, v = svd(ltens.reshape(matshape))
+                svsum = np.cumsum(sv) / np.sum(sv)
+                bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
+                bdim_t = min(ltens.shape[-1], u.shape[1], bdim, bdim_relerr)
 
-            svsum = np.cumsum(sv) / np.sum(sv)
-            bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
-            bdim_t = min(ltens.shape[-1], u.shape[1], bdim, bdim_relerr)
             yield sv, bdim_t
 
             newtens = (u[:, :bdim_t].reshape(ltens.shape[:-1] + (bdim_t, )),
@@ -982,7 +997,7 @@ class MPArray(object):
         if len(self) == 1:
             return  # No bipartitions with two non-empty parts for a single site
         self.normalize(right=1)
-        iterator = self._compress_svd_r(self.bdim, 0.0)
+        iterator = self._compress_svd_r(self.bdim, None, truncated_svd)
         # We want everything from the iterator except for the last element.
         for _, (sv, bdim) in zip(range(len(self) - 1), iterator):
             # We could verify that `bdim` did not decrease but it may
@@ -1017,7 +1032,7 @@ class MPArray(object):
         lt = (np.pad(lt, [(0, lp)] + [(0, 0)] * (lt.ndim - 2) + [(0, rp)],
                      'constant')
               for lp, rp, lt in zip([0] + pad, pad + [0], self.lt))
-        return mp.MPArray(lt)        
+        return mp.MPArray(lt)
 
     #  Possible TODOs:
     #
@@ -1174,9 +1189,9 @@ def sumup(mpas, weights=None):
 
     if length == 1:
         if weights is None:
-            return MPArray((sum(mpa.lt[0] for mpa in mpas),))
+            return MPArray([sum(mpa.lt[0] for mpa in mpas)])
         else:
-            return MPArray((sum(w * mpa.lt[0] for w, mpa in zip(weights, mpas),)))
+            return MPArray([sum(w * mpa.lt[0] for w, mpa in zip(weights, mpas))])
 
     ltensiter = [iter(mpa.lt) for mpa in mpas]
     if weights is None:

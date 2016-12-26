@@ -55,6 +55,7 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
     mpo.normalize()
     op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
     eigvals, eigvec = np.linalg.eig(op)
+    eigs_opts = {'maxiter': 256}
 
     # Eigenvals should be real for a hermitian matrix
     assert (np.abs(eigvals.imag) < 1e-10).all(), str(eigvals.imag)
@@ -62,7 +63,7 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
     mineig, mineig_eigvec = eigvals[mineig_pos], eigvec[:, mineig_pos]
     mineig_mp, mineig_eigvec_mp = mpnum.linalg.mineig(
         mpo, startvec_bonddim=2 * bond_dim, randstate=rgen,
-        minimize_sites=2)
+        minimize_sites=2, eigs_opts=eigs_opts)
     mineig_eigvec_mp = mineig_eigvec_mp.to_array().flatten()
 
     overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec_mp)

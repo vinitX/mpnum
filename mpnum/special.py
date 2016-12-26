@@ -7,8 +7,13 @@ from __future__ import absolute_import, division, print_function
 from math import ceil
 
 import numpy as np
+import scipy.sparse as ssp
 
 from . import mparray as mp
+from ._tools import truncated_svd
+from .mpstruct import LocalTensors
+
+__all__ = ['inner_prod_mps', 'sumup']
 
 
 def inner_prod_mps(mpa1, mpa2):
@@ -33,79 +38,86 @@ def inner_prod_mps(mpa1, mpa2):
     return res[0, 0]
 
 
-def sumup(mpas, weights=None, target_bdim=None, max_bdim=None,
-          compargs={'method': 'svd'}):
-    """Same as :func:`mparray.sumup`, but with extended weighting & compression
-    options. Supports intermediate compression.
+def sumup(mpas, bdim, weights=None, svdfunc=truncated_svd):
+    """Same as :func:`mparray.sumup` with a consequent compression, but with
+    in-place svd compression.  Also, we use a sparse-matrix format for the
+    intermediate local tensors of the sum. Therefore, the memory footprint
+    scales only linearly in the number of summands (instead of quadratically).
 
-    Make sure that max_bdim >> target_bdim. Also, this function really flies
-    only with python optimizations enabled.
+    Right now, only the sum of product tensors is supported.
 
     :param mpas: Iterator over MPArrays
+    :param bdim: Bond dimension of the final result.
     :param weights: Iterator of same length as mpas containing weights for
-        computing weighted sum.
-    :param target_bdim: Bond dimension the result should have (default: `None`)
-    :param max_bdim: Maximum bond dimension the intermediate steps may assume
-        (default: `None`)
-    :param compargs: Arguments for compression function
-        (default: `{'method': 'svd'}`)
-    :returns: Sum of `mpas` with max. bond dimension `target_bdim`
+        computing weighted sum (default: None)
+    :param svdfunc: Function implementing the truncated svd, for required
+        signature see :func:`truncated_svd`. Possible values include
+        - :func:`truncated_svd`: Almost no speedup compared to the standard
+          sumup and compression, since it computes the full SVD
+        - :func:`scipy.sparse.linalg.svds`: Only computes the necessary
+          singular values/vectors, but slow if `bdim` is not small enough
+        - :func:`sklearn.utils.extmath.randomized_svd`: Randomized truncated
+          SVD, fast and efficient, but only approximation.
+    :returns: Sum of `mpas` with max. bond dimension `bdim`
 
     """
     mpas = list(mpas)
     length = len(mpas[0])
-    weights = weights if weights is not None else np.ones(len(mpas))
+    nr_summands = len(mpas)
+    weights = weights if weights is not None else np.ones(nr_summands)
 
     assert all(len(mpa) == length for mpa in mpas)
     assert len(weights) == len(mpas)
-    assert 'bdim' not in compargs
 
     if length == 1:
         # The code below assumes at least two sites.
         return mp.MPArray((sum(w * mpa.lt[0] for w, mpa in zip(weights, mpas)),))
 
     assert all(mpa.bdim == 1 for mpa in mpas)
-    return _sum_n_compress(mpas, weights, 1, target_bdim, max_bdim, compargs)
+
+    ltensiter = [iter(mpa.lt) for mpa in mpas]
+
+    if weights is None:
+        summands = [next(lt) for lt in ltensiter]
+    else:
+        summands = [(w * next(lt)) for w, lt in zip(weights, ltensiter)]
+
+    current = np.concatenate(summands, axis=-1)
+    u, sv, v = svdfunc(current.reshape((-1, nr_summands)), bdim)
+    ltens = [u.reshape((1, -1, len(sv)))]
+
+    for sites in range(1, length - 1):
+        current = _local_add_sparse([next(lt).ravel() for lt in ltensiter])
+        current = ((sv[:, None] * v) * current).reshape((-1, nr_summands))
+        bdim_t = min(bdim, *current.shape)
+        u, sv, v = svdfunc(current.reshape((-1, nr_summands)), bdim_t)
+        ltens.append(u.reshape((ltens[-1].shape[-1], -1, bdim_t)))
+
+    current = np.concatenate([next(lt) for lt in ltensiter], axis=0) \
+        .reshape((nr_summands, -1))
+    current = np.dot(sv[:, None] * v, current)
+    ltens.append(current.reshape((len(sv), -1, 1)))
+
+    result_ltens = LocalTensors(ltens, nform=(len(ltens) - 1, None))
+    result = mp.MPArray(result_ltens)
+    return result.reshape(mpas[0].pdims)
 
 
-def _sum_n_compress(mpas, weights, current_bdim, target_bdim, max_bdim, compargs):
-    """Recursively sum and compress the MPArrays' in `mpas`. The end result
-    will have bond dimension smaller than `target_bdim` and during the process,
-    the intermediate results always have bond dimension smaller than
-    `max_bdim`.
+def _local_add_sparse(ltenss):
+    """Computes the local tensors of a sum of MPArrays (except for the boundary
+    tensors). Works only for products right now
 
-    :param mpas: List of MPArrays to sum
-    :param weights: Optional weights to compute weighted sum. If `None` is
-        passed, they are all assumed to be 1.
-    :param current_bdim: The maximal bond dimension of any MPArray in `mpas`
-    :param target_bdim: Bond dimension the end result should have at most.
-    :param max_bdim: Max bond dimension any intermediate result should have
-    :param compargs: Compression args to be used.
+    :param ltenss: Raveled local tensors
+    :returns: Correct local tensor representation
 
     """
-    length = len(mpas[0])
-    # no subpartition ne
-    if (max_bdim is None) or (len(mpas) * current_bdim <= max_bdim):
-        ltensiter = [iter(mpa.lt) for mpa in mpas]
-        if weights is None:
-            ltens = [np.concatenate([next(lt) for lt in ltensiter], axis=-1)]
-        else:
-            ltens = [np.concatenate([w * next(lt) for w, lt in zip(weights, ltensiter)], axis=-1)]
-        ltens += [mp._local_add([next(lt) for lt in ltensiter])
-                for _ in range(length - 2)]
-        ltens += [np.concatenate([next(lt) for lt in ltensiter], axis=0)]
+    dim = len(ltenss[0])
+    nr_summands = len(ltenss)
 
-        summed = mp.MPArray(ltens)
-        summed.compress(bdim=target_bdim, **compargs)
-        return summed
+    indptr = np.arange(nr_summands * dim + 1)
+    indices = np.concatenate((np.arange(nr_summands),) * dim)
+    data = np.concatenate([lt[None, :] for lt in ltenss])
+    data = np.rollaxis(data, 1).ravel()
 
-    else:
-        nodes = max(max_bdim // target_bdim, 1)
-        stride = int(ceil(len(mpas) / nodes))
-        partition = [slice(n * stride, (n + 1) * stride) for n in range(nodes)
-                     if n * stride < len(mpas)]
-        mpas = [_sum_n_compress(mpas[sel], weights[sel], 1, target_bdim,
-                                max_bdim, compargs)
-                for sel in partition]
-        return _sum_n_compress(mpas, None, target_bdim, target_bdim, max_bdim,
-                               compargs)
+    return ssp.csc_matrix((data, indices, indptr),
+                          shape=(nr_summands, dim * nr_summands))
