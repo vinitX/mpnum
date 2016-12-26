@@ -89,7 +89,7 @@ def sumup(mpas, bdim, weights=None, svdfunc=truncated_svd):
     for sites in range(1, length - 1):
         current = _local_add_sparse([next(lt).ravel() for lt in ltensiter])
         current = ((sv[:, None] * v) * current).reshape((-1, nr_summands))
-        bdim_t = min(*current.shape, bdim)
+        bdim_t = min(bdim, *current.shape)
         u, sv, v = svdfunc(current.reshape((-1, nr_summands)), bdim_t)
         ltens.append(u.reshape((ltens[-1].shape[-1], -1, bdim_t)))
 
