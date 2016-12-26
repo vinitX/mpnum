@@ -10,18 +10,10 @@ import numpy as np
 import scipy.sparse as ssp
 
 from . import mparray as mp
+from ._tools import truncated_svd
 from .mpstruct import LocalTensors
 
-
 __all__ = ['inner_prod_mps', 'sumup']
-
-
-try:
-    from sklearn.utils.extmath import randomized_svd
-    default_svd = randomized_svd
-except ImportError:
-    from ._tools import truncated_svd
-    default_svd = truncated_svd
 
 
 def inner_prod_mps(mpa1, mpa2):
@@ -46,7 +38,7 @@ def inner_prod_mps(mpa1, mpa2):
     return res[0, 0]
 
 
-def sumup(mpas, bdim, weights=None, svdfunc=default_svd):
+def sumup(mpas, bdim, weights=None, svdfunc=truncated_svd):
     """Same as :func:`mparray.sumup` with a consequent compression, but with
     in-place svd compression.  Also, we use a sparse-matrix format for the
     intermediate local tensors of the sum. Therefore, the memory footprint
