@@ -606,15 +606,38 @@ class MPPovm(mp.MPArray):
         # Compute all inner products between elements from self and other
         inner = mp.dot(self.conj(), other,
                        axes=((1, 2), (1, 2)), astype=mp.MPArray)
-        # Compute squared norms of all elements from inner products
-        snormsq = mp.dot(self.conj(), self,
-                         axes=((1, 2), (1, 2)), astype=mp.MPArray)
-        eye3d = mp.MPArray.from_kron(
-            # Drop inner products between different elements
-            np.fromfunction(lambda i, j, k: (i == j) & (j == k), [outdim] * 3)
-            for outdim in self.outdims
-        )
-        snormsq = mp.dot(eye3d, snormsq, axes=((1, 2), (0, 1)))
+        inner = abs(mp.prune(inner, True).to_array_global())**2
+        inner = inner.reshape(tuple(d for d in inner.shape if d > 1))
+        # FIXME Refactor this workaround. Computation of snormsq is
+        # too slow if the bond dimension of the MP-POVM is around 100.
+        if True:
+            # Verify that empty output are identity
+            assert all(
+                lt.shape[1] > 1 or
+                (lt == np.eye(lt.shape[2])[None, None, :, :, None]).all()
+                for lt in self.lt
+            )
+            # Continue with non-empty outputs
+            nsoutpos = self.nsoutpos
+            hdims = self.hdims
+            hdim = np.prod([hdims[i] for i in nsoutpos])
+            s = MPPovm(self.lt[min(nsoutpos):max(nsoutpos) + 1])
+            s.normalize()
+            s = s.to_array_global().reshape((np.prod(self.nsoutdims), hdim, hdim))
+            snormsq = np.einsum('ijk, ijk -> i', s.conj(), s).real
+            snormsq = snormsq.reshape(self.nsoutdims)
+            snormsq *= np.prod([hdim for outdim, hdim, _ in self.pdims if outdim == 1])
+        else:
+            # Compute squared norms of all elements from inner products
+            snormsq = mp.dot(self.conj(), self,
+                             axes=((1, 2), (1, 2)), astype=mp.MPArray)
+            eye3d = mp.MPArray.from_kron(
+                # Drop inner products between different elements
+                np.fromfunction(lambda i, j, k: (i == j) & (j == k), [outdim] * 3)
+                for outdim in self.outdims
+            )
+            snormsq = mp.dot(eye3d, snormsq, axes=((1, 2), (0, 1)))
+            snormsq = mp.prune(snormsq, True).to_array().real
         onormsq = mp.dot(other.conj(), other,
                          axes=((1, 2), (1, 2)), astype=mp.MPArray)
         eye3d = mp.MPArray.from_kron(
@@ -623,9 +646,6 @@ class MPPovm(mp.MPArray):
             for outdim in other.outdims
         )
         onormsq = mp.dot(eye3d, onormsq, axes=((1, 2), (0, 1)))
-        inner = abs(mp.prune(inner, True).to_array_global())**2
-        inner = inner.reshape(tuple(d for d in inner.shape if d > 1))
-        snormsq = mp.prune(snormsq, True).to_array().real
         onormsq = mp.prune(onormsq, True).to_array().real
         assert (snormsq > 0).all()
         assert (onormsq > 0).all()
