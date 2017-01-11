@@ -1303,6 +1303,24 @@ class MPPovmList:
         for mpp in self.mpps:
             yield mpp.pmf_as_array(state, mode, eps)
 
+    def pmfs_as_array(self, states, mode, asarray=False, eps=1e-10):
+        """.. todo:: Add docstring"""
+        pmfs = (mpp.pmf_as_array(state, mode, eps)
+                for mpp, state in zip(self.mpps, states))
+        if asarray:
+            pmfs = np.array(list(pmfs))
+        return pmfs        
+
+    def block_pmfs_as_array(self, state, mode, asarray=False, eps=1e-10,
+                            **redarg):
+        """.. todo:: Add docstring"""
+        if len(redarg) == 0:
+            # redarg not given: self.mpps[i] starts on site i
+            assert len(self.mpps) == len(state) - len(self.mpps[0]) + 1
+            redarg['width'] = len(self.mpps[0])
+        states, newmode = mpsmpo.reductions(state, mode, **redarg)
+        return self.pmfs_as_array(states, newmode, asarray, eps)
+
     def sample(self, rng, state, n_samples, method, n_group=1, mode='auto',
                pack=False, eps=1e-10):
         """Random sample from all MP-POVMs on a quantum state
