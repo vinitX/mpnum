@@ -986,9 +986,9 @@ class MPArray(object):
     def singularvals(self):
         """Return singular values for all bipartitions
 
-        :returns: Iterator over `np.ndarray`s with singular values for
-            1, 2, ... len(self) - 1 sites on left hand side of
-            bipartition
+        :returns: Iterate over bipartitions with 1, 2, ... len(self) -
+            1 sites on the left hand side. Yields a `np.ndarray` containing
+            singular values for each bipartition.
 
         .. note:: May decrease the bond dimension (without changing
             the represented tensor).
@@ -1314,9 +1314,11 @@ def diag(mpa, axis=0):
 
     :param mpa: MPArray with pdims > :code:`axis`
     :param axis: The physical index to take diagonals over
-    :returns: Array containing the diagonal elements (`MPArray`s with the
-    physical dimension reduced by one, note that an `MPArray` with physical
-    dimension 0 is a simple number)
+
+    :returns: Array containing the diagonal elements (each diagonal
+        element is an :class:`MPArray` with the physical dimension
+        reduced by one, note that an :class:`MPArray` with physical
+        dimension 0 is a simple number)
 
     """
     dim = mpa.pdims[0][axis]
