@@ -1508,6 +1508,10 @@ def prune(mpa, singletons=False):
 def partialtrace(mpa, axes=(0, 1), mptype=None):
     """Computes the trace or partial trace of an MPA.
 
+    This function is most useful for computing traces of an MPO or MPA over
+    given physical legs. For obtaining partial traces (i.e., reduced states) 
+    of an MPO, :func:`mpnum.mpsmpo.reductions_mpo()` will be more convenient.
+
     By default (axes=(0, 1)) compute the trace and return the value as
     length-one MPA with zero physical legs.
 
@@ -1519,10 +1523,6 @@ def partialtrace(mpa, axes=(0, 1), mptype=None):
     axesN=(axisN_1, axisN_2) tracing the given physical legs and
     axesN=None leaving the site invariant. Afterwards, prune() is
     called to remove sites with zero physical legs from the result.
-
-    If you need the reduced state of an MPO on all blocks of k
-    consecutive sites, see mpnum.mpsmpa.partialtrace_mpo() for a more
-    convenient and faster function.
 
     :param mpa: MPArray
     :param axes: Axes for trace, (axis1, axis2) or (axes1, axes2, ...)
