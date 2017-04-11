@@ -474,6 +474,23 @@ def test_partialtrace(nr_sites, local_dim, bond_dim, keep_width, rgen, dtype):
 
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim', [(4, 3)])
+def test_partialtrace_axes(nr_sites, local_dim, rgen, dtype):
+    mpa = factory.random_mpa(nr_sites, (local_dim,) * 3, 1,
+                             randstate=rgen, dtype=dtype)
+
+    # Verify that an exception is raised if `axes` does not refer to a
+    # physical leg.
+    valid = [(0, 2), (-3, -2)]
+    invalid = [(0, 3), (-4, 2), (-4, 3)]
+    for axes in valid:
+        mp.partialtrace(mpa, axes=axes)
+    for axes in invalid:
+        with pt.raises(AssertionError) as exc:
+            mp.partialtrace(mpa, axes=(0, 3))
+        assert exc.value.args == ('Too few physical legs',), "Wrong assertion"
+
+@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_trace(nr_sites, local_dim, bond_dim, rgen, dtype):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,

@@ -1511,7 +1511,7 @@ def partialtrace(mpa, axes=(0, 1), mptype=None):
     """Computes the trace or partial trace of an MPA.
 
     This function is most useful for computing traces of an MPO or MPA over
-    given physical legs. For obtaining partial traces (i.e., reduced states) 
+    given physical legs. For obtaining partial traces (i.e., reduced states)
     of an MPO, :func:`mpnum.mpsmpo.reductions_mpo()` will be more convenient.
 
     By default (axes=(0, 1)) compute the trace and return the value as
@@ -1533,7 +1533,10 @@ def partialtrace(mpa, axes=(0, 1), mptype=None):
 
     """
     if axes[0] is not None and not isinstance(axes[0], collections.Iterable):
-        axes = it.repeat(axes)
+        axes = (axes,) * len(mpa)
+    # Prevent the user from accidentally tracing out bond legs
+    assert all(ax is None or all(-n <= a < n for a in ax)
+               for n, ax in zip(mpa.plegs, axes)), "Too few physical legs"
     axes = (None if axesitem is None else tuple(ax + 1 if ax >= 0 else ax - 1
                                                 for ax in axesitem)
             for axesitem in axes)
