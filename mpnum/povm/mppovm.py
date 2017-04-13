@@ -848,8 +848,7 @@ class MPPovm(mp.MPArray):
            or (funs is not None and len(funs) == 0):
             return 0., 0.  # The empty sum is equal to zero with certainty.
 
-        pmf = mp.prune(self.pmf(state, mode), True).to_array()
-        pmf = check_pmf(pmf, eps, eps)
+        pmf = self.pmf_as_array(state, mode, eps=eps)
         n_out = np.prod(self.nsoutdims)
         if funs is not None:
             out = np.array(np.unravel_index(range(n_out), self.nsoutdims)) \
