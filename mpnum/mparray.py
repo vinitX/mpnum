@@ -214,7 +214,7 @@ class MPArray(object):
         ltens = [source[str(i)].value for i in range(source.attrs['len'])]
         return cls(LocalTensors(ltens, nform=source.attrs['normal_form']))
 
-    #FIXME Where is this used? Does it really have to be in here?
+    # FIXME Where is this used? Does it really have to be in here?
     @classmethod
     def from_array_global(cls, array, plegs=None, has_bond=False):
         """Create MPA from array in global form.
@@ -302,7 +302,7 @@ class MPArray(object):
         """
         return _ltens_to_array(iter(self._lt))[0, ..., 0]
 
-    #FIXME Where is this used? Does it really have to be in here?
+    # FIXME Where is this used? Does it really have to be in here?
     def to_array_global(self):
         """Return MPA as array in global form.
 
@@ -390,7 +390,8 @@ class MPArray(object):
             return MPArray((self._lt[0] + summand.lt[0],))
 
         ltens = [np.concatenate((self._lt[0], summand.lt[0]), axis=-1)]
-        ltens += [_local_add((l, r)) for l, r in zip(self._lt[1:-1], summand.lt[1:-1])]
+        ltens += [_local_add((l, r))
+                  for l, r in zip(self._lt[1:-1], summand.lt[1:-1])]
         ltens += [np.concatenate((self._lt[-1], summand.lt[-1]), axis=0)]
         return MPArray(ltens)
 
@@ -501,7 +502,7 @@ class MPArray(object):
             newshapes = it.repeat(newshapes, times=len(self))
 
         ltens = [_local_reshape(lten, newshape)
-                for lten, newshape in zip(self._lt, newshapes)]
+                 for lten, newshape in zip(self._lt, newshapes)]
         return MPArray(LocalTensors(ltens, nform=self.normal_form))
 
     def ravel(self):
@@ -522,7 +523,8 @@ class MPArray(object):
 
         """
         assert (len(self) % sites_per_group) == 0, \
-            'Cannot group: {} not a multiple of {}'.format(len(self), sites_per_group)
+            'Cannot group: {} not a multiple of {}'.format(len(self),
+                                                           sites_per_group)
 
         if sites_per_group == 1:
             return self
@@ -602,10 +604,12 @@ class MPArray(object):
         mpa_t = self.bleg2pleg(pos)
         lnorm, rnorm = mpa_t.normal_form
 
-        ltens_l = LocalTensors(it.islice(mpa_t.lt, 0, pos + 1),
-                               nform=(min(lnorm, pos), min(rnorm, pos + 1)))
-        ltens_r = LocalTensors(it.islice(mpa_t.lt, pos + 1, len(mpa_t)),
-                        nform=(max(0, lnorm - pos), max(0, rnorm - pos - 1)))
+        ltens_l = LocalTensors(
+            it.islice(mpa_t.lt, 0, pos + 1),
+            nform=(min(lnorm, pos), min(rnorm, pos + 1)))
+        ltens_r = LocalTensors(
+            it.islice(mpa_t.lt, pos + 1, len(mpa_t)),
+            nform=(max(0, lnorm - pos), max(0, rnorm - pos - 1)))
         return type(self)(ltens_l), type(self)(ltens_r)
 
     def reverse(self):
@@ -945,7 +949,8 @@ class MPArray(object):
 
             yield sv, bdim_t
 
-            newtens = (matdot(self._lt[site - 1], u[:, :bdim_t] * sv[None, :bdim_t]),
+            newtens = (matdot(self._lt[site - 1],
+                              u[:, :bdim_t] * sv[None, :bdim_t]),
                        v[:bdim_t, :].reshape((bdim_t, ) + ltens.shape[1:]))
             self._lt.update(slice(site - 1, site + 1), newtens,
                             normalization=(None, 'right'))
@@ -977,7 +982,8 @@ class MPArray(object):
             yield sv, bdim_t
 
             newtens = (u[:, :bdim_t].reshape(ltens.shape[:-1] + (bdim_t, )),
-                       matdot(sv[:bdim_t, None] * v[:bdim_t, :], self._lt[site + 1]))
+                       matdot(sv[:bdim_t, None] * v[:bdim_t, :],
+                              self._lt[site + 1]))
             self._lt.update(slice(site, site + 2), newtens,
                             normalization=('left', None))
 
@@ -1003,7 +1009,7 @@ class MPArray(object):
             # We could verify that `bdim` did not decrease but it may
             # decrease because of zero singular values -- let's trust
             # that relerr=0.0 behaves as intended.
-            #assert old_bdim == bdim
+            # assert old_bdim == bdim
             yield sv
 
     def pad_bdim(self, bdim=None, force_bdim=False):
@@ -1197,7 +1203,8 @@ def sumup(mpas, weights=None):
     if weights is None:
         ltens = [np.concatenate([next(lt) for lt in ltensiter], axis=-1)]
     else:
-        ltens = [np.concatenate([w * next(lt) for w, lt in zip(weights, ltensiter)], axis=-1)]
+        ltens = [np.concatenate([w * next(lt)
+                                 for w, lt in zip(weights, ltensiter)], axis=-1)]
     ltens += [_local_add([next(lt) for lt in ltensiter])
               for _ in range(length - 2)]
     ltens += [np.concatenate([next(lt) for lt in ltensiter], axis=0)]
@@ -1339,6 +1346,7 @@ def diag(mpa, axis=0):
     else:
         return np.array(mpas, dtype=object)
 
+
 def inject(mpa, pos, num=None, inject_ten=None):
     """Interleaved outer product of an MPA and a bond dimension 1 MPA
 
@@ -1372,7 +1380,8 @@ def inject(mpa, pos, num=None, inject_ten=None):
     if isinstance(pos, collections.Iterable):
         pos = tuple(pos)
         num = (None,) * len(pos) if num is None else tuple(num)
-        inject_ten = (None,) * len(pos) if inject_ten is None else tuple(inject_ten)
+        inject_ten = ((None,) * len(pos)
+                      if inject_ten is None else tuple(inject_ten))
     else:
         pos, num, inject_ten = (pos,), (num,), (inject_ten,)
     assert len(pos) == len(num) == len(inject_ten)
@@ -1398,6 +1407,7 @@ def inject(mpa, pos, num=None, inject_ten=None):
              for lt in lten)
     ltens = it.chain(ltens, pieces[-1])
     return MPArray(ltens)
+
 
 def louter(a, b):
     """Computes the tensorproduct of :math:`a \otimes b` locally, that is
@@ -1448,7 +1458,8 @@ def normdist(mpa1, mpa2):
     return norm(mpa1 - mpa2)
     # This implementation doesn't produce an MPA with double bond dimension:
     #
-    # return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
+    # return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2
+    #                - 2 * np.real(inner(mpa1, mpa2)))
     #
     # However, there are precision issues which show up e.g. in
     # test_project_fused_clusters(). Due to rounding errors, the term
@@ -1462,7 +1473,7 @@ def normdist(mpa1, mpa2):
     # this is too strict.
 
 
-#TODO Convert to iterator
+# TODO Convert to iterator
 def _prune_ltens(mpa):
     """Contract local tensors with no physical legs.
 

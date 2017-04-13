@@ -7,13 +7,11 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import pytest as pt
-from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
-                           assert_array_equal)
+from numpy.testing import assert_array_equal
 
 from mpnum import factory
-from mpnum.mpstruct import LocalTensors
 from mpnum._testing import assert_correct_normalization
-from six.moves import range, zip
+from six.moves import range
 
 
 def test_iter_readonly():
@@ -29,6 +27,8 @@ def test_iter_readonly():
 
 
 UPDATE_N_SITES = 4
+
+
 @pt.mark.parametrize(
     'mpa_norm',
     [(lnorm, rnorm)
@@ -40,7 +40,7 @@ def test_update_normalization(mpa_norm, upd_pos, upd_norm, rgen,
     """Verify normalization after local tensor update
 
     We test two things:
-    1. The normalization info after update is what we expect 
+    1. The normalization info after update is what we expect
        (in some special cases, see `norm_expected`)
     2. The normalization info is actually correct (in all cases)
 

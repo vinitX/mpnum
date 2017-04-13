@@ -9,7 +9,7 @@ import pytest as pt
 import mpnum.factory as factory
 from numpy.testing import assert_array_almost_equal
 
-from mparray_test import MP_TEST_PARAMETERS, MP_TEST_DTYPES
+from mparray_test import MP_TEST_PARAMETERS
 from mpnum._testing import assert_correct_normalization
 
 

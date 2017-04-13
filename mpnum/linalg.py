@@ -343,7 +343,7 @@ def _mineig_sum_minimize_locally(
         elif plegs == 1:
             op += _mineig_local_op_mps(lv, list(mpa.lt[pos]), rv)
         else:
-            raise ValueError('plegs = {!r} not supported'.format(pdims))
+            raise ValueError('plegs = {!r} not supported'.format(plegs))
 
     return _mineig_minimize_locally2(op, list(eigvec_ltens), user_eigs_opts)
 
@@ -430,7 +430,7 @@ def mineig(mpo,
                    zip((1,) + startvec.bdims, startvec.bdims + (1,))), \
         'startvec must not contain two consecutive bonds of dimension 1, ' \
         'bdims including dummy bonds = (1,) + {!r} + (1,)' \
-            .format(startvec.bdims)
+        .format(startvec.bdims)
     # For
     #
     #   pos in range(nr_sites - minimize_sites),
@@ -495,14 +495,14 @@ def mineig(mpo,
     return eigval, eigvec
 
 
-def mineig_sum(mpas,
-           startvec=None, startvec_bonddim=None, randstate=None,
-           max_num_sweeps=5, eigs_opts=None, minimize_sites=1):
+def mineig_sum(
+        mpas, startvec=None, startvec_bonddim=None, randstate=None,
+        max_num_sweeps=5, eigs_opts=None, minimize_sites=1):
     r"""Iterative search for smallest eigenvalue+vector of a sum
 
     Try to compute the ground state of the sum of the objects in
-    `mpas`. MPOs are taken as-is. An MPS :math:`\vert\psi\rangle` 
-    is interpreted as :math:`\vert\psi\rangle \langle\psi\vert` 
+    `mpas`. MPOs are taken as-is. An MPS :math:`\vert\psi\rangle`
+    is interpreted as :math:`\vert\psi\rangle \langle\psi\vert`
     in the sum.
 
     This function executes exactly the same algorithm as
@@ -554,7 +554,7 @@ def mineig_sum(mpas,
                    zip((1,) + startvec.bdims, startvec.bdims + (1,))), \
         'startvec must not contain two consecutive bonds of dimension 1, ' \
         'bdims including dummy bonds = (1,) + {!r} + (1,)' \
-            .format(startvec.bdims)
+        .format(startvec.bdims)
     # For
     #
     #   pos in range(nr_sites - minimize_sites),
@@ -621,4 +621,3 @@ def mineig_sum(mpas,
             eigvec.lt[pos:pos_end] = eigvec_lten
 
     return eigval, eigvec
-

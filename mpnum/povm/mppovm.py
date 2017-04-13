@@ -29,7 +29,7 @@ This module provides the following classes:
 .. _mppovm-lfun-overview:
 
 Linear combinations of functions of POVM outcomes
-=====
+=================================================
 
 In order to perform the just mentioned estimation of probabilities of
 one POVM from samples of another POVM with possibly larger support, we
@@ -129,7 +129,7 @@ estimator is used by :func:`MPPovm.est_lfun`.
    Document the runtime and memory cost of the functions.
 
 Class and function reference
-=====
+============================
 
 '''
 
@@ -291,8 +291,8 @@ class MPPovm(mp.MPArray):
             startsite + len(self))` and :func:`MPPovm.eye()` elsewhere
 
         """
-        local_dim = tuple(local_dim) if hasattr(local_dim, '__iter__') \
-                    else (local_dim,) * nr_sites
+        local_dim = (tuple(local_dim) if hasattr(local_dim, '__iter__')
+                     else (local_dim,) * nr_sites)
         assert len(local_dim) == nr_sites
         n_right = nr_sites - len(self) - startsite
         assert n_right >= 0, "Embedding position not possible"
@@ -569,7 +569,7 @@ class MPPovm(mp.MPArray):
         check `other` and `self` for any common POVM elements.
 
         :param other: Another MPPovm
-        :param exclude_duplicates: Sequence which can include `'self'`
+        :param exclude_dup: Sequence which can include `'self'`
             or `'other'` (or both) to assert that there are no
             linearly dependent pairs of elements in `self` or `other`.
         :param eps: Threshould for values which should be treated as zero
@@ -592,7 +592,7 @@ class MPPovm(mp.MPArray):
             raise ValueError('Incompatible input Hilbert space: {!r} vs {!r}'
                              .format(self.hdims, other.hdims))
         if len(exclude_dup) > 0:
-            assert {'self', 'other'}.issuperset(exclude_duplicates)
+            assert {'self', 'other'}.issuperset(exclude_dup)
         # Drop measurement outcomes in `other` if there is only one
         # measurement outcome in `self`
         keep_outdims = (outdim > 1 for outdim in self.outdims)
@@ -946,7 +946,7 @@ class MPPovm(mp.MPArray):
         return est, var_est
 
     def _mppl_lfun_estimator(self, est_coeff, est_funs, other, n_samples,
-                            coeff, eps):
+                             coeff, eps):
         """Compute the estimator used by :func:`MPPovmList.estfun_from()`
 
         Used by :func:`MPPovmList._lfun_estimator()`.
@@ -992,7 +992,8 @@ class MPPovm(mp.MPArray):
                 # Append a function which matches on the output `out`
                 # on sites specified by `support`.
                 est_funs[pos].append(
-                    lambda s, out=out[None, :], supp=support: (s[:, supp] == out).all(1))
+                    lambda s, out=out[None, :], supp=support:
+                    (s[:, supp] == out).all(1))
                 # To compute the final coefficient, we need to know
                 # how many samples from (possibly many) `mpp`s have
                 # contributed to a given probability specified by `my_out`.
@@ -1134,9 +1135,10 @@ class MPPovm(mp.MPArray):
             "conversion not possible")
 
         samples = samples[:, other_support]
-        n_samples_used = \
-            match.reshape((np.prod(self.nsoutdims),) + other_outdims) \
-            [(slice(None),) + tuple(samples.T)].any(0).sum()
+        m_shape = (np.prod(self.nsoutdims),) + other_outdims
+        m_pos = (slice(None),) + tuple(samples.T)
+        n_samples_used = match.reshape(m_shape)[m_pos].any(0).sum()
+
         est_pmf = np.zeros(self.nsoutdims, float)
         for outcomes in np.argwhere(match):
             my_out, out = tuple(outcomes[:n_nsout]), outcomes[n_nsout:]
@@ -1271,7 +1273,8 @@ class MPPovmList:
         ...     mp.outer((y, x, y, x, y)),
         ...     mp.outer((y, y, y, y, y)),
         ... )
-        >>> [abs(mp.norm(a - b)) <= 1e-10 for a, b in zip(pauli.repeat(5).mpps, expect)]
+        >>> [abs(mp.norm(a - b)) <= 1e-10
+        ...  for a, b in zip(pauli.repeat(5).mpps, expect)]
         [True, True, True, True]
 
         """
@@ -1309,7 +1312,7 @@ class MPPovmList:
                 for mpp, state in zip(self.mpps, states))
         if asarray:
             pmfs = np.array(list(pmfs))
-        return pmfs        
+        return pmfs
 
     def block_pmfs_as_array(self, state, mode, asarray=False, eps=1e-10,
                             **redarg):
@@ -1483,7 +1486,8 @@ class MPPovmList:
         """
         if other_weights is None:
             other_weights = np.ones(len(other.mpps))
-        n_sam, f_coeff, funs = self._lfun_estimator(other, coeff, other_weights, eps)
+        n_sam, f_coeff, funs = self._lfun_estimator(
+            other, coeff, other_weights, eps)
         # If a single probability cannot be computed, we cannot return anything.
         if any((n[c != 0.0] == 0).any() for n, c in zip(n_sam, coeff)):
             return np.nan, np.nan

@@ -30,7 +30,8 @@ class LocalTensors(object):
         assert 0 < self._rnormalized <= len(self._ltens)
 
         if __debug__:
-            for i, (ten, nten) in enumerate(zip(self._ltens[:-1], self._ltens[1:])):
+            for i, (ten, nten) in enumerate(zip(self._ltens[:-1],
+                                                self._ltens[1:])):
                 assert ten.shape[-1] == nten.shape[0]
 
     def _update(self, index, tens, normalization=None):

@@ -7,7 +7,7 @@
 import os
 import sys
 
-from setuptools import Command, find_packages, setup
+from setuptools import find_packages, setup
 
 authors = [u"Daniel Suess", u"Milan Holzäpfel"]
 author_emails = ["daniel@dsuess.me", "mail@mjh.name"]

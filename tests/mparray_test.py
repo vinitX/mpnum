@@ -16,7 +16,6 @@ from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
-import mpnum.mpsmpo as mm
 from mpnum import _tools
 from mpnum._testing import (assert_correct_normalization,
                             assert_mpa_almost_equal, assert_mpa_identical,
@@ -354,7 +353,8 @@ def test_partialdot_multiaxes(rgen):
     # match the order of the indices in mpa_prod. We need to change
     # that order:
     nldim1, nldim2 = (len(ldim1) - len(ax1), len(ldim2) - len(ax2))
-    assert vec_prod.ndim == start_at * len(ldim1) + nr_sites_shorter * (nldim1 + nldim2)
+    assert vec_prod.ndim == (start_at * len(ldim1)
+                             + nr_sites_shorter * (nldim1 + nldim2))
     # For sites before start_at, the axes of `vec1` remain unchanged.
     perm = tuple(range(len(ldim1) * start_at))
     # For site start_at and following sites, we need to fix the order
@@ -490,6 +490,7 @@ def test_partialtrace_axes(nr_sites, local_dim, rgen, dtype):
             mp.partialtrace(mpa, axes=(0, 3))
         assert exc.value.args == ('Too few physical legs',), "Wrong assertion"
 
+
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_trace(nr_sites, local_dim, bond_dim, rgen, dtype):
@@ -564,7 +565,7 @@ def test_sumup(nr_sites, local_dim, bond_dim, rgen, dtype):
     weights = rgen.randn(len(mpas))
     summands = [w * mpa for w, mpa in zip(weights, mpas)]
     sum_naive = ft.reduce(mp.MPArray.__add__, summands)
-    sum_mp = mp.sumup(mpas, weights = weights)
+    sum_mp = mp.sumup(mpas, weights=weights)
     assert_array_almost_equal(sum_naive.to_array(), sum_mp.to_array())
     assert all(bdim <= 3 * bond_dim for bdim in sum_mp.bdims)
     assert(sum_mp.dtype is dtype)
@@ -859,7 +860,8 @@ def test_split_sites(nr_sites, local_dim, bond_dim, sites_per_group, rgen):
     assert (nr_sites % sites_per_group) == 0, \
         'nr_sites not a multiple of sites_per_group'
     plegs = (local_dim,) * (2 * sites_per_group)
-    mpa = factory.random_mpa(nr_sites // sites_per_group, plegs, bond_dim, randstate=rgen)
+    mpa = factory.random_mpa(nr_sites // sites_per_group, plegs, bond_dim,
+                             randstate=rgen)
     split_mpa = mpa.split_sites(sites_per_group)
     op = mpa.to_array()
     split_op = split_mpa.to_array()
@@ -933,7 +935,8 @@ def test_reshape(rgen):
     mpa = factory.random_mpa(4, [(3, 2), (4,), (2, 5), (24,)], 4)
     mpa.normalize()
     mpa_r = mpa.reshape([(2, 3), (2, 2), (10,), (3, 2, 4)])
-    assert all(s1 == s2 for s1, s2 in zip(mpa_r.pdims, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
+    assert all(s1 == s2 for s1, s2 in
+               zip(mpa_r.pdims, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
     assert_correct_normalization(mpa_r, *mpa.normal_form)
 
 
@@ -1024,14 +1027,16 @@ def test_normalization_default_args(nr_sites, local_dim, bond_dim, rgen):
     if nr_sites == 1:
         return
 
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen)
     assert_correct_normalization(mpo, 0, nr_sites)
 
     mpo.normalize(left=1)
     mpo.normalize()
     assert_correct_normalization(mpo, nr_sites - 1, nr_sites)
 
-    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
+    mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+                             randstate=rgen)
     assert_correct_normalization(mpo, 0, nr_sites)
 
     # The following normalization assumes at least three sites.
@@ -1184,6 +1189,7 @@ def _chain_decorators(*args):
         return f
     return chain_decorator
 
+
 compr_test_params = _chain_decorators(compr_sizes, compr_settings,
                                       compr_normalization)
 
@@ -1284,7 +1290,7 @@ def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize,
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @compr_test_params
 def test_compression_result_properties(nr_sites, local_dims, bond_dim,
-                                        normalize, comparg, rgen, dtype):
+                                       normalize, comparg, rgen, dtype):
     """Test general properties of the MPA coming from a compression.
 
     * Compare SVD compression against simpler implementation
@@ -1363,7 +1369,7 @@ def test_var_no_worse_than_svd(nr_sites, local_dim, bond_dim, rgen, dtype):
 
 @compr_test_params
 def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
-                                         normalize, comparg, rgen):
+                                        normalize, comparg, rgen):
     """Check that bond dimension does not increase if the target bond
     dimension is larger than the MPA bond dimension
 

@@ -28,20 +28,23 @@ def test_block_diag(rgen):
     nr_summands = 3
     leftvecs = factory._zrandn((nr_blocks, nr_summands, leftmargin),
                                randstate=rgen)
-    middlematrices = [factory._zrandn((nr_summands, rows[i], cols[i]), randstate=rgen)
-                      for i in range(nr_blocks)]
+    middlematrices = [
+        factory._zrandn((nr_summands, rows[i], cols[i]), randstate=rgen)
+        for i in range(nr_blocks)]
     rightvecs = factory._zrandn((nr_blocks, nr_summands, rightmargin),
                                 randstate=rgen)
     blockdiag_summands = []
     for i in range(nr_blocks):
-        summand = np.zeros((leftmargin, rows[i], cols[i], rightmargin), dtype=complex)
+        summand = np.zeros((leftmargin, rows[i], cols[i], rightmargin),
+                           dtype=complex)
         for j in range(nr_summands):
-            summand += np.outer(np.outer(leftvecs[i, j, :], middlematrices[i][j, :, :]),
-                                rightvecs[i, j, :]).reshape(summand.shape)
+            summand += np.outer(
+                np.outer(leftvecs[i, j, :], middlematrices[i][j, :, :]),
+                rightvecs[i, j, :]).reshape(summand.shape)
         blockdiag_summands.append(summand)
     blockdiag_sum = _tools.block_diag(blockdiag_summands, axes=(1, 2))
-    blockdiag_sum_explicit = np.zeros((leftmargin, sum(rows), sum(cols), rightmargin),
-                                      dtype=complex)
+    blockdiag_sum_explicit = np.zeros(
+        (leftmargin, sum(rows), sum(cols), rightmargin), dtype=complex)
 
     for i in range(nr_blocks):
         for j in range(nr_summands):

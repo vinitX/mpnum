@@ -96,8 +96,8 @@ def test_pmps_reduction_array_fast(nr_sites, local_dim, bond_dim, keep, rgen,
     'nr_sites, local_dim, bond_dim, keep',
     [(20, 2, 16, [4, 5, 17, 18]), (20, 2, 32, [4, 5, 17, 18])]
 )
-def test_pmps_reduction_array_slow_noprune(nr_sites, local_dim, bond_dim, keep, rgen,
-                                   benchmark):
+def test_pmps_reduction_array_slow_noprune(
+        nr_sites, local_dim, bond_dim, keep, rgen, benchmark):
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                               dtype=np.complex_, normalized=True,
                               randstate=rgen)
@@ -112,8 +112,8 @@ def test_pmps_reduction_array_slow_noprune(nr_sites, local_dim, bond_dim, keep, 
     'nr_sites, local_dim, bond_dim, keep',
     [(32, 2, 16, [1, 2, 17, 18])]
 )
-def test_pmps_reduction_array_slow_prune(nr_sites, local_dim, bond_dim, keep, rgen,
-                                   benchmark):
+def test_pmps_reduction_array_slow_prune(
+        nr_sites, local_dim, bond_dim, keep, rgen, benchmark):
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                               dtype=np.complex_, normalized=True,
                               randstate=rgen)

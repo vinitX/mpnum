@@ -105,6 +105,7 @@ def test_mineig_sum_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
 
 BENCHMARK_MINEIG_PARAMS = [(20, 2, 12, 12)]
 
+
 @pt.mark.benchmark(group='mineig_sum', min_rounds=2)
 @pt.mark.parametrize(
     'nr_sites, local_dim, bond_dim, ev_bond_dim', BENCHMARK_MINEIG_PARAMS)

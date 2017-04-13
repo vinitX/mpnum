@@ -6,7 +6,7 @@ Introduction
 ============
 
 Contributing
-----
+------------
 
 Contributions to the code are very welcome.  Regarding code style,
 please try to fix all warnings reported by flake8::
@@ -20,7 +20,7 @@ would not be nice.
 
 
 Graphical notation for tensors
-----
+------------------------------
 
 
 Our graphical notation for tensors is very similar to the graphical
@@ -172,7 +172,7 @@ representations.
 
 
 Local purification form MPS (PMPS)
-"""""
+""""""""""""""""""""""""""""""""""
 
 The local purification from matrix product state representation (PMPS
 or LPMPS) is defined as follows:
@@ -201,7 +201,7 @@ dimension is the square of the PMPS bond dimension.
 
 
 Matrix product arrays
-"""""
+"""""""""""""""""""""
 
 The library mpnum implements the class :class:`mpnum.mparray.MPArray`
 which can be used for MPS, MPO, PMPS and other MPS-like
@@ -215,7 +215,7 @@ arbitrary dimension.  A corresponding figure could look like this:
 
 
 Next steps
------
+----------
 
 The ipython notebook :code:`mpnum_intro.ipynb` in the folder
 :code:`Notebooks` provides an introduction on how to use :code:`mpnum`

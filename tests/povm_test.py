@@ -8,14 +8,12 @@ from inspect import isfunction
 
 import numpy as np
 import pytest as pt
-from numpy.testing import (
-    assert_almost_equal, assert_array_almost_equal, assert_array_equal)
+from numpy.testing import (assert_almost_equal, assert_array_almost_equal)
 from six.moves import range, zip, zip_longest
 from _pytest.mark import matchmark
 
 import mpnum as mp
 import mpnum.povm as povm
-import mpnum.povm.mppovm as mppovm
 import mpnum.factory as factory
 import mpnum.mpsmpo as mpsmpo
 from mpnum import _tools
@@ -190,7 +188,7 @@ def test_mppovm_embed_expectation(
     # Create a local POVM `red_povm`, embed it onto a larger chain
     # (`full_povm`), and go back to the reduced POVM.
     red_povm = mp.outer(
-        mp.povm.MPPovm.from_local_povm(mp.povm.pauli_povm(d), 1)
+        povm.MPPovm.from_local_povm(mp.povm.pauli_povm(d), 1)
         for d, _ in local_dim2[startsite:startsite + width]
     )
     full_povm = red_povm.embed(nr_sites, startsite, local_dim)
@@ -454,7 +452,6 @@ def test_mppovm_est_pmf_from(
     """Check that probability estimates from samples are reasonable accurate"""
     bond_dim = 3
     eps = 1e-10
-    nr_small = 4
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
     mps.normalize()
 
@@ -472,8 +469,8 @@ def test_mppovm_est_pmf_from(
                   .embed(nr_sites, startsite, local_dim)
 
     x_given = np.arange(len(lp)) < len(lx)
-    y_given = (np.arange(len(lp)) >= len(lx)) \
-              & (np.arange(len(lp)) < len(lx) + len(ly))
+    y_given = ((np.arange(len(lp)) >= len(lx))
+               & (np.arange(len(lp)) < len(lx) + len(ly)))
     given_sites = [x_given if ((startsite + i) % 2) == 0 else y_given
                    for i in (0, 2, 3)]
     given_expected = np.einsum('i, j, k -> ijk', *given_sites)
@@ -613,6 +610,7 @@ def _pytest_want_long(request):
         keywords = {'long': pt.mark.verylong}
     return matchmark(dummy, request.config.option.markexpr)
 
+
 @pt.fixture(params=[False, True])
 def splitpauli(n_samples, nonuniform, request):
     # We use this fixture to skip certain value combinations for
@@ -627,6 +625,7 @@ def splitpauli(n_samples, nonuniform, request):
         return splitpauli
     pt.skip("Should only be run in long tests")
     return None
+
 
 @pt.mark.parametrize(
     'method, n_samples', [
@@ -697,12 +696,14 @@ def _get_povm(name, nr_sites, local_dim, local_width):
     else:
         raise ValueError('Unknown MP-POVM list {!r}'.format(name))
 
+
 POVM_COMBOS = [
     ('global', 'pauli'), ('splitpauli', 'pauli'), ('pauli', 'pauli'),
     ('global', 'all-y'), ('all-y', 'local-x'), ('all-y', 'pauli'),
     pt.mark.verylong(('splitpauli', 'splitpauli')), ('pauli', 'splitpauli')
 ]
 POVM_IDS = ['+'.join(getattr(x, 'args', (x,))[0]) for x in POVM_COMBOS]
+
 
 @pt.fixture(params=POVM_COMBOS, ids=POVM_IDS)
 def povm_combo(function, request):
@@ -719,6 +720,7 @@ def povm_combo(function, request):
         return combo
     pt.skip("Should only be run in long tests")
     return None
+
 
 @pt.mark.parametrize(
     'method, n_samples', [
@@ -751,8 +753,8 @@ def test_mppovmlist_est_lfun_from(
     mps.normalize()
 
     sample_povm, fun_povm = povm_combo
-    estimation_impossible = sample_povm == "all-y" and \
-                            fun_povm in {"local-x", "pauli"}
+    estimation_impossible = (sample_povm == "all-y" and
+                             fun_povm in {"local-x", "pauli"})
     fromself = sample_povm == fun_povm and measure_width == local_width
     # s_povm: POVM used to obtain samples
     s_povm = _get_povm(sample_povm, nr_sites, local_dim, measure_width)
@@ -762,13 +764,13 @@ def test_mppovmlist_est_lfun_from(
     else:
         f_povm = _get_povm(fun_povm, nr_sites, local_dim, local_width)
     if function == 'rand':
-        coeff = lambda x: rgen.rand(*x)
+        def coeff(x): return rgen.rand(*x)
     elif function == 'randn':
-        coeff = lambda x: rgen.randn(*x)
+        def coeff(x): return rgen.randn(*x)
     elif function == 'ones':
-        coeff = lambda x: np.ones(x)
+        def coeff(x): return np.ones(x)
     elif function == 'signs':
-        coeff = lambda x: rgen.choice([1., -1.], x)
+        def coeff(x): return rgen.choice([1., -1.], x)
     else:
         raise ValueError('Unknown function {!r}'.format(function))
 
@@ -783,7 +785,8 @@ def test_mppovmlist_est_lfun_from(
     exact_prob = tuple(f_povm.pmf_as_array(mps, 'mps', eps))
 
     # Compute exact estimate directly
-    exact_est1, exact_var1 = f_povm.lfun([c.ravel() for c in coeff], None, mps, 'mps', eps)
+    exact_est1, exact_var1 = f_povm.lfun([c.ravel() for c in coeff],
+                                         None, mps, 'mps', eps)
     # Compute exact estimate and variance using the other POVM
     exact_est2, exact_var2 = f_povm.lfun_from(s_povm, coeff, mps, 'mps', eps=eps)
     if estimation_impossible:
@@ -802,7 +805,7 @@ def test_mppovmlist_est_lfun_from(
         # In this case, est_lfun() and est_lfun_from() must give exactly
         # the same result.
         est2, var2 = f_povm.est_lfun([c.ravel() for c in coeff],
-                                    None, samples, eps)
+                                     None, samples, eps)
         assert abs(est - est2) <= eps
         assert abs(var - var2) <= eps
         # We use est_pmf() to test est_pmf_from()
