@@ -5,7 +5,7 @@
 
 .. title:: mpnum documentation
 
-.. |mpnum-logo| image:: tensors_logo.png
+.. |mpnum-logo| image:: tensors_logo_120.png
    :alt: mpnum
 
 |mpnum-logo|
