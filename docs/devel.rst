@@ -2,13 +2,15 @@
 
 .. _mpnum-development:
 
-Development
-===========
+Extending mpnum
+===============
 
 
 This section contains information for anyone who wishes to modify
 mpnum. Contributions and pull requests for mpnum are very welcome.
 
+
+.. contents::
 
 
 Code style

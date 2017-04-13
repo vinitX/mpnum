@@ -5,12 +5,37 @@
 Introduction
 ============
 
+mpnum is a Python library providing flexible tools to implement new
+numerical schemes based on matrix product states (MPS). It is
+available under the BSD license at `mpnum on Github
+<https://github.com/dseuss/mpnum>`_. So far, mpnum provides:
+
+- basic tools for various matrix product based representations, such
+  as:
+
+  - matrix product states (:ref:`MPS <intro-mps>`), also known as
+    tensor trains (TT)
+  - matrix product operators (:ref:`MPO <intro-mpo>`)
+  - local purification matrix product states (:ref:`PMPS <intro-pmps>`)
+  - arbitrary matrix product arrays (:ref:`MPA <intro-mpa>`)
+
+- basic MPA operations: add, multiply, etc; compression (see
+  :func:`compress() <mpnum.mparray.MPArray.compress>`, SVD and
+  variational)
+- computing ground states of MPOs (see :func:`mineig()
+  <mpnum.linalg.mineig>`, which computes smallest eigenvalues and
+  eigenvectors of MPOs)
+- flexible tools to implement new schemes based on matrix product
+  representations
+
+.. contents::
+
+
 Contributing
 ------------
 
-Contributions and pull requests for mpnum are very welcome. For code
-style guidelines and related development information, see
-:ref:`mpnum-development`.
+Contributions and pull requests for mpnum are very welcome. More
+information on modifying mpnum is at :ref:`mpnum-development`.
 
 
 Graphical notation for tensors
@@ -67,6 +92,8 @@ This formula is represented by the following figure:
    :align: center
 
 
+.. _intro-mps:
+
 Matrix product states (MPS)
 """""""""""""""""""""""""""
 
@@ -102,6 +129,8 @@ bonds* of size 1 to our tensors:
 .. image:: tensors_mps_no_names_with_dummies.svg
    :align: center
 
+
+.. _intro-mpo:
 
 Matrix product operators (MPO)
 """"""""""""""""""""""""""""""
@@ -165,6 +194,8 @@ is the product of the bond dimensions of the two individual MPO
 representations.
 
 
+.. _intro-pmps:
+
 Local purification form MPS (PMPS)
 """"""""""""""""""""""""""""""""""
 
@@ -193,6 +224,8 @@ It also tells us how to convert a PMPS representation into an MPO
 representation and how the bond dimension changes: The MPO bond
 dimension is the square of the PMPS bond dimension.
 
+
+.. _intro-mpa:
 
 Matrix product arrays
 """""""""""""""""""""

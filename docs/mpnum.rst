@@ -1,6 +1,16 @@
 mpnum Package
 =============
 
+.. contents::
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 2
+
+   mpnum.povm
+
 :mod:`mpnum` Package
 --------------------
 
@@ -64,11 +74,3 @@ mpnum Package
     :members:
     :undoc-members:
     :show-inheritance:
-
-Subpackages
------------
-
-.. toctree::
-
-    mpnum.povm
-

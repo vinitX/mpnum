@@ -1,6 +1,8 @@
 povm Package
 ============
 
+.. contents::
+
 :mod:`povm` Package
 -------------------
 

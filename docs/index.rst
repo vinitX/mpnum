@@ -3,23 +3,28 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to mpnum's documentation!
-=================================
+.. title:: mpnum documentation
 
-Contents:
+.. |mpnum-logo| image:: tensors_logo.png
+   :alt: mpnum
 
+|mpnum-logo|
+############
+
+	   
+mpnum is a Python library providing flexible tools to implement new
+numerical schemes based on matrix product states (MPS). It is
+available under the BSD license at
+
+* `mpnum on Github <https://github.com/dseuss/mpnum>`_
+
+Documentation:
+  
 .. toctree::
-   :maxdepth: 99
+   :maxdepth: 1
 
-   todo
    intro
    devel
    modules
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+	      
+* :ref:`todo`

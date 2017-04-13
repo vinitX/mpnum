@@ -1,5 +1,5 @@
 # encoding: utf-8
-"""MPNUM: A matrix-product-representation library for Python
+"""mpnum: A matrix-product-representation library for Python
 
 * :mod:`mpnum.mparray`: Basic matrix product array (MPA) routines and
   compression
