@@ -15,10 +15,10 @@ This code is work in progress.
 mpnum is a Python library providing flexible tools to implement new numerical schemes based on matrix product states (MPS). So far, we provide:
 
 * basic tools for various matrix product based representations, such as:
- * matrix product states ([MPS](http://mpnum.readthedocs.org/en/latest/intro.html#matrix-product-states-mps)), also known as tensor trains (TT)
- * matrix product operators ([MPO](http://mpnum.readthedocs.org/en/latest/intro.html#matrix-product-operators-mpo))
- * local purification matrix product states ([PMPS](http://mpnum.readthedocs.org/en/latest/intro.html#local-purification-form-mps-pmps))
- * arbitrary matrix product arrays ([MPA](http://mpnum.readthedocs.org/en/latest/intro.html#matrix-product-arrays))
+  * matrix product states ([MPS](http://mpnum.readthedocs.org/en/latest/intro.html#matrix-product-states-mps)), also known as tensor trains (TT)
+  * matrix product operators ([MPO](http://mpnum.readthedocs.org/en/latest/intro.html#matrix-product-operators-mpo))
+  * local purification matrix product states ([PMPS](http://mpnum.readthedocs.org/en/latest/intro.html#local-purification-form-mps-pmps))
+  * arbitrary matrix product arrays ([MPA](http://mpnum.readthedocs.org/en/latest/intro.html#matrix-product-arrays))
 * basic MPA operations: add, multiply, etc; [compression](http://mpnum.readthedocs.org/en/latest/mpnum.html#mpnum.mparray.MPArray.compress) (SVD and variational)
 * computing [ground states](http://mpnum.readthedocs.org/en/latest/mpnum.html#mpnum.linalg.mineig) (the smallest eigenvalue and eigenvector) of MPOs
 * flexible tools to implement new schemes based on matrix product representations
