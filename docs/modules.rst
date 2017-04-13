@@ -1,19 +1,6 @@
-.. _modules:
+:orphan:
 
-Library reference
-=================
+mpnum reference
+===============
 
-.. toctree::
-   :maxdepth: 3
-
-   mpnum
-   todo
-
- 
-Indices and tables
-------------------
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+Moved to :doc:`mpnum`.
