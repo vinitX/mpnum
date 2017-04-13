@@ -35,7 +35,7 @@ Required packages:
 
 Supported Python versions:
 
-* 2.7, 3.3, 3.4, 3.5
+* 2.7, 3.3, 3.4, 3.5, 3.6
 
 
 ## Contributors
