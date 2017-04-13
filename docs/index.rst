@@ -13,6 +13,7 @@ Contents:
 
    todo
    intro
+   devel
    modules
 
 Indices and tables

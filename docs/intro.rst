@@ -8,15 +8,9 @@ Introduction
 Contributing
 ------------
 
-Contributions to the code are very welcome.  Regarding code style,
-please try to fix all warnings reported by flake8::
-
-  python -m flake8 .
-
-Regarding line length, we try to have not more than 80 characters per
-line, with some exceptions if the excess is small and reformatting
-would not be nice.
-
+Contributions and pull requests for mpnum are very welcome. For code
+style guidelines and related development information, see
+:ref:`mpnum-development`.
 
 
 Graphical notation for tensors
