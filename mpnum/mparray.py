@@ -1307,7 +1307,10 @@ def outer(mpas, astype=None):
     """
     # TODO Make this normalization aware
     mpas = iter(mpas)
-    first = next(mpas)
+    try:
+        first = next(mpas)
+    except StopIteration:
+        raise ValueError('Argument `mpas` is an empty list')
     rest = (lt for mpa in mpas for lt in mpa.lt)
     if astype is None:
         astype = type(first)
