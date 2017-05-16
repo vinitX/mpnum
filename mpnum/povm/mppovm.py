@@ -758,10 +758,10 @@ class MPPovm(mp.MPArray):
             raise ValueError('Unknown method {!r}'.format(method))
         assert (out < np.array(self.nsoutdims)[None, :]).all()
         if pack:
-            return self.pack_samples(out)
+            return self.pack_samples(out, dtype=pack)
         return out
 
-    def pack_samples(self, samples):
+    def pack_samples(self, samples, dtype=None):
         """Pack samples into one integer per sample
 
         Store one sample in a single integer instead of a list of
@@ -776,7 +776,13 @@ class MPPovm(mp.MPArray):
         """
         assert samples.ndim == 2
         assert samples.shape[1] == len(self.nsoutdims)
-        return np.ravel_multi_index(samples.T, self.nsoutdims)
+        samples = np.ravel_multi_index(samples.T, self.nsoutdims)
+        if dtype not in (True, False, None) and issubclass(dtype, np.integer):
+            info = np.iinfo(dtype)
+            assert samples.min() >= info.min
+            assert samples.max() <= info.max
+            samples = samples.astype(dtype)
+        return samples
 
     def unpack_samples(self, samples):
         """Unpack samples into several integers per sample
