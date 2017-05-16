@@ -813,11 +813,12 @@ class MPPovm(mp.MPArray):
 
         """
         n_samples = samples.shape[0]
-        counts = np.zeros(self.nsoutdims, int)
-        assert samples.shape[1] == counts.ndim
-        for out_num in range(counts.size):
-            out = np.unravel_index(out_num, counts.shape)
-            counts[out] = (samples == np.array(out)[None, :]).all(1).sum()
+        n_out = np.prod(self.nsoutdims)
+        if samples.ndim > 1:
+            samples = self.pack_samples(samples)
+        counts = np.bincount(samples, minlength=n_out)
+        assert counts.shape == (n_out,)
+        counts = counts.reshape(self.nsoutdims)
         assert counts.sum() == n_samples
         if normalize:
             return counts / n_samples
