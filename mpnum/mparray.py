@@ -2081,6 +2081,10 @@ def full_bdim(ldims):
     [6, 36, 6]
 
     """
-    ldims_raveled = [np.prod(ldim) for ldim in ldims]
+    # Use arbitrary-size Python integers for dimension
+    # computation. Fixed-size numpy integers will overflow quickly
+    # (e.g. 2**63 = -9223372036854775808 on 64-bit systems).
+    ldims_raveled = np.array([int(np.prod(ldim)) for ldim in ldims],
+                             dtype=object)
     return [min(np.prod(ldims_raveled[:cut]), np.prod(ldims_raveled[cut:]))
             for cut in range(1, len(ldims))]
