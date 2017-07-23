@@ -85,7 +85,7 @@ def test_conjugations(nr_sites, local_dim, _, rgen, dtype):
     assert_array_almost_equal(np.conj(op), mpo.conj().to_array())
     assert mpo.conj().dtype == dtype
 
-    mpo.normalize()
+    mpo.canonicalize()
     mpo_c = mpo.conj()
     assert_correct_normalization(mpo_c)
 
@@ -101,7 +101,7 @@ def test_transpose(nr_sites, local_dim, _, rgen, dtype):
     assert_array_almost_equal(opT, (mpo.T).to_array_global())
     assert mpo.T.dtype == dtype
 
-    mpo.normalize()
+    mpo.canonicalize()
     mpo_T = mpo.T
     assert_correct_normalization(mpo_T)
 
@@ -144,7 +144,7 @@ def test_transpose_axes(rgen):
 def test_dump_and_load(tmpdir, dtype):
     mpa = factory.random_mpa(5, [(4,), (2, 3), (1,), (4,), (4, 3)],
                              (4, 7, 1, 3), dtype=dtype)
-    mpa.normalize(left=1, right=3)
+    mpa.canonicalize(left=1, right=3)
 
     with h5.File(str(tmpdir / 'dump_load_test.h5'), 'w') as buf:
         newgroup = buf.create_group('mpa')
@@ -411,7 +411,7 @@ def test_sandwich(nr_sites, local_dim, bond_dim, rgen, dtype):
                               randstate=rgen, dtype=dtype, normalized=True)
     mpo = factory.random_mpa(nr_sites, [local_dim] * 2, bond_dim,
                              randstate=rgen, dtype=dtype)
-    mpo.normalize()
+    mpo.canonicalize()
     mpo /= mp.trace(mpo)
 
     vec = mps.to_array().ravel()
@@ -609,7 +609,7 @@ def test_outer(nr_sites, local_dim, bond_dim, rgen, dtype):
 
     # Test 3-factors iteratively (since full form would be too large!!
     diff = mp.outer((mpo, mpo, mpo)) - mp.outer((mpo, mp.outer((mpo, mpo))))
-    diff.normalize()
+    diff.canonicalize()
     assert len(diff) == 3 * len(mpo)
     assert mp.norm(diff) < 1e-6
 
@@ -864,7 +864,7 @@ def test_reverse(nr_sites, local_dim, bond_dim, ndims, rgen):
 def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
     mpa = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen)
     # +2 so we cover all possibilities
-    mpa.normalize(left=nr_sites // 2, right=min(nr_sites // 2 + 2, nr_sites))
+    mpa.canonicalize(left=nr_sites // 2, right=min(nr_sites // 2 + 2, nr_sites))
 
     for pos in range(nr_sites - 1):
         mpa_t = mpa.bleg2pleg(pos)
@@ -885,7 +885,7 @@ def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
 
     if nr_sites > 1:
         mpa = factory.random_mpa(nr_sites, local_dim, 1, randstate=rgen)
-        mpa.normalize()
+        mpa.canonicalize()
         mpa_t = mpa.pleg2bleg(nr_sites // 2 - 1)
         assert_correct_normalization(mpa_t)
 
@@ -912,7 +912,7 @@ def test_split(nr_sites, local_dim, bond_dim, rgen):
 
 def test_reshape(rgen):
     mpa = factory.random_mpa(4, [(3, 2), (4,), (2, 5), (24,)], 4)
-    mpa.normalize()
+    mpa.canonicalize()
     mpa_r = mpa.reshape([(2, 3), (2, 2), (10,), (3, 2, 4)])
     assert all(s1 == s2 for s1, s2 in zip(mpa_r.shapes, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
     assert_correct_normalization(mpa_r, *mpa.canonical_form)
@@ -939,13 +939,13 @@ def test_normalization_incremental(nr_sites, local_dim, bond_dim, rgen, dtype):
     assert_array_almost_equal(op, mpo.to_array_global())
 
     for site in range(1, nr_sites):
-        mpo.normalize(left=site)
+        mpo.canonicalize(left=site)
         assert_correct_normalization(mpo, site, nr_sites)
         assert_array_almost_equal(op, mpo.to_array_global())
         assert mpo.dtype == dtype
 
     for site in range(nr_sites - 1, 0, -1):
-        mpo.normalize(right=site)
+        mpo.canonicalize(right=site)
         assert_correct_normalization(mpo, site - 1, site)
         assert_array_almost_equal(op, mpo.to_array_global())
         assert mpo.dtype == dtype
@@ -966,7 +966,7 @@ def test_normalization_jump(nr_sites, local_dim, bond_dim, rgen, dtype):
     assert_array_almost_equal(op, mpo.to_array_global())
 
     center = nr_sites // 2
-    mpo.normalize(left=center - 1, right=center)
+    mpo.canonicalize(left=center - 1, right=center)
     assert_correct_normalization(mpo, center - 1, center)
     assert_array_almost_equal(op, mpo.to_array_global())
     assert mpo.dtype == dtype
@@ -981,7 +981,7 @@ def test_normalization_full(nr_sites, local_dim, bond_dim, rgen, dtype):
     assert_correct_normalization(mpo, 0, nr_sites)
     assert_array_almost_equal(op, mpo.to_array_global())
 
-    mpo.normalize(right=1)
+    mpo.canonicalize(right=1)
     assert_correct_normalization(mpo, 0, 1)
     assert_array_almost_equal(op, mpo.to_array_global())
     assert mpo.dtype == dtype
@@ -993,7 +993,7 @@ def test_normalization_full(nr_sites, local_dim, bond_dim, rgen, dtype):
     assert_correct_normalization(mpo, 0, nr_sites)
     assert_array_almost_equal(op, mpo.to_array_global())
 
-    mpo.normalize(left=len(mpo) - 1)
+    mpo.canonicalize(left=len(mpo) - 1)
     assert_correct_normalization(mpo, len(mpo) - 1, len(mpo))
     assert_array_almost_equal(op, mpo.to_array_global())
     assert mpo.dtype == dtype
@@ -1008,8 +1008,8 @@ def test_normalization_default_args(nr_sites, local_dim, bond_dim, rgen):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
     assert_correct_normalization(mpo, 0, nr_sites)
 
-    mpo.normalize(left=1)
-    mpo.normalize()
+    mpo.canonicalize(left=1)
+    mpo.canonicalize()
     assert_correct_normalization(mpo, nr_sites - 1, nr_sites)
 
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim, randstate=rgen)
@@ -1019,9 +1019,9 @@ def test_normalization_default_args(nr_sites, local_dim, bond_dim, rgen):
     if nr_sites == 2:
         return
 
-    mpo.normalize(left=1)
-    mpo.normalize(right=nr_sites - 2)
-    mpo.normalize()
+    mpo.canonicalize(left=1)
+    mpo.canonicalize(right=nr_sites - 2)
+    mpo.canonicalize()
     assert_correct_normalization(mpo, 0, 1)
 
 
@@ -1029,12 +1029,12 @@ def test_normalization_compression(rgen):
     """If the bond dimension is too large at the boundary, qr decompostion
     in normalization may yield smaller bond dimension"""
     mpo = factory.random_mpa(sites=2, ldim=2, bdim=20, randstate=rgen)
-    mpo.normalize(right=1)
+    mpo.canonicalize(right=1)
     assert_correct_normalization(mpo, 0, 1)
     assert mpo.ranks[0] == 2
 
     mpo = factory.random_mpa(sites=2, ldim=2, bdim=20, randstate=rgen)
-    mpo.normalize(left=1)
+    mpo.canonicalize(left=1)
     assert_correct_normalization(mpo, 1, 2)
     assert mpo.ranks[0] == 2
 
@@ -1052,7 +1052,7 @@ def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim, rgen):
     scalar = rgen.randn() + 1.j * rgen.randn()
 
     center = nr_sites // 2
-    mpo.normalize(left=center - 1, right=center)
+    mpo.canonicalize(left=center - 1, right=center)
     mpo_times_two = scalar * mpo
 
     assert_array_almost_equal(scalar * op, mpo_times_two.to_array_global())
@@ -1145,7 +1145,7 @@ compr_settings = pt.mark.parametrize(
 # Test compression works for different normalizations of the MPA
 # before compression.
 compr_normalization = pt.mark.parametrize(
-    'normalize',
+    'canonicalize',
     (dict(left=1, right=-1), dict()) +
     tuple(pt.mark.long(x) for x in (
         None,
@@ -1172,12 +1172,12 @@ compr_test_params = _chain_decorators(compr_sizes, compr_settings,
 def normalize_if_applicable(mpa, nmz):
     """Check whether the given normalization can be applied.
 
-    :param mp.MPArray mpa: Will call `mpa.normalize()`
-    :param nmz: Keyword arguments for `mpa.normalize()` or `None`
+    :param mp.MPArray mpa: Will call `mpa.canonicalize()`
+    :param nmz: Keyword arguments for `mpa.canonicalize()` or `None`
 
     :returns: True if the normalization has been applied.
 
-    `nmz=None` means not to call `mpa.normalize()` at all.
+    `nmz=None` means not to call `mpa.canonicalize()` at all.
 
     The test whether the normalization can be applied is not
     comprehensive.
@@ -1189,7 +1189,7 @@ def normalize_if_applicable(mpa, nmz):
     if nmz is not None:
         if nmz.get('left') == 1 and nmz.get('right') == -1 and len(mpa) == 2:
             return False
-        mpa.normalize(**nmz)
+        mpa.canonicalize(**nmz)
     return True
 
 
@@ -1234,7 +1234,7 @@ def call_compression(mpa, comparg, bonddim, rgen, call_compress=False):
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @compr_test_params
-def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize,
+def test_compression_and_compress(nr_sites, local_dims, bond_dim, canonicalize,
                                   comparg, dtype, rgen):
     """Test that .compression() and .compress() produce identical results.
 
@@ -1242,7 +1242,7 @@ def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize,
     # See comment above on "4.2 *"
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2,
                                    normalized=True, dtype=dtype, randstate=rgen)
-    if not normalize_if_applicable(mpa, normalize):
+    if not normalize_if_applicable(mpa, canonicalize):
         return
 
     comparg = comparg.copy()
@@ -1265,7 +1265,7 @@ def test_compression_and_compress(nr_sites, local_dims, bond_dim, normalize,
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @compr_test_params
 def test_compression_result_properties(nr_sites, local_dims, bond_dim,
-                                        normalize, comparg, rgen, dtype):
+                                        canonicalize, comparg, rgen, dtype):
     """Test general properties of the MPA coming from a compression.
 
     * Compare SVD compression against simpler implementation
@@ -1291,7 +1291,7 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
     """
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim * 2,
                                    normalized=True, randstate=rgen, dtype=dtype)
-    if not normalize_if_applicable(mpa, normalize):
+    if not normalize_if_applicable(mpa, canonicalize):
         return
     compr, overlap = call_compression(mpa.copy(), comparg, bond_dim, rgen)
 
@@ -1344,7 +1344,7 @@ def test_var_no_worse_than_svd(nr_sites, local_dim, bond_dim, rgen, dtype):
 
 @compr_test_params
 def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
-                                         normalize, comparg, rgen):
+                                         canonicalize, comparg, rgen):
     """Check that bond dimension does not increase if the target bond
     dimension is larger than the MPA bond dimension
 
@@ -1354,7 +1354,7 @@ def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, normalized=True,
                                    randstate=rgen)
     norm = mp.norm(mpa.copy())
-    if not normalize_if_applicable(mpa, normalize):
+    if not normalize_if_applicable(mpa, canonicalize):
         return
 
     for factor in (1, 2):
@@ -1366,7 +1366,7 @@ def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
 
 @pt.mark.parametrize('add', ('zero', 'self', 'self2'))
 @compr_test_params
-def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize,
+def test_compression_trivialsum(nr_sites, local_dims, bond_dim, canonicalize,
                                 comparg, add, rgen):
     """Check that `a + b` compresses exactly to a multiple of `a` if `b`
     is equal to one of `0`, `a` or `-2*a`
@@ -1375,7 +1375,7 @@ def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize,
     mpa = 4.2 * factory.random_mpa(nr_sites, local_dims, bond_dim, normalized=True,
                                    randstate=rgen)
     norm = mp.norm(mpa.copy())
-    if not normalize_if_applicable(mpa, normalize):
+    if not normalize_if_applicable(mpa, canonicalize):
         return
     zero = factory.zero(nr_sites, local_dims, bond_dim)
     choices = {'zero': (zero, 1), 'self': (mpa, 2), 'self2': (-2*mpa, -1)}

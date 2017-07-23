@@ -382,20 +382,20 @@ class MPArray(object):
     # TODO These could be made more stable by rescaling all non-normalized tens
     def __mul__(self, fact):
         if np.isscalar(fact):
-            lnormal, rnormal = self.canonical_form
+            lcanon, rcanon = self.canonical_form
             ltens = self._lt
-            ltens_new = it.chain(ltens[:lnormal], [fact * ltens[lnormal]],
-                                 ltens[lnormal + 1:])
-            return type(self)(LocalTensors(ltens_new, cform=(lnormal, rnormal)))
+            ltens_new = it.chain(ltens[:lcanon], [fact * ltens[lcanon]],
+                                 ltens[lcanon + 1:])
+            return type(self)(LocalTensors(ltens_new, cform=(lcanon, rcanon)))
 
         raise NotImplementedError("Multiplication by non-scalar not supported")
 
     def __imul__(self, fact):
         if np.isscalar(fact):
-            lnormal, _ = self.canonical_form
+            lcanon, _ = self.canonical_form
             # FIXME TEMPORARY FIX
-            #  self._lt[lnormal] *= fact
-            self._lt.update(lnormal, self._lt[lnormal] * fact)
+            #  self._lt[lcanon] *= fact
+            self._lt.update(lcanon, self._lt[lcanon] * fact)
             return self
 
         raise NotImplementedError("Multiplication by non-scalar not supported")
@@ -547,8 +547,8 @@ class MPArray(object):
         ltens[pos] = ltens[pos][..., None]
         ltens[pos + 1] = ltens[pos + 1][None]
 
-        lnormal, rnormal = self.canonical_form
-        new_normal_form = min(lnormal, pos), max(rnormal, pos + 2)
+        lcanon, rcanon = self.canonical_form
+        new_normal_form = min(lcanon, pos), max(rcanon, pos + 2)
         return MPArray(LocalTensors(ltens, cform=new_normal_form))
 
     def pleg2bleg(self, pos):
@@ -564,8 +564,8 @@ class MPArray(object):
         ltens[pos] = ltens[pos][..., 0]
         ltens[pos + 1] = ltens[pos + 1][0]
 
-        lnormal, rnormal = self.canonical_form
-        new_normal_form = min(lnormal, pos), max(rnormal, pos + 1)
+        lcanon, rcanon = self.canonical_form
+        new_normal_form = min(lcanon, pos), max(rcanon, pos + 1)
         return MPArray(LocalTensors(ltens, cform=new_normal_form))
 
     def split(self, pos):
@@ -599,7 +599,7 @@ class MPArray(object):
     ################################
     #  Normalizaton & Compression  #
     ################################
-    def normalize(self, left=None, right=None):
+    def canonicalize(self, left=None, right=None):
         """Brings the MPA to canonical form in place [Sch11_, Sec. 4.4]
 
         Note that we do not support full left- or right-normalization. The
@@ -610,8 +610,8 @@ class MPArray(object):
         most frequently:
 
         +--------------+--------------+-----------------------+
-        | Left-/Right- | Do Nothing   | To normalize          |
-        | normalize:   |              | maximally             |
+        | Left-/Right- | Do Nothing   | To canonicalize          |
+        | canonicalize:   |              | maximally             |
         +==============+==============+=======================+
         | `left`       | :code:`None` | :code:`'afull'`,      |
         |              |              | :code:`len(self) - 1` |
@@ -649,38 +649,38 @@ class MPArray(object):
         - Matrix would be both left- and right-normalized: `ValueError`
 
         """
-        current_lnorm, current_rnorm = self.canonical_form
+        current_lcanon, current_rcanon = self.canonical_form
         if left is None and right is None:
-            if current_lnorm < len(self) - current_rnorm:
-                self._rnormalize(1)
+            if current_lcanon < len(self) - current_rcanon:
+                self._lcanonicalize(1)
             else:
-                self._lnormalize(len(self) - 1)
+                self._rcanonicalize(len(self) - 1)
             return
 
         # Fill the special values for `None` and 'afull'.
-        lnormalize = {None: 0, 'afull': len(self) - 1}.get(left, left)
-        rnormalize = {None: len(self), 'afull': 1}.get(right, right)
+        target_lcanon = {None: 0, 'afull': len(self) - 1}.get(left, left)
+        target_rcanon = {None: len(self), 'afull': 1}.get(right, right)
         # Support negative indices.
-        if lnormalize < 0:
-            lnormalize += len(self)
-        if rnormalize < 0:
-            rnormalize += len(self)
+        if target_lcanon < 0:
+            target_lcanon += len(self)
+        if target_rcanon < 0:
+            target_rcanon += len(self)
         # Perform range checks.
-        if not 0 <= lnormalize <= len(self):
+        if not 0 <= target_lcanon <= len(self):
             raise IndexError('len={!r}, left={!r}'.format(len(self), left))
-        if not 0 <= rnormalize <= len(self):
+        if not 0 <= target_rcanon <= len(self):
             raise IndexError('len={!r}, right={!r}'.format(len(self), right))
 
-        if not lnormalize < rnormalize:
-            raise ValueError("Normalization {}:{} invalid"
-                             .format(lnormalize, rnormalize))
-        if current_lnorm < lnormalize:
-            self._lnormalize(lnormalize)
-        if current_rnorm > rnormalize:
-            self._rnormalize(rnormalize)
+        if not target_lcanon < target_rcanon:
+            raise ValueError("Canonicalization {}:{} invalid"
+                             .format(target_lcanon, target_rcanon))
+        if current_lcanon < target_lcanon:
+            self._rcanonicalize(target_lcanon)
+        if current_rcanon > target_rcanon:
+            self._lcanonicalize(target_rcanon)
 
-    def _lnormalize(self, to_site):
-        """Left-normalizes all local tensors _ltens[:to_site] in place
+    def _rcanonicalize(self, to_site):
+        """Left-canonicalizes all local tensors _ltens[:to_site] in place
 
         :param to_site: Index of the site up to which normalization is to be
             performed
@@ -688,8 +688,8 @@ class MPArray(object):
         """
         assert 0 <= to_site < len(self), 'to_site={!r}'.format(to_site)
 
-        lnormal, rnormal = self._lt.canonical_form
-        for site in range(lnormal, to_site):
+        lcanon, rcanon = self._lt.canonical_form
+        for site in range(lcanon, to_site):
             ltens = self._lt[site]
             q, r = qr(ltens.reshape((-1, ltens.shape[-1])))
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
@@ -699,8 +699,8 @@ class MPArray(object):
             self._lt.update(slice(site, site + 2), newtens,
                             normalization=('left', None))
 
-    def _rnormalize(self, to_site):
-        """Right-normalizes all local tensors _ltens[to_site:] in place
+    def _lcanonicalize(self, to_site):
+        """Right-canonicalizes all local tensors _ltens[to_site:] in place
 
         :param to_site: Index of the site up to which normalization is to be
             performed
@@ -708,8 +708,8 @@ class MPArray(object):
         """
         assert 0 < to_site <= len(self), 'to_site={!r}'.format(to_site)
 
-        lnormal, rnormal = self.canonical_form
-        for site in range(rnormal - 1, to_site - 1, -1):
+        lcanon, rcanon = self.canonical_form
+        for site in range(rcanon - 1, to_site - 1, -1):
             ltens = self._lt[site]
             q, r = qr(ltens.reshape((ltens.shape[0], -1)).T)
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
@@ -848,13 +848,13 @@ class MPArray(object):
 
         if direction == 'right':
             if normalize:
-                self.normalize(right=1)
+                self.canonicalize(right=1)
             for item in self._compress_svd_r(bdim, relerr, svdfunc):
                 pass
             return item
         elif direction == 'left':
             if normalize:
-                self.normalize(left=len(self) - 1)
+                self.canonicalize(left=len(self) - 1)
             for item in self._compress_svd_l(bdim, relerr, svdfunc):
                 pass
             return item
@@ -978,7 +978,7 @@ class MPArray(object):
         """
         if len(self) == 1:
             return  # No bipartitions with two non-empty parts for a single site
-        self.normalize(right=1)
+        self.canonicalize(right=1)
         iterator = self._compress_svd_r(max(self.ranks), None, truncated_svd)
         # We want everything from the iterator except for the last element.
         for _, (sv, bdim) in zip(range(len(self) - 1), iterator):
@@ -1061,7 +1061,7 @@ class MPArray(object):
         nr_sites = len(target)
         lvecs = [np.array(1, ndmin=2)] + [None] * (nr_sites - var_sites)
         rvecs = [None] * (nr_sites - var_sites) + [np.array(1, ndmin=2)]
-        self.normalize(right=1)
+        self.canonicalize(right=1)
         for pos in reversed(range(nr_sites - var_sites)):
             pos_end = pos + var_sites
             rvecs[pos] = _adapt_to_add_r(rvecs[pos + 1], self._lt[pos_end],
@@ -1084,7 +1084,7 @@ class MPArray(object):
                     # Don't do first site again if we are not in the first sweep.
                     continue
                 if pos > 0:
-                    self.normalize(left=pos)
+                    self.canonicalize(left=pos)
                     rvecs[pos - 1] = None
                     lvecs[pos] = _adapt_to_add_l(lvecs[pos - 1], self._lt[pos - 1],
                                                  target.lt[pos - 1])
@@ -1099,7 +1099,7 @@ class MPArray(object):
                 pos_end = pos + var_sites
                 if pos < nr_sites - var_sites:
                     # We always do this, because we don't do the last site again.
-                    self.normalize(right=pos_end)
+                    self.canonicalize(right=pos_end)
                     lvecs[pos + 1] = None
                     rvecs[pos] = _adapt_to_add_r(rvecs[pos + 1], self._lt[pos_end],
                                                  target.lt[pos_end])
@@ -1406,12 +1406,12 @@ def norm(mpa):
     :returns: l2-norm of that array
 
     """
-    mpa.normalize()
-    current_lnorm, current_rnorm = mpa.canonical_form
+    mpa.canonicalize()
+    current_lcanon, current_rcanon = mpa.canonical_form
 
-    if current_rnorm == 1:
+    if current_rcanon == 1:
         return np.linalg.norm(mpa.lt[0])
-    elif current_lnorm == len(mpa) - 1:
+    elif current_lcanon == len(mpa) - 1:
         return np.linalg.norm(mpa.lt[-1])
     else:
         raise ValueError("Normalization error in MPArray.norm")

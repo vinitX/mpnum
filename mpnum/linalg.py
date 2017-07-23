@@ -418,7 +418,7 @@ def mineig(mpo,
         # FIXME Can we choose dtype as mpo.dtype? If so, also adapt mineig_sum
         startvec = random_mpa(nr_sites, pdims, startvec_bonddim,
                               randstate=randstate, dtype=np.complex_)
-        startvec.normalize(right=1)
+        startvec.canonicalize(right=1)
         startvec /= mp.norm(startvec)
     else:
         # Do not modify the `startvec` argument.
@@ -449,7 +449,7 @@ def mineig(mpo,
     #
     #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
     eigvec = startvec
-    eigvec.normalize(right=1)
+    eigvec.canonicalize(right=1)
     leftvecs = [np.array(1, ndmin=3)] + [None] * (nr_sites - minimize_sites)
     rightvecs = [None] * (nr_sites - minimize_sites) + [np.array(1, ndmin=3)]
     for pos in reversed(range(nr_sites - minimize_sites)):
@@ -468,7 +468,7 @@ def mineig(mpo,
                 continue
 
             if pos > 0:
-                eigvec.normalize(left=pos)
+                eigvec.canonicalize(left=pos)
                 rightvecs[pos - 1] = None
                 leftvecs[pos] = _mineig_leftvec_add(
                     leftvecs[pos - 1], mpo.lt[pos - 1], eigvec.lt[pos - 1])
@@ -483,7 +483,7 @@ def mineig(mpo,
             pos_end = pos + minimize_sites
             if pos < nr_sites - minimize_sites:
                 # We always do this, because we don't do the last site again.
-                eigvec.normalize(right=pos_end)
+                eigvec.canonicalize(right=pos_end)
                 leftvecs[pos + 1] = None
                 rightvecs[pos] = _mineig_rightvec_add(
                     rightvecs[pos + 1], mpo.lt[pos_end], eigvec.lt[pos_end])
@@ -541,7 +541,7 @@ def mineig_sum(mpas,
 
         startvec = random_mpa(nr_sites, pdims, startvec_bonddim,
                               randstate=randstate, dtype=np.complex_)
-        startvec.normalize(right=1)
+        startvec.canonicalize(right=1)
         startvec /= mp.norm(startvec)
     else:
         # Do not modify the `startvec` argument.
@@ -572,7 +572,7 @@ def mineig_sum(mpas,
     #
     #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
     eigvec = startvec
-    eigvec.normalize(right=1)
+    eigvec.canonicalize(right=1)
     leftvecs = [[np.array(1, ndmin=1 + pl) for pl in ndims]]
     leftvecs.extend([None] * nr_mpas for _ in range(nr_sites - minimize_sites))
     rightvecs = [[None] * nr_mpas for _ in range(nr_sites - minimize_sites)]
@@ -593,7 +593,7 @@ def mineig_sum(mpas,
                 continue
 
             if pos > 0:
-                eigvec.normalize(left=pos)
+                eigvec.canonicalize(left=pos)
                 rightvecs[pos - 1] = [None] * nr_mpas
                 _mineig_sum_leftvec_add(
                     mpas, ndims, leftvecs[pos], leftvecs[pos - 1],
@@ -609,7 +609,7 @@ def mineig_sum(mpas,
             pos_end = pos + minimize_sites
             if pos < nr_sites - minimize_sites:
                 # We always do this, because we don't do the last site again.
-                eigvec.normalize(right=pos_end)
+                eigvec.canonicalize(right=pos_end)
                 leftvecs[pos + 1] = [None] * nr_mpas
                 _mineig_sum_rightvec_add(
                     mpas, ndims, rightvecs[pos], rightvecs[pos + 1],

@@ -24,7 +24,7 @@ def test_mineig(nr_sites, local_dim, bond_dim, rgen):
     # it does not.
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
                              hermitian=True, normalized=True)
-    mpo.normalize()
+    mpo.canonicalize()
     op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
     eigvals, eigvec = np.linalg.eig(op)
 
@@ -52,7 +52,7 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
     # it does not.
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
                              hermitian=True, normalized=True)
-    mpo.normalize()
+    mpo.canonicalize()
     op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
     eigvals, eigvec = np.linalg.eig(op)
     eigs_opts = {'maxiter': 256}
@@ -79,7 +79,7 @@ def test_mineig_sum_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
     bond_dim = max(1, bond_dim // 2)
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
                              hermitian=True, normalized=True)
-    mpo.normalize()
+    mpo.canonicalize()
     mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
                              dtype=np.complex_, normalized=True)
     mpas = [mpo, mps]
@@ -112,7 +112,7 @@ def test_mineig_benchmark(
         nr_sites, local_dim, bond_dim, ev_bond_dim, rgen, benchmark):
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
                              hermitian=True, normalized=True)
-    mpo.normalize()
+    mpo.canonicalize()
     mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
                              dtype=np.complex_, normalized=True)
     mpo = mpo + mp.mps_to_mpo(mps)
@@ -131,7 +131,7 @@ def test_mineig_sum_benchmark(
         nr_sites, local_dim, bond_dim, ev_bond_dim, rgen, benchmark):
     mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
                              hermitian=True, normalized=True)
-    mpo.normalize()
+    mpo.canonicalize()
     mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
                              dtype=np.complex_, normalized=True)
 

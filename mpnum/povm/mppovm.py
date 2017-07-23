@@ -169,7 +169,7 @@ class MPPovm(mp.MPArray):
         expectation values using the POVM struture brings advantages,
         we usually need the result as full array.) This function
         should also replace small negative probabilities by zero and
-        normalize the sum of all probabilities to unity (if the
+        canonicalize the sum of all probabilities to unity (if the
         deviation is non-zero but small). The same checks should also
         be implemented in localpovm.POVM.
 

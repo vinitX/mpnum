@@ -297,7 +297,7 @@ def reductions_pmps(pmps, width=None, startsites=None, stopsites=None):
         _check_reductions_args(len(pmps), width, startsites, stopsites)
 
     for start, stop in zip(startsites, stopsites):
-        pmps.normalize(left=start, right=stop)
+        pmps.canonicalize(left=start, right=stop)
 
         # leftmost site
         lten = pmps.lt[start]

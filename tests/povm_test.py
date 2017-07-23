@@ -422,7 +422,7 @@ def test_mppovm_sample(
     bond_dim = 3
     eps = 1e-10
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
-    mps.normalize()
+    mps.canonicalize()
 
     local_x = povm.x_povm(local_dim)
     local_y = povm.y_povm(local_dim)
@@ -456,7 +456,7 @@ def test_mppovm_est_pmf_from(
     eps = 1e-10
     nr_small = 4
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
-    mps.normalize()
+    mps.canonicalize()
 
     lx = povm.x_povm(local_dim)
     ly = povm.y_povm(local_dim)
@@ -508,7 +508,7 @@ def test_mppovm_est(
     bond_dim = 3
     eps = 1e-10
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
-    mps.normalize()
+    mps.canonicalize()
 
     local_x = povm.x_povm(local_dim)
     local_y = povm.y_povm(local_dim)
@@ -593,7 +593,7 @@ def test_mppovmlist_pack_unpack_samples(
     """Check that packing and unpacking samples does not change them"""
 
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
-    mps.normalize()
+    mps.canonicalize()
 
     s_povm = povm.pauli_mpp(measure_width, local_dim).block(nr_sites)
     samples = tuple(s_povm.sample(
@@ -649,7 +649,7 @@ def test_mppovmlist_est_pmf_from(
     """
 
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
-    mps.normalize()
+    mps.canonicalize()
 
     x, y = (povm.MPPovm.from_local_povm(p, 1)
             for p in povm.pauli_parts(local_dim)[:2])
@@ -748,7 +748,7 @@ def test_mppovmlist_est_lfun_from(
     """
 
     mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
-    mps.normalize()
+    mps.canonicalize()
 
     sample_povm, fun_povm = povm_combo
     estimation_impossible = sample_povm == "all-y" and \

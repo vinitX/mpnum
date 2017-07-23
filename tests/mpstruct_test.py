@@ -51,7 +51,7 @@ def test_update_normalization(mpa_norm, upd_pos, upd_norm, rgen,
     mpa = factory.random_mpa(n_sites, ldim, bdim, rgen)
     assert_correct_normalization(mpa, 0, n_sites)
 
-    mpa.normalize(*mpa_norm)
+    mpa.canonicalize(*mpa_norm)
     assert_correct_normalization(mpa, *mpa_norm)
 
     dims = mpa.lt.shapes[upd_pos]
