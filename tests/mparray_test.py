@@ -63,7 +63,7 @@ def test_from_inhomogenous(rgen):
     mpa = mp.MPArray.from_array(array, plegs=(2, 1, 1))
     assert_array_almost_equal(array, mpa.to_array())
     assert mpa.plegs == (2, 1, 1)
-    assert mpa.pdims == ((4, 3), (3,), (3,))
+    assert mpa.dims == ((4, 3), (3,), (3,))
 
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
@@ -130,14 +130,14 @@ def test_transpose_axes(rgen):
     tensor = factory._zrandn(ldim * nr_sites, rgen)  # local form
     mpa = mp.MPArray.from_array(tensor, plegs=len(ldim))
     assert len(mpa) == nr_sites
-    assert mpa.pdims == (ldim,) * nr_sites
+    assert mpa.dims == (ldim,) * nr_sites
     # transpose axes in local form
     tensor_axes = tuple(ax + site * len(ldim)
                         for site in range(nr_sites) for ax in axes)
     tensor_t = tensor.transpose(tensor_axes)
     mpa_t = mpa.transpose(axes)
     mpa_t_to_tensor = mpa_t.to_array()
-    assert mpa_t.pdims == (new_ldim,) * nr_sites
+    assert mpa_t.dims == (new_ldim,) * nr_sites
     assert_array_almost_equal(mpa_t_to_tensor, tensor_t)
     assert_correct_normalization(mpa_t)
 
@@ -719,11 +719,11 @@ def test_inject_many(local_dim, bond_dim, rgen):
 def test_inject_pdim(rgen):
     """Check that mp.inject() picks up the correct physical dimension"""
     mpa = factory.random_mpa(3, ([1], [2], [3]), 3, rgen, normalized=True)
-    print(mpa.pdims)
+    print(mpa.dims)
     mpa_inj = mp.inject(mpa, [0, 2], [1, 1])
-    assert mpa_inj.pdims == ((1, 1), (1,), (2,), (3, 3), (3,))
+    assert mpa_inj.dims == ((1, 1), (1,), (2,), (3, 3), (3,))
     mpa_inj = mp.inject(mpa, [1, 3], [1, 1], None)
-    assert mpa_inj.pdims == ((1,), (2, 2), (2,), (3,), (3, 3))
+    assert mpa_inj.dims == ((1,), (2, 2), (2,), (3,), (3, 3))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
@@ -875,7 +875,7 @@ def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
             [(true_bond_dim, local_dim)] + [(local_dim,)] * (nr_sites - pos - 2)
         bdims = list(mpa.ranks)
         bdims[pos] = 1
-        assert_array_equal(mpa_t.pdims, pshape)
+        assert_array_equal(mpa_t.dims, pshape)
         assert_array_equal(mpa_t.ranks, bdims)
         assert_correct_normalization(mpa_t)
 
@@ -916,7 +916,7 @@ def test_reshape(rgen):
     mpa = factory.random_mpa(4, [(3, 2), (4,), (2, 5), (24,)], 4)
     mpa.normalize()
     mpa_r = mpa.reshape([(2, 3), (2, 2), (10,), (3, 2, 4)])
-    assert all(s1 == s2 for s1, s2 in zip(mpa_r.pdims, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
+    assert all(s1 == s2 for s1, s2 in zip(mpa_r.dims, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
     assert_correct_normalization(mpa_r, *mpa.normal_form)
 
 
@@ -1097,7 +1097,7 @@ def test_pad_bdim(nr_sites, local_dim, bond_dim, rgen):
     mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
                              normalized=True)
     mps2 = mps.pad_bdim(2 * bond_dim)
-    assert mps2.ranks == tuple(min(d, 2 * bond_dim) for d in mp.full_bdim(mps.pdims))
+    assert mps2.ranks == tuple(min(d, 2 * bond_dim) for d in mp.full_bdim(mps.dims))
     assert_almost_equal(mp.normdist(mps, mps2), 0.0)
     mps2 = mps.pad_bdim(2 * bond_dim, force_bdim=True)
     assert mps2.ranks == (2 * bond_dim,) * (nr_sites - 1)
@@ -1211,7 +1211,7 @@ def call_compression(mpa, comparg, bonddim, rgen, call_compress=False):
 
     """
     if not ('relerr' in comparg) and (comparg.get('startmpa') == 'fillbelow'):
-        startmpa = factory.random_mpa(len(mpa), mpa.pdims[0], bonddim,
+        startmpa = factory.random_mpa(len(mpa), mpa.dims[0], bonddim,
                                       normalized=True, randstate=rgen,
                                       dtype=mpa.dtype)
         comparg = update_copy_of(comparg, {'startmpa': startmpa})

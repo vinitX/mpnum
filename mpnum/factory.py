@@ -182,7 +182,7 @@ def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
     :param ldim: Depending on the type passed (checked in the following order)
 
         * iterable of iterable: Detailed list of physical dimensions,
-          retured mpa will have exactly this for mpa.pdims
+          retured mpa will have exactly this for mpa.dims
         * iterable of scalar: Same physical dimension for each site
         * scalar: Single physical leg for each site with given
           dimension
@@ -200,15 +200,15 @@ def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
     :returns: randomly choosen matrix product array
 
     >>> mpa = random_mpa(4, 2, 10, force_bdim=True)
-    >>> mpa.ranks, mpa.pdims
+    >>> mpa.ranks, mpa.dims
     ((10, 10, 10), ((2,), (2,), (2,), (2,)))
 
     >>> mpa = random_mpa(4, (1, 2), 10, force_bdim=True)
-    >>> mpa.ranks, mpa.pdims
+    >>> mpa.ranks, mpa.dims
     ((10, 10, 10), ((1, 2), (1, 2), (1, 2), (1, 2)))
 
     >>> mpa = random_mpa(4, [(1, ), (2, 3), (4, 5), (1, )], 10, force_bdim=True)
-    >>> mpa.ranks, mpa.pdims
+    >>> mpa.ranks, mpa.dims
     ((10, 10, 10), ((1,), (2, 3), (4, 5), (1,)))
 
     """
@@ -226,7 +226,7 @@ def zero(sites, ldim, bdim, force_bdim=False):
     :param ldim: Depending on the type passed (checked in the following order)
 
         * iterable of iterable: Detailed list of physical dimensions,
-          retured mpa will have exactly this for mpa.pdims
+          retured mpa will have exactly this for mpa.dims
         * iterable of scalar: Same physical dimension for each site
         * scalar: Single physical leg for each site with given
           dimension
@@ -249,10 +249,10 @@ def eye(sites, ldim):
     :returns: Representation of the identity matrix as MPA
 
     >>> I = eye(4, 2)
-    >>> I.ranks, I.pdims
+    >>> I.ranks, I.dims
     ((1, 1, 1), ((2, 2), (2, 2), (2, 2), (2, 2)))
     >>> I = eye(3, (3, 4, 5))
-    >>> I.pdims
+    >>> I.dims
     ((3, 3), (4, 4), (5, 5))
     """
     if isinstance(ldim, collections.Iterable):
@@ -308,7 +308,7 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
     :returns: randomly choosen matrix product operator
 
     >>> mpo = random_mpo(4, 2, 10, force_bdim=True)
-    >>> mpo.ranks, mpo.pdims
+    >>> mpo.ranks, mpo.dims
     ((10, 10, 10), ((2, 2), (2, 2), (2, 2), (2, 2)))
     >>> mpo.normal_form
     (0, 4)
@@ -342,7 +342,7 @@ def random_mps(sites, ldim, bdim, randstate=None, force_bdim=False):
     :returns: randomly choosen matrix product (pure) state
 
     >>> mps = random_mps(4, 2, 10, force_bdim=True)
-    >>> mps.ranks, mps.pdims
+    >>> mps.ranks, mps.dims
     ((10, 10, 10), ((2,), (2,), (2,), (2,)))
     >>> mps.normal_form
     (0, 4)
@@ -365,7 +365,7 @@ def random_mpdo(sites, ldim, bdim, randstate=np.random):
     :returns: randomly choosen classicaly correlated matrix product density op.
 
     >>> rho = random_mpdo(4, 2, 4)
-    >>> rho.ranks, rho.pdims
+    >>> rho.ranks, rho.dims
     ((4, 4, 4), ((2, 2), (2, 2), (2, 2), (2, 2)))
     >>> rho.normal_form
     (0, 4)

@@ -100,7 +100,7 @@ def sumup(mpas, bdim, weights=None, svdfunc=truncated_svd):
 
     result_ltens = LocalTensors(ltens, nform=(len(ltens) - 1, None))
     result = mp.MPArray(result_ltens)
-    return result.reshape(mpas[0].pdims)
+    return result.reshape(mpas[0].dims)
 
 
 def _local_add_sparse(ltenss):
