@@ -18,16 +18,16 @@ def _roview(array):
 class LocalTensors(object):
     """Docstring for LocalTensors. """
 
-    def __init__(self, ltens, nform=(None, None)):
+    def __init__(self, ltens, cform=(None, None)):
         """@todo: to be defined1. """
         self._ltens = list(ltens)
-        lnormalized, rnormalized = nform
-        self._lnormalized = lnormalized or 0
-        self._rnormalized = rnormalized or len(self._ltens)
+        lcanonical, rcanonical = cform
+        self._lcanonical = lcanonical or 0
+        self._rcanonical = rcanonical or len(self._ltens)
 
         assert len(self._ltens) > 0
-        assert 0 <= self._lnormalized < len(self._ltens)
-        assert 0 < self._rnormalized <= len(self._ltens)
+        assert 0 <= self._lcanonical < len(self._ltens)
+        assert 0 < self._rcanonical <= len(self._ltens)
 
         if __debug__:
             for i, (ten, nten) in enumerate(zip(self._ltens[:-1], self._ltens[1:])):
@@ -44,15 +44,15 @@ class LocalTensors(object):
         # (equality case; first argument to max/min). If a normalized
         # tensor is set inside a normalized slice, its size will
         # remain the same (inequality case; second argument).
-        if normalization == 'left' and self._lnormalized - index >= 0:
-            self._lnormalized = max(index + 1, self._lnormalized)
-        elif normalization == 'right' and index - self._rnormalized >= -1:
-            self._rnormalized = min(index, self._rnormalized)
+        if normalization == 'left' and self._lcanonical - index >= 0:
+            self._lcanonical = max(index + 1, self._lcanonical)
+        elif normalization == 'right' and index - self._rcanonical >= -1:
+            self._rcanonical = min(index, self._rcanonical)
         else:
             # If a non-normalized tensor is provided, the sizes of the
             # normalized slices may decrease.
-            self._lnormalized = min(index, self._lnormalized)
-            self._rnormalized = max(index + 1, self._rnormalized)
+            self._lcanonical = min(index, self._lcanonical)
+            self._rcanonical = max(index + 1, self._rcanonical)
 
     def update(self, index, tens, normalization=None):
         """Replaces the local tensor at position `index` with the tensor `tens`.
@@ -116,7 +116,7 @@ class LocalTensors(object):
     @property
     def canonical_form(self):
         """Tensors which are currently in left/right-canonical form."""
-        return self._lnormalized, self._rnormalized
+        return self._lcanonical, self._rcanonical
 
     @property
     def shapes(self):
@@ -124,4 +124,4 @@ class LocalTensors(object):
 
     def copy(self):
         ltens = (lt.copy() for lt in self._ltens)
-        return type(self)(ltens, nform=self.canonical_form)
+        return type(self)(ltens, cform=self.canonical_form)

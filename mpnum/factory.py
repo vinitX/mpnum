@@ -286,7 +286,7 @@ def diagonal_mpa(entries, sites):
     ltens = it.chain((leftmost_ltens,), it.repeat(center_ltens, sites - 2),
                      (rightmost_ltens,))
 
-    return mp.MPArray(LocalTensors(ltens, nform=(sites - 1, sites)))
+    return mp.MPArray(LocalTensors(ltens, cform=(sites - 1, sites)))
 
 
 #########################

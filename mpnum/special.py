@@ -98,7 +98,7 @@ def sumup(mpas, bdim, weights=None, svdfunc=truncated_svd):
     current = np.dot(sv[:, None] * v, current)
     ltens.append(current.reshape((len(sv), -1, 1)))
 
-    result_ltens = LocalTensors(ltens, nform=(len(ltens) - 1, None))
+    result_ltens = LocalTensors(ltens, cform=(len(ltens) - 1, None))
     result = mp.MPArray(result_ltens)
     return result.reshape(mpas[0].shapes)
 

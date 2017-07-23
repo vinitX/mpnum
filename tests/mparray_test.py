@@ -880,7 +880,7 @@ def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
         mpa_t = mpa_t.pleg2bleg(pos)
         # This is an ugly hack, but necessary to use the assert_mpa_identical
         # function. Normalization-awareness gets lost in the process!
-        mpa_t._lt._lnormalized, mpa_t._lt._rnormalized = mpa.canonical_form
+        mpa_t._lt._lcanonical, mpa_t._lt._rcanonical = mpa.canonical_form
         assert_mpa_identical(mpa, mpa_t)
 
     if nr_sites > 1:

@@ -196,7 +196,7 @@ class MPArray(object):
                 return cls.load(infile)
 
         ltens = [source[str(i)].value for i in range(source.attrs['len'])]
-        return cls(LocalTensors(ltens, nform=source.attrs['canonical_form']))
+        return cls(LocalTensors(ltens, cform=source.attrs['canonical_form']))
 
     @classmethod
     def from_array_global(cls, array, ndims=None, has_bond=False):
@@ -258,7 +258,7 @@ class MPArray(object):
         if not has_bond:
             array = array[None, ..., None]
         ltens = _extract_factors(array, ndims=ndims)
-        return cls(LocalTensors(ltens, nform=(len(ltens) - 1, len(ltens))))
+        return cls(LocalTensors(ltens, cform=(len(ltens) - 1, len(ltens))))
 
     @classmethod
     def from_kron(cls, factors):
@@ -333,7 +333,7 @@ class MPArray(object):
     def T(self):
         """Transpose (=reverse order of) physical legs"""
         ltens = LocalTensors((_local_transpose(tens) for tens in self.lt),
-                             nform=self.canonical_form)
+                             cform=self.canonical_form)
         return type(self)(ltens)
 
     def transpose(self, axes=None):
@@ -351,7 +351,7 @@ class MPArray(object):
 
         """
         ltens = LocalTensors((_local_transpose(tens, axes) for tens in self.lt),
-                             nform=self.canonical_form)
+                             cform=self.canonical_form)
         return type(self)(ltens)
 
     def adj(self):
@@ -362,7 +362,7 @@ class MPArray(object):
     def conj(self):
         """Complex conjugate"""
         return type(self)(LocalTensors((ltens.conj() for ltens in self._lt),
-                                       nform=self.canonical_form))
+                                       cform=self.canonical_form))
 
     def __add__(self, summand):
         assert len(self) == len(summand), \
@@ -386,7 +386,7 @@ class MPArray(object):
             ltens = self._lt
             ltens_new = it.chain(ltens[:lnormal], [fact * ltens[lnormal]],
                                  ltens[lnormal + 1:])
-            return type(self)(LocalTensors(ltens_new, nform=(lnormal, rnormal)))
+            return type(self)(LocalTensors(ltens_new, cform=(lnormal, rnormal)))
 
         raise NotImplementedError("Multiplication by non-scalar not supported")
 
@@ -484,7 +484,7 @@ class MPArray(object):
 
         ltens = [_local_reshape(lten, newshape)
                 for lten, newshape in zip(self._lt, newshapes)]
-        return MPArray(LocalTensors(ltens, nform=self.canonical_form))
+        return MPArray(LocalTensors(ltens, cform=self.canonical_form))
 
     def ravel(self):
         """Flatten the MPA to an MPS, shortcut for self.reshape((-1,))
@@ -549,7 +549,7 @@ class MPArray(object):
 
         lnormal, rnormal = self.canonical_form
         new_normal_form = min(lnormal, pos), max(rnormal, pos + 2)
-        return MPArray(LocalTensors(ltens, nform=new_normal_form))
+        return MPArray(LocalTensors(ltens, cform=new_normal_form))
 
     def pleg2bleg(self, pos):
         """Performs the inverse operation to :func:`bleg2pleg`.
@@ -566,7 +566,7 @@ class MPArray(object):
 
         lnormal, rnormal = self.canonical_form
         new_normal_form = min(lnormal, pos), max(rnormal, pos + 1)
-        return MPArray(LocalTensors(ltens, nform=new_normal_form))
+        return MPArray(LocalTensors(ltens, cform=new_normal_form))
 
     def split(self, pos):
         """Splits the MPA into two by transforming the bond legs into physical
@@ -585,9 +585,9 @@ class MPArray(object):
         lnorm, rnorm = mpa_t.canonical_form
 
         ltens_l = LocalTensors(it.islice(mpa_t.lt, 0, pos + 1),
-                               nform=(min(lnorm, pos), min(rnorm, pos + 1)))
+                               cform=(min(lnorm, pos), min(rnorm, pos + 1)))
         ltens_r = LocalTensors(it.islice(mpa_t.lt, pos + 1, len(mpa_t)),
-                        nform=(max(0, lnorm - pos), max(0, rnorm - pos - 1)))
+                               cform=(max(0, lnorm - pos), max(0, rnorm - pos - 1)))
         return type(self)(ltens_l), type(self)(ltens_r)
 
     def reverse(self):
