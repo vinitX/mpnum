@@ -147,12 +147,6 @@ class MPArray(object):
         """Tuple of bond dimensions"""
         return tuple(m.shape[0] for m in self._lt[1:])
 
-    # FIXME Rremove this function or rname to maxbdim
-    @property
-    def bdim(self):
-        """Largest bond dimension across the chain"""
-        return max(self.ranks)
-
     @property
     def pdims(self):
         """Tuple of physical dimensions"""
@@ -894,10 +888,10 @@ class MPArray(object):
             return copy, norm(copy)**2
 
         if startmpa is not None:
-            bdim = startmpa.bdim
+            bdim = max(startmpa.ranks)
         elif bdim is None:
             raise ValueError('You must provide startmpa or bdim')
-        if bdim > self.bdim:
+        if bdim > max(self.ranks):
             # The caller expects that the result is independent from
             # `self`. Take a copy. If we are called from .compress()
             # instead of .compression(), we could avoid the copy and
@@ -997,7 +991,7 @@ class MPArray(object):
         if len(self) == 1:
             return  # No bipartitions with two non-empty parts for a single site
         self.normalize(right=1)
-        iterator = self._compress_svd_r(self.bdim, None, truncated_svd)
+        iterator = self._compress_svd_r(max(self.ranks), None, truncated_svd)
         # We want everything from the iterator except for the last element.
         for _, (sv, bdim) in zip(range(len(self) - 1), iterator):
             # We could verify that `bdim` did not decrease but it may
@@ -1094,7 +1088,7 @@ class MPArray(object):
         #    \___________________/    \______________/    \______________/
         #     num_sweep = 0            num_sweep = 1       num_sweep = 1
 
-        max_bonddim = self.bdim
+        max_bonddim = max(self.ranks)
         for num_sweep in range(num_sweeps):
             # Sweep from left to right (LTR)
             for pos in range(nr_sites - var_sites + 1):

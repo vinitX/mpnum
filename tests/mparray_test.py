@@ -1301,9 +1301,9 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
     # compression will occur.
     if 'relerr' not in comparg:
         # Check that the bond dimension has changed.
-        assert compr.bdim < mpa.bdim
+        assert max(compr.ranks) < max(mpa.ranks)
         # Check that the target bond dimension is satisfied
-        assert compr.bdim <= bond_dim
+        assert max(compr.ranks) <= bond_dim
 
     # Check that the inner product is correct.
     assert_almost_equal(overlap, mp.inner(mpa, compr))

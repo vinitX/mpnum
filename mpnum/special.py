@@ -73,7 +73,7 @@ def sumup(mpas, bdim, weights=None, svdfunc=truncated_svd):
         # The code below assumes at least two sites.
         return mp.MPArray((sum(w * mpa.lt[0] for w, mpa in zip(weights, mpas)),))
 
-    assert all(mpa.bdim == 1 for mpa in mpas)
+    assert all(max(mpa.ranks) == 1 for mpa in mpas)
 
     ltensiter = [iter(mpa.lt) for mpa in mpas]
 

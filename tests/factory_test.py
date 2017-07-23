@@ -44,4 +44,4 @@ def test_diagonal_mpa(nr_sites, local_dim, _, rgen, dtype=np.float_):
     assert_correct_normalization(mpa_mp, nr_sites - 1, nr_sites)
 
     if nr_sites > 1:
-        assert mpa_mp.bdim == local_dim
+        assert max(mpa_mp.ranks) == local_dim
