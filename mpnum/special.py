@@ -24,7 +24,7 @@ def inner_prod_mps(mpa1, mpa2):
     :returns: <mpa1|mpa2>
 
     """
-    assert all(bdim == 1 for bdim in mpa1.bdims)
+    assert all(bdim == 1 for bdim in mpa1.ranks)
     assert all(pleg == 1 for pleg in mpa1.plegs)
     assert all(pleg == 1 for pleg in mpa2.plegs)
 

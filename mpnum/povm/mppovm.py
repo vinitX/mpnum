@@ -348,7 +348,7 @@ class MPPovm(mp.MPArray):
         """
         n_repeat, n_last = nr_sites // len(self), nr_sites % len(self)
         if n_last > 0:
-            assert self.bdims[n_last - 1] == 1, \
+            assert self.ranks[n_last - 1] == 1, \
                 "Partial repetition requires factorizing MP-POVM"
         return mp.outer([self] * n_repeat
                         + ([MPPovm(self.lt[:n_last])] if n_last > 0 else []))
@@ -480,7 +480,7 @@ class MPPovm(mp.MPArray):
         # the rest in p_right.
         cp = np.cumprod(self.outdims, dtype=int)
         p_size = np.array([cp[:-1], cp[-1] // cp[:-1]])
-        bdims = np.array(state.bdims, int)**2 * np.array(self.bdims, int)
+        bdims = np.array(state.ranks, int) ** 2 * np.array(self.ranks, int)
         p_size *= bdims[None, :]
         # For a given possible choice of n_left, compute the maximum
         # value of max(p_left.size, p_right.size) encountered during

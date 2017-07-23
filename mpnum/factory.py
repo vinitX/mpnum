@@ -138,7 +138,7 @@ def _generate(sites, ldim, bdim, func, force_bdim):
 
         * scalar: Same bond dimension everywhere
         * iterable of length :code:`sites - 1`: Generated MPA will
-          have exactly this as `bdims`
+          have exactly this as `ranks`
 
     :param func: Generator function for local tensors, should accept
         shape as tuple in first argument and should return
@@ -200,15 +200,15 @@ def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
     :returns: randomly choosen matrix product array
 
     >>> mpa = random_mpa(4, 2, 10, force_bdim=True)
-    >>> mpa.bdims, mpa.pdims
+    >>> mpa.ranks, mpa.pdims
     ((10, 10, 10), ((2,), (2,), (2,), (2,)))
 
     >>> mpa = random_mpa(4, (1, 2), 10, force_bdim=True)
-    >>> mpa.bdims, mpa.pdims
+    >>> mpa.ranks, mpa.pdims
     ((10, 10, 10), ((1, 2), (1, 2), (1, 2), (1, 2)))
 
     >>> mpa = random_mpa(4, [(1, ), (2, 3), (4, 5), (1, )], 10, force_bdim=True)
-    >>> mpa.bdims, mpa.pdims
+    >>> mpa.ranks, mpa.pdims
     ((10, 10, 10), ((1,), (2, 3), (4, 5), (1,)))
 
     """
@@ -249,7 +249,7 @@ def eye(sites, ldim):
     :returns: Representation of the identity matrix as MPA
 
     >>> I = eye(4, 2)
-    >>> I.bdims, I.pdims
+    >>> I.ranks, I.pdims
     ((1, 1, 1), ((2, 2), (2, 2), (2, 2), (2, 2)))
     >>> I = eye(3, (3, 4, 5))
     >>> I.pdims
@@ -308,7 +308,7 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
     :returns: randomly choosen matrix product operator
 
     >>> mpo = random_mpo(4, 2, 10, force_bdim=True)
-    >>> mpo.bdims, mpo.pdims
+    >>> mpo.ranks, mpo.pdims
     ((10, 10, 10), ((2, 2), (2, 2), (2, 2), (2, 2)))
     >>> mpo.normal_form
     (0, 4)
@@ -342,7 +342,7 @@ def random_mps(sites, ldim, bdim, randstate=None, force_bdim=False):
     :returns: randomly choosen matrix product (pure) state
 
     >>> mps = random_mps(4, 2, 10, force_bdim=True)
-    >>> mps.bdims, mps.pdims
+    >>> mps.ranks, mps.pdims
     ((10, 10, 10), ((2,), (2,), (2,), (2,)))
     >>> mps.normal_form
     (0, 4)
@@ -365,7 +365,7 @@ def random_mpdo(sites, ldim, bdim, randstate=np.random):
     :returns: randomly choosen classicaly correlated matrix product density op.
 
     >>> rho = random_mpdo(4, 2, 4)
-    >>> rho.bdims, rho.pdims
+    >>> rho.ranks, rho.pdims
     ((4, 4, 4), ((2, 2), (2, 2), (2, 2), (2, 2)))
     >>> rho.normal_form
     (0, 4)
@@ -378,7 +378,7 @@ def random_mpdo(sites, ldim, bdim, randstate=np.random):
                    for weight, psi in zip(weights, psis))
 
     # Scramble the local tensors
-    for n, bdim in enumerate(rho.bdims):
+    for n, bdim in enumerate(rho.ranks):
         unitary = _unitary_haar(bdim, randstate)
         rho.lt[n] = matdot(rho.lt[n], unitary)
         rho.lt[n + 1] = matdot(np.transpose(unitary).conj(), rho.lt[n + 1])

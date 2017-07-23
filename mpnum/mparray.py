@@ -143,7 +143,7 @@ class MPArray(object):
         return tuple(m.shape for m in self._lt)
 
     @property
-    def bdims(self):
+    def ranks(self):
         """Tuple of bond dimensions"""
         return tuple(m.shape[0] for m in self._lt[1:])
 
@@ -151,7 +151,7 @@ class MPArray(object):
     @property
     def bdim(self):
         """Largest bond dimension across the chain"""
-        return max(self.bdims)
+        return max(self.ranks)
 
     @property
     def pdims(self):
@@ -186,7 +186,7 @@ class MPArray(object):
             with h5py.File(target, 'w') as outfile:
                 return self.dump(outfile)
 
-        for prop in ('bdims', 'pdims'):
+        for prop in ('ranks', 'pdims'):
             # these are only saved for convenience
             target.attrs[prop] = str(getattr(self, prop))
 
@@ -862,7 +862,7 @@ class MPArray(object):
         ln, rn = self.normal_form
         default_direction = 'left' if len(self) - rn > ln else 'right'
         direction = default_direction if direction is None else direction
-        bdim = max(self.bdims) if bdim is None else bdim
+        bdim = max(self.ranks) if bdim is None else bdim
 
         if direction == 'right':
             if normalize:
@@ -1028,7 +1028,7 @@ class MPArray(object):
         bdims = it.repeat(bdim)
         if not force_bdim:
             bdims = [min(f, b) for f, b in zip(full_bdim(self.pdims), bdims)]
-        pad = [max(s, b) - s for s, b in zip(self.bdims, bdims)]
+        pad = [max(s, b) - s for s, b in zip(self.ranks, bdims)]
         lt = (np.pad(lt, [(0, lp)] + [(0, 0)] * (lt.ndim - 2) + [(0, rp)],
                      'constant')
               for lp, rp, lt in zip([0] + pad, pad + [0], self.lt))

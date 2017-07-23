@@ -411,7 +411,7 @@ def mineig(mpo,
     if startvec is None:
         pdims = max(dim[0] for dim in mpo.pdims)
         if startvec_bonddim is None:
-            startvec_bonddim = max(mpo.bdims)
+            startvec_bonddim = max(mpo.ranks)
         if startvec_bonddim == 1:
             raise ValueError('startvec_bonddim must be at least 2')
 
@@ -427,10 +427,10 @@ def mineig(mpo,
     # _mineig_minimize_locally()? eigs() will fail under the excluded
     # conditions because of too small matrices.
     assert not any(bdim12 == (1, 1) for bdim12 in
-                   zip((1,) + startvec.bdims, startvec.bdims + (1,))), \
+                   zip((1,) + startvec.ranks, startvec.ranks + (1,))), \
         'startvec must not contain two consecutive bonds of dimension 1, ' \
-        'bdims including dummy bonds = (1,) + {!r} + (1,)' \
-            .format(startvec.bdims)
+        'ranks including dummy bonds = (1,) + {!r} + (1,)' \
+            .format(startvec.ranks)
     # For
     #
     #   pos in range(nr_sites - minimize_sites),
@@ -550,10 +550,10 @@ def mineig_sum(mpas,
     # _mineig_minimize_locally()? eigs() will fail under the excluded
     # conditions because of too small matrices.
     assert not any(bdim12 == (1, 1) for bdim12 in
-                   zip((1,) + startvec.bdims, startvec.bdims + (1,))), \
+                   zip((1,) + startvec.ranks, startvec.ranks + (1,))), \
         'startvec must not contain two consecutive bonds of dimension 1, ' \
-        'bdims including dummy bonds = (1,) + {!r} + (1,)' \
-            .format(startvec.bdims)
+        'ranks including dummy bonds = (1,) + {!r} + (1,)' \
+            .format(startvec.ranks)
     # For
     #
     #   pos in range(nr_sites - minimize_sites),

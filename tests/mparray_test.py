@@ -541,7 +541,7 @@ def test_sumup(nr_sites, local_dim, bond_dim, rgen, dtype):
     sum_mp = mp.sumup(mpas)
 
     assert_array_almost_equal(sum_naive.to_array(), sum_mp.to_array())
-    assert all(bdim <= 3 * bond_dim for bdim in sum_mp.bdims)
+    assert all(bdim <= 3 * bond_dim for bdim in sum_mp.ranks)
     assert(sum_mp.dtype is dtype)
 
     weights = rgen.randn(len(mpas))
@@ -549,7 +549,7 @@ def test_sumup(nr_sites, local_dim, bond_dim, rgen, dtype):
     sum_naive = ft.reduce(mp.MPArray.__add__, summands)
     sum_mp = mp.sumup(mpas, weights = weights)
     assert_array_almost_equal(sum_naive.to_array(), sum_mp.to_array())
-    assert all(bdim <= 3 * bond_dim for bdim in sum_mp.bdims)
+    assert all(bdim <= 3 * bond_dim for bdim in sum_mp.ranks)
     assert(sum_mp.dtype is dtype)
 
 
@@ -606,7 +606,7 @@ def test_outer(nr_sites, local_dim, bond_dim, rgen, dtype):
     op_double = np.tensordot(op, op, axes=(tuple(), ) * 2)
     assert len(mpo_double) == 2 * len(mpo)
     assert_array_almost_equal(op_double, mpo_double.to_array())
-    assert_array_equal(mpo_double.bdims, mpo.bdims + (1,) + mpo.bdims)
+    assert_array_equal(mpo_double.ranks, mpo.ranks + (1,) + mpo.ranks)
     assert mpo.dtype == dtype
 
     # Test 3-factors iteratively (since full form would be too large!!
@@ -791,10 +791,10 @@ def test_local_sum(nr_sites, local_dim, bond_dim, local_width, dtype, rgen):
     mpa_local_sum = mp.local_sum(mpas)
 
     # Check that local_sum() is no worse than naive sum
-    assert all(d1 <= d2 for d1, d2 in zip(mpa_local_sum.bdims, mpa_sum.bdims))
+    assert all(d1 <= d2 for d1, d2 in zip(mpa_local_sum.ranks, mpa_sum.ranks))
     # Check that local_sum() is actually better than naive sum because
     # it calls local_sum_simple().
-    assert any(d1 < d2 for d1, d2 in zip(mpa_local_sum.bdims, mpa_sum.bdims))
+    assert any(d1 < d2 for d1, d2 in zip(mpa_local_sum.ranks, mpa_sum.ranks))
     assert_array_almost_equal(mpa_local_sum.to_array(), mpa_sum.to_array())
 
 
@@ -870,13 +870,13 @@ def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
 
     for pos in range(nr_sites - 1):
         mpa_t = mpa.bleg2pleg(pos)
-        true_bond_dim = mpa.bdims[pos]
+        true_bond_dim = mpa.ranks[pos]
         pshape = [(local_dim,)] * pos + [(local_dim, true_bond_dim)] + \
             [(true_bond_dim, local_dim)] + [(local_dim,)] * (nr_sites - pos - 2)
-        bdims = list(mpa.bdims)
+        bdims = list(mpa.ranks)
         bdims[pos] = 1
         assert_array_equal(mpa_t.pdims, pshape)
-        assert_array_equal(mpa_t.bdims, bdims)
+        assert_array_equal(mpa_t.ranks, bdims)
         assert_correct_normalization(mpa_t)
 
         mpa_t = mpa_t.pleg2bleg(pos)
@@ -1033,12 +1033,12 @@ def test_normalization_compression(rgen):
     mpo = factory.random_mpa(sites=2, ldim=2, bdim=20, randstate=rgen)
     mpo.normalize(right=1)
     assert_correct_normalization(mpo, 0, 1)
-    assert mpo.bdims[0] == 2
+    assert mpo.ranks[0] == 2
 
     mpo = factory.random_mpa(sites=2, ldim=2, bdim=20, randstate=rgen)
     mpo.normalize(left=1)
     assert_correct_normalization(mpo, 1, 2)
-    assert mpo.bdims[0] == 2
+    assert mpo.ranks[0] == 2
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
@@ -1097,10 +1097,10 @@ def test_pad_bdim(nr_sites, local_dim, bond_dim, rgen):
     mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
                              normalized=True)
     mps2 = mps.pad_bdim(2 * bond_dim)
-    assert mps2.bdims == tuple(min(d, 2 * bond_dim) for d in mp.full_bdim(mps.pdims))
+    assert mps2.ranks == tuple(min(d, 2 * bond_dim) for d in mp.full_bdim(mps.pdims))
     assert_almost_equal(mp.normdist(mps, mps2), 0.0)
     mps2 = mps.pad_bdim(2 * bond_dim, force_bdim=True)
-    assert mps2.bdims == (2 * bond_dim,) * (nr_sites - 1)
+    assert mps2.ranks == (2 * bond_dim,) * (nr_sites - 1)
     assert_almost_equal(mp.normdist(mps, mps2), 0.0)
 
 
@@ -1363,7 +1363,7 @@ def test_compression_bonddim_noincrease(nr_sites, local_dims, bond_dim,
         compr, overlap = call_compression(mpa, comparg, bond_dim * factor, rgen)
         assert_almost_equal(overlap, norm**2)
         assert_mpa_almost_equal(compr, mpa, full=True)
-        assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
+        assert (np.array(compr.ranks) <= np.array(mpa.ranks)).all()
 
 
 @pt.mark.parametrize('add', ('zero', 'self', 'self2'))
@@ -1387,10 +1387,10 @@ def test_compression_trivialsum(nr_sites, local_dims, bond_dim, normalize,
     assert_mpa_almost_equal(msum, factor * mpa, full=True)
 
     # Check that bond dimension has increased (they exactly add)
-    for dim1, dim2, sum_dim in zip(mpa.bdims, add.bdims, msum.bdims):
+    for dim1, dim2, sum_dim in zip(mpa.ranks, add.ranks, msum.ranks):
         assert dim1 + dim2 == sum_dim
 
     compr, overlap = call_compression(msum, comparg, bond_dim, rgen)
     assert_almost_equal(overlap, (norm * factor)**2)
     assert_mpa_almost_equal(compr, factor * mpa, full=True)
-    assert (np.array(compr.bdims) <= np.array(mpa.bdims)).all()
+    assert (np.array(compr.ranks) <= np.array(mpa.ranks)).all()
