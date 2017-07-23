@@ -40,7 +40,7 @@ def test_update_normalization(mpa_norm, upd_pos, upd_norm, rgen,
     """Verify normalization after local tensor update
 
     We test two things:
-    1. The normalization info after update is what we expect 
+    1. The normalization info after update is what we expect
        (in some special cases, see `norm_expected`)
     2. The normalization info is actually correct (in all cases)
 
@@ -54,7 +54,7 @@ def test_update_normalization(mpa_norm, upd_pos, upd_norm, rgen,
     mpa.normalize(*mpa_norm)
     assert_correct_normalization(mpa, *mpa_norm)
 
-    dims = mpa.dims[upd_pos]
+    dims = mpa.lt.shapes[upd_pos]
     tensor = factory._zrandn(dims, rgen)
     if upd_norm == 'left':
         tensor = tensor.reshape((-1, dims[-1]))

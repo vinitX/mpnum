@@ -118,6 +118,10 @@ class LocalTensors(object):
         """Tensors which are currently in left/right-canonical form."""
         return self._lnormalized, self._rnormalized
 
+    @property
+    def shapes(self):
+        return tuple(m.shape for m in self._ltens)
+
     def copy(self):
         ltens = (lt.copy() for lt in self._ltens)
         return type(self)(ltens, nform=self.normal_form)

@@ -124,7 +124,7 @@ class MPArray(object):
         MPArray
 
         >>> from .factory import zero
-        >>> zero(sites=3, ldim=4, bdim=3).dims
+        >>> zero(sites=3, ldim=4, bdim=3).lt.shapes
         ((1, 4, 3), (3, 4, 3), (3, 4, 1))
         >>> zero(sites=3, ldim=4, bdim=3).size
         60
@@ -136,11 +136,6 @@ class MPArray(object):
     def dtype(self):
         """Returns the dtype that should be returned by to_array"""
         return np.common_type(*tuple(self._lt))
-
-    @property
-    def dims(self):
-        """Tuple of shapes for the local tensors"""
-        return tuple(m.shape for m in self._lt)
 
     @property
     def ranks(self):
