@@ -531,6 +531,7 @@ class MPArray(object):
             ltens += _extract_factors(self._lt[i], ndims // sites_per_group)
         return MPArray(ltens)
 
+    # FIXME More appropriate naming?
     def bleg2pleg(self, pos):
         """Transforms the bond leg between site `pos` and `pos + 1` into
         physical legs at those sites. The new leg will be the rightmost one
@@ -551,6 +552,7 @@ class MPArray(object):
         new_normal_form = min(lcanon, pos), max(rcanon, pos + 2)
         return MPArray(LocalTensors(ltens, cform=new_normal_form))
 
+    # FIXME More appropriate naming?
     def pleg2bleg(self, pos):
         """Performs the inverse operation to :func:`bleg2pleg`.
 
@@ -988,7 +990,7 @@ class MPArray(object):
             #assert old_bdim == bdim
             yield sv
 
-    def pad_bdim(self, bdim=None, force_bdim=False):
+    def pad_ranks(self, rank=None, force_rank=False):
         """Increase bond dimension by padding with zeros
 
         This function is useful to prepare initial states for
@@ -997,20 +999,20 @@ class MPArray(object):
         bond dimensions to `(2, 4, 4, 2)` before using it as an
         initial state for variational compression.
 
-        :param bdim: Increase bond dimension to this value, use
+        :param int rank: Increase rank to this value, use
             `self.bdim` if `None`
-        :param force_bdim: Use full bond dimension even at the
-            beginning and end of the MPS (generally not useful)
+        :param force_rank: Use full rank even at the beginning and
+            end of the MPS (generally not useful)
         :returns: MPA representation of the same array with increased
             bond dimension
 
         """
-        if bdim is None:
-            bdim = self.bdim
-        bdims = it.repeat(bdim)
-        if not force_bdim:
-            bdims = [min(f, b) for f, b in zip(full_bdim(self.shapes), bdims)]
-        pad = [max(s, b) - s for s, b in zip(self.ranks, bdims)]
+        if rank is None:
+            rank = max(self.ranks)
+        ranks = it.repeat(rank)
+        if not force_rank:
+            ranks = [min(f, b) for f, b in zip(full_bdim(self.shapes), ranks)]
+        pad = [max(s, b) - s for s, b in zip(self.ranks, ranks)]
         lt = (np.pad(lt, [(0, lp)] + [(0, 0)] * (lt.ndim - 2) + [(0, rp)],
                      'constant')
               for lp, rp, lt in zip([0] + pad, pad + [0], self.lt))

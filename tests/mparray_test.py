@@ -714,8 +714,8 @@ def test_inject_many(local_dim, bond_dim, rgen):
     assert_mpa_almost_equal(mpa_inj1, mpa_inj2, True)
 
 
-def test_inject_pdim(rgen):
-    """Check that mp.inject() picks up the correct physical dimension"""
+def test_inject_shapes(rgen):
+    """Check that mp.inject() picks up the correct shapes"""
     mpa = factory.random_mpa(3, ([1], [2], [3]), 3, rgen, normalized=True)
     print(mpa.shapes)
     mpa_inj = mp.inject(mpa, [0, 2], [1, 1])
@@ -922,7 +922,7 @@ def test_reshape(rgen):
 #                         Normalization & Compression                         #
 ###############################################################################
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
-def test_normalization_from_full(nr_sites, local_dim, _, rgen):
+def test_canonicalization_from_full(nr_sites, local_dim, _, rgen):
     op = factory._random_op(nr_sites, local_dim, randstate=rgen)
     mpo = mp.MPArray.from_array(op, 2)
     assert_correct_normalization(mpo, nr_sites - 1, nr_sites)
@@ -931,7 +931,7 @@ def test_normalization_from_full(nr_sites, local_dim, _, rgen):
 # FIXME Add counter to normalization functions
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_normalization_incremental(nr_sites, local_dim, bond_dim, rgen, dtype):
+def test_canonicalization_incremental(nr_sites, local_dim, bond_dim, rgen, dtype):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                              randstate=rgen, dtype=dtype)
     op = mpo.to_array_global()
@@ -954,7 +954,7 @@ def test_normalization_incremental(nr_sites, local_dim, bond_dim, rgen, dtype):
 # FIXME Add counter to normalization functions
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_normalization_jump(nr_sites, local_dim, bond_dim, rgen, dtype):
+def test_canonicalization_jump(nr_sites, local_dim, bond_dim, rgen, dtype):
     # This test assumes at least two sites.
     if nr_sites == 1:
         return
@@ -974,7 +974,7 @@ def test_normalization_jump(nr_sites, local_dim, bond_dim, rgen, dtype):
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_normalization_full(nr_sites, local_dim, bond_dim, rgen, dtype):
+def test_canonicalization_full(nr_sites, local_dim, bond_dim, rgen, dtype):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                              randstate=rgen, dtype=dtype)
     op = mpo.to_array_global()
@@ -1000,7 +1000,7 @@ def test_normalization_full(nr_sites, local_dim, bond_dim, rgen, dtype):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_normalization_default_args(nr_sites, local_dim, bond_dim, rgen):
+def test_canonicalization_default_args(nr_sites, local_dim, bond_dim, rgen):
     # The following normalizations assume at least two sites.
     if nr_sites == 1:
         return
@@ -1025,7 +1025,7 @@ def test_normalization_default_args(nr_sites, local_dim, bond_dim, rgen):
     assert_correct_normalization(mpo, 0, 1)
 
 
-def test_normalization_compression(rgen):
+def test_canonicalization_compression(rgen):
     """If the bond dimension is too large at the boundary, qr decompostion
     in normalization may yield smaller bond dimension"""
     mpo = factory.random_mpa(sites=2, ldim=2, bdim=20, randstate=rgen)
@@ -1094,10 +1094,10 @@ def test_singularvals(nr_sites, local_dim, bond_dim, dtype, rgen):
 def test_pad_bdim(nr_sites, local_dim, bond_dim, rgen):
     mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
                              normalized=True)
-    mps2 = mps.pad_bdim(2 * bond_dim)
+    mps2 = mps.pad_ranks(2 * bond_dim)
     assert mps2.ranks == tuple(min(d, 2 * bond_dim) for d in mp.full_bdim(mps.shapes))
     assert_almost_equal(mp.normdist(mps, mps2), 0.0)
-    mps2 = mps.pad_bdim(2 * bond_dim, force_bdim=True)
+    mps2 = mps.pad_ranks(2 * bond_dim, force_rank=True)
     assert mps2.ranks == (2 * bond_dim,) * (nr_sites - 1)
     assert_almost_equal(mp.normdist(mps, mps2), 0.0)
 
