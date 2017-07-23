@@ -153,9 +153,9 @@ class MPArray(object):
         return tuple(lten.ndim - 2 for lten in self._lt)
 
     @property
-    def normal_form(self):
+    def canonical_form(self):
         """Tensors which are currently in left/right-canonical form."""
-        return self._lt.normal_form
+        return self._lt.canonical_form
 
     def dump(self, target):
         """Serializes MPArray to :code:`h5py.Group`. Recover using
@@ -176,7 +176,7 @@ class MPArray(object):
 
         # these are actually used in MPArray.load
         target.attrs['len'] = len(self)
-        target.attrs['normal_form'] = self.normal_form
+        target.attrs['canonical_form'] = self.canonical_form
 
         for site, lten in enumerate(self._lt):
             target[str(site)] = lten
@@ -196,7 +196,7 @@ class MPArray(object):
                 return cls.load(infile)
 
         ltens = [source[str(i)].value for i in range(source.attrs['len'])]
-        return cls(LocalTensors(ltens, nform=source.attrs['normal_form']))
+        return cls(LocalTensors(ltens, nform=source.attrs['canonical_form']))
 
     #FIXME Where is this used? Does it really have to be in here?
     @classmethod
@@ -335,7 +335,7 @@ class MPArray(object):
     def T(self):
         """Transpose (=reverse order of) physical legs"""
         ltens = LocalTensors((_local_transpose(tens) for tens in self.lt),
-                             nform=self.normal_form)
+                             nform=self.canonical_form)
         return type(self)(ltens)
 
     def transpose(self, axes=None):
@@ -353,7 +353,7 @@ class MPArray(object):
 
         """
         ltens = LocalTensors((_local_transpose(tens, axes) for tens in self.lt),
-                             nform=self.normal_form)
+                             nform=self.canonical_form)
         return type(self)(ltens)
 
     def adj(self):
@@ -364,7 +364,7 @@ class MPArray(object):
     def conj(self):
         """Complex conjugate"""
         return type(self)(LocalTensors((ltens.conj() for ltens in self._lt),
-                                       nform=self.normal_form))
+                                       nform=self.canonical_form))
 
     def __add__(self, summand):
         assert len(self) == len(summand), \
@@ -384,7 +384,7 @@ class MPArray(object):
     # TODO These could be made more stable by rescaling all non-normalized tens
     def __mul__(self, fact):
         if np.isscalar(fact):
-            lnormal, rnormal = self.normal_form
+            lnormal, rnormal = self.canonical_form
             ltens = self._lt
             ltens_new = it.chain(ltens[:lnormal], [fact * ltens[lnormal]],
                                  ltens[lnormal + 1:])
@@ -394,7 +394,7 @@ class MPArray(object):
 
     def __imul__(self, fact):
         if np.isscalar(fact):
-            lnormal, _ = self.normal_form
+            lnormal, _ = self.canonical_form
             # FIXME TEMPORARY FIX
             #  self._lt[lnormal] *= fact
             self._lt.update(lnormal, self._lt[lnormal] * fact)
@@ -486,7 +486,7 @@ class MPArray(object):
 
         ltens = [_local_reshape(lten, newshape)
                 for lten, newshape in zip(self._lt, newshapes)]
-        return MPArray(LocalTensors(ltens, nform=self.normal_form))
+        return MPArray(LocalTensors(ltens, nform=self.canonical_form))
 
     def ravel(self):
         """Flatten the MPA to an MPS, shortcut for self.reshape((-1,))
@@ -549,7 +549,7 @@ class MPArray(object):
         ltens[pos] = ltens[pos][..., None]
         ltens[pos + 1] = ltens[pos + 1][None]
 
-        lnormal, rnormal = self.normal_form
+        lnormal, rnormal = self.canonical_form
         new_normal_form = min(lnormal, pos), max(rnormal, pos + 2)
         return MPArray(LocalTensors(ltens, nform=new_normal_form))
 
@@ -566,7 +566,7 @@ class MPArray(object):
         ltens[pos] = ltens[pos][..., 0]
         ltens[pos + 1] = ltens[pos + 1][0]
 
-        lnormal, rnormal = self.normal_form
+        lnormal, rnormal = self.canonical_form
         new_normal_form = min(lnormal, pos), max(rnormal, pos + 1)
         return MPArray(LocalTensors(ltens, nform=new_normal_form))
 
@@ -584,7 +584,7 @@ class MPArray(object):
             return self, None
 
         mpa_t = self.bleg2pleg(pos)
-        lnorm, rnorm = mpa_t.normal_form
+        lnorm, rnorm = mpa_t.canonical_form
 
         ltens_l = LocalTensors(it.islice(mpa_t.lt, 0, pos + 1),
                                nform=(min(lnorm, pos), min(rnorm, pos + 1)))
@@ -651,7 +651,7 @@ class MPArray(object):
         - Matrix would be both left- and right-normalized: `ValueError`
 
         """
-        current_lnorm, current_rnorm = self.normal_form
+        current_lnorm, current_rnorm = self.canonical_form
         if left is None and right is None:
             if current_lnorm < len(self) - current_rnorm:
                 self._rnormalize(1)
@@ -690,7 +690,7 @@ class MPArray(object):
         """
         assert 0 <= to_site < len(self), 'to_site={!r}'.format(to_site)
 
-        lnormal, rnormal = self._lt.normal_form
+        lnormal, rnormal = self._lt.canonical_form
         for site in range(lnormal, to_site):
             ltens = self._lt[site]
             q, r = qr(ltens.reshape((-1, ltens.shape[-1])))
@@ -710,7 +710,7 @@ class MPArray(object):
         """
         assert 0 < to_site <= len(self), 'to_site={!r}'.format(to_site)
 
-        lnormal, rnormal = self.normal_form
+        lnormal, rnormal = self.canonical_form
         for site in range(rnormal - 1, to_site - 1, -1):
             ltens = self._lt[site]
             q, r = qr(ltens.reshape((ltens.shape[0], -1)).T)
@@ -843,7 +843,7 @@ class MPArray(object):
             # Cannot do anything. Return perfect overlap.
             return norm(self)**2
 
-        ln, rn = self.normal_form
+        ln, rn = self.canonical_form
         default_direction = 'left' if len(self) - rn > ln else 'right'
         direction = default_direction if direction is None else direction
         bdim = max(self.ranks) if bdim is None else bdim
@@ -1409,7 +1409,7 @@ def norm(mpa):
 
     """
     mpa.normalize()
-    current_lnorm, current_rnorm = mpa.normal_form
+    current_lnorm, current_rnorm = mpa.canonical_form
 
     if current_rnorm == 1:
         return np.linalg.norm(mpa.lt[0])

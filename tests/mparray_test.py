@@ -882,7 +882,7 @@ def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
         mpa_t = mpa_t.pleg2bleg(pos)
         # This is an ugly hack, but necessary to use the assert_mpa_identical
         # function. Normalization-awareness gets lost in the process!
-        mpa_t._lt._lnormalized, mpa_t._lt._rnormalized = mpa.normal_form
+        mpa_t._lt._lnormalized, mpa_t._lt._rnormalized = mpa.canonical_form
         assert_mpa_identical(mpa, mpa_t)
 
     if nr_sites > 1:
@@ -917,7 +917,7 @@ def test_reshape(rgen):
     mpa.normalize()
     mpa_r = mpa.reshape([(2, 3), (2, 2), (10,), (3, 2, 4)])
     assert all(s1 == s2 for s1, s2 in zip(mpa_r.shapes, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
-    assert_correct_normalization(mpa_r, *mpa.normal_form)
+    assert_correct_normalization(mpa_r, *mpa.canonical_form)
 
 
 ###############################################################################
@@ -1072,14 +1072,14 @@ def test_singularvals(nr_sites, local_dim, bond_dim, dtype, rgen):
                              dtype=dtype, normalized=True, force_bdim=True)
     psi = mps.to_array()
     # Start from a non-normalized state
-    assert mps.normal_form == (0, nr_sites)
+    assert mps.canonical_form == (0, nr_sites)
     svals = list(mps.singularvals())
     if nr_sites == 1:
-        assert mps.normal_form == (0, 1)
+        assert mps.canonical_form == (0, 1)
     else:
         # The last local tensor update from _compress_svd_r() is not
         # carried out. This behaviour may change.
-        assert mps.normal_form == (nr_sites - 2, nr_sites - 1)
+        assert mps.canonical_form == (nr_sites - 2, nr_sites - 1)
     assert len(svals) == nr_sites - 1
     for n_left in range(1, nr_sites):
         sv = svals[n_left - 1]
@@ -1187,7 +1187,7 @@ def normalize_if_applicable(mpa, nmz):
     """
     # Make sure the input is non-normalized. Otherwise, the output can
     # be more normalized than desired for the test.
-    assert mpa.normal_form == (0, len(mpa)), "want non-normalized MPA for test"
+    assert mpa.canonical_form == (0, len(mpa)), "want non-normalized MPA for test"
     if nmz is not None:
         if nmz.get('left') == 1 and nmz.get('right') == -1 and len(mpa) == 2:
             return False
@@ -1308,12 +1308,12 @@ def test_compression_result_properties(nr_sites, local_dims, bond_dim,
     # Check that the inner product is correct.
     assert_almost_equal(overlap, mp.inner(mpa, compr))
 
-    # SVD: Check that .normal_form is as expected.
+    # SVD: Check that .canonical_form is as expected.
     if comparg['method'] == 'svd':
         normtarget = {'left': (0, 1), 'right': (len(compr) - 1, len(compr))}
-        assert compr.normal_form == normtarget[comparg['direction']]
+        assert compr.canonical_form == normtarget[comparg['direction']]
 
-    # Check the content of .normal_form is correct.
+    # Check the content of .canonical_form is correct.
     assert_correct_normalization(compr)
     assert compr.dtype == dtype
 

@@ -310,7 +310,7 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
     >>> mpo = random_mpo(4, 2, 10, force_bdim=True)
     >>> mpo.ranks, mpo.shapes
     ((10, 10, 10), ((2, 2), (2, 2), (2, 2), (2, 2)))
-    >>> mpo.normal_form
+    >>> mpo.canonical_form
     (0, 4)
 
     """
@@ -344,7 +344,7 @@ def random_mps(sites, ldim, bdim, randstate=None, force_bdim=False):
     >>> mps = random_mps(4, 2, 10, force_bdim=True)
     >>> mps.ranks, mps.shapes
     ((10, 10, 10), ((2,), (2,), (2,), (2,)))
-    >>> mps.normal_form
+    >>> mps.canonical_form
     (0, 4)
     >>> round(abs(1 - mp.inner(mps, mps)), 10)
     0.0
@@ -367,7 +367,7 @@ def random_mpdo(sites, ldim, bdim, randstate=np.random):
     >>> rho = random_mpdo(4, 2, 4)
     >>> rho.ranks, rho.shapes
     ((4, 4, 4), ((2, 2), (2, 2), (2, 2), (2, 2)))
-    >>> rho.normal_form
+    >>> rho.canonical_form
     (0, 4)
 
     """

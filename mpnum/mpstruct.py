@@ -114,7 +114,7 @@ class LocalTensors(object):
         self.update(index, value)
 
     @property
-    def normal_form(self):
+    def canonical_form(self):
         """Tensors which are currently in left/right-canonical form."""
         return self._lnormalized, self._rnormalized
 
@@ -124,4 +124,4 @@ class LocalTensors(object):
 
     def copy(self):
         ltens = (lt.copy() for lt in self._ltens)
-        return type(self)(ltens, nform=self.normal_form)
+        return type(self)(ltens, nform=self.canonical_form)

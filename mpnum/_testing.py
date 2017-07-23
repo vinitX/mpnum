@@ -24,7 +24,7 @@ def assert_mpa_identical(mpa1, mpa2, decimal=np.infty):
     """Verify that two MPAs are complety identical
     """
     assert len(mpa1) == len(mpa2)
-    assert mpa1.normal_form == mpa2.normal_form
+    assert mpa1.canonical_form == mpa2.canonical_form
     assert mpa1.dtype == mpa2.dtype
 
     for i, lten1, lten2 in zip(it.count(), mpa1.lt, mpa2.lt):
@@ -62,20 +62,20 @@ def _assert_rcanonical(ltens, msg=''):
                               err_msg=msg)
 
 
-def assert_correct_normalization(lt, lnormal_target=None, rnormal_target=None):
+def assert_correct_normalization(lt, lcanon_target=None, rcanon_target=None):
     """Verify that normalization info in `lt` is correct
 
     We check that `lt` is at least as normalized as specified by the
     information. `lt` being "more normalized" than the information
     specifies is admissible and not treated as an error.
 
-    If `[lr]normal_target` are not None, verify that normalization
+    If `[lr]canon_target` are not None, verify that normalization
     info is exactly equal to the given values.
 
     """
     if hasattr(lt, 'lt'):
         lt = lt.lt  # We got an MPArray in lt, retrieve mpa.lt
-    lnormal, rnormal = lt.normal_form
+    lnormal, rnormal = lt.canonical_form
 
     # Verify that normalization info is correct
     for n in range(lnormal):
@@ -86,8 +86,8 @@ def assert_correct_normalization(lt, lnormal_target=None, rnormal_target=None):
                           .format(n, rnormal))
 
     # If targets are given, verify that the information in
-    # `lt.normal_form` matches the targets.
-    if lnormal_target is not None:
-        assert_equal(lnormal, lnormal_target)
-    if rnormal_target is not None:
-        assert_equal(rnormal, rnormal_target)
+    # `lt.canonical_form` matches the targets.
+    if lcanon_target is not None:
+        assert_equal(lnormal, lcanon_target)
+    if rcanon_target is not None:
+        assert_equal(rnormal, rcanon_target)
