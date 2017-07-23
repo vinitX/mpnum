@@ -11,8 +11,7 @@ import mpnum.mparray as mp
 import mpnum.special as mpsp
 from mpnum import _tools
 from mpnum._testing import (assert_correct_normalization,
-                            assert_mpa_almost_equal, assert_mpa_identical,
-                            mpo_to_global)
+                            assert_mpa_almost_equal, assert_mpa_identical)
 from mpnum._tools import global_to_local
 from mparray_test import MP_TEST_DTYPES, MP_TEST_PARAMETERS
 

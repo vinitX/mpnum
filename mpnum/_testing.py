@@ -38,16 +38,6 @@ def assert_mpa_identical(mpa1, mpa2, decimal=np.infty):
     # and `mpa2`.  Are we missing other things?
 
 
-# FIXME If we have the method, we dont need this function
-def mpo_to_global(mpo):
-    """Convert mpo to dense global array
-
-    .. todo:: Use `mpa.to_array_global()` instead.
-
-    """
-    return mpo.to_array_global()
-
-
 def _assert_lcanonical(ltens, msg=''):
     ltens = ltens.reshape((np.prod(ltens.shape[:-1]), ltens.shape[-1]))
     prod = ltens.conj().T.dot(ltens)

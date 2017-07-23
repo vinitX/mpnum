@@ -198,7 +198,6 @@ class MPArray(object):
         ltens = [source[str(i)].value for i in range(source.attrs['len'])]
         return cls(LocalTensors(ltens, nform=source.attrs['canonical_form']))
 
-    #FIXME Where is this used? Does it really have to be in here?
     @classmethod
     def from_array_global(cls, array, ndims=None, has_bond=False):
         """Create MPA from array in global form.
@@ -286,7 +285,6 @@ class MPArray(object):
         """
         return _ltens_to_array(iter(self._lt))[0, ..., 0]
 
-    #FIXME Where is this used? Does it really have to be in here?
     def to_array_global(self):
         """Return MPA as array in global form.
 

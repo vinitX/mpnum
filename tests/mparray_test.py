@@ -16,11 +16,9 @@ from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
-import mpnum.mpsmpo as mm
 from mpnum import _tools
 from mpnum._testing import (assert_correct_normalization,
-                            assert_mpa_almost_equal, assert_mpa_identical,
-                            mpo_to_global)
+                            assert_mpa_almost_equal, assert_mpa_identical)
 from mpnum._tools import global_to_local
 from six.moves import range, zip
 
@@ -75,7 +73,7 @@ def test_from_kron(nr_sites, local_dim, bond_dim, dtype):
     op = _tools.mkron(*factors)
     op.shape = [local_dim] * (ndims * nr_sites)
     mpo = mp.MPArray.from_kron(factors)
-    assert_array_almost_equal(op, mpo_to_global(mpo))
+    assert_array_almost_equal(op, mpo.to_array_global())
     assert mpo.dtype == dtype
 
 
@@ -100,7 +98,7 @@ def test_transpose(nr_sites, local_dim, _, rgen, dtype):
 
     opT = op.reshape((local_dim**nr_sites,) * 2).T \
         .reshape((local_dim,) * 2 * nr_sites)
-    assert_array_almost_equal(opT, mpo_to_global(mpo.T))
+    assert_array_almost_equal(opT, (mpo.T).to_array_global())
     assert mpo.T.dtype == dtype
 
     mpo.normalize()
@@ -199,21 +197,21 @@ def test_sum(nr_sites, local_dim, bond_dim, rgen, dtype):
 def test_dot(nr_sites, local_dim, bond_dim, rgen, dtype):
     mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                               randstate=rgen, dtype=dtype)
-    op1 = mpo_to_global(mpo1)
+    op1 = mpo1.to_array_global()
     mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                               randstate=rgen, dtype=dtype)
-    op2 = mpo_to_global(mpo2)
+    op2 = mpo2.to_array_global()
 
     # Dotproduct of all 1st physical with 0th physical legs = np.dot
     dot_np = np.tensordot(op1.reshape((local_dim**nr_sites, ) * 2),
                           op2.reshape((local_dim**nr_sites, ) * 2),
                           axes=([1], [0]))
     dot_np = dot_np.reshape(op1.shape)
-    dot_mp = mpo_to_global(mp.dot(mpo1, mpo2, axes=(1, 0)))
+    dot_mp = mp.dot(mpo1, mpo2, axes=(1, 0)).to_array_global()
     assert_array_almost_equal(dot_np, dot_mp)
     assert dot_mp.dtype == dtype
     # this should also be the default axes
-    dot_mp = mpo_to_global(mp.dot(mpo1, mpo2))
+    dot_mp = mp.dot(mpo1, mpo2).to_array_global()
     assert_array_almost_equal(dot_np, dot_mp)
 
     # Dotproduct of all 0th physical with 1st physical legs = np.dot
@@ -221,11 +219,11 @@ def test_dot(nr_sites, local_dim, bond_dim, rgen, dtype):
                           op2.reshape((local_dim**nr_sites, ) * 2),
                           axes=([0], [1]))
     dot_np = dot_np.reshape(op1.shape)
-    dot_mp = mpo_to_global(mp.dot(mpo1, mpo2, axes=(0, 1)))
+    dot_mp = mp.dot(mpo1, mpo2, axes=(0, 1)).to_array_global()
     assert_array_almost_equal(dot_np, dot_mp)
     assert dot_mp.dtype == dtype
     # this should also be the default axes
-    dot_mp = mpo_to_global(mp.dot(mpo1, mpo2, axes=(-2, -1)))
+    dot_mp = mp.dot(mpo1, mpo2, axes=(-2, -1)).to_array_global()
     assert_array_almost_equal(dot_np, dot_mp)
 
 
@@ -291,10 +289,10 @@ def test_partialdot(nr_sites, local_dim, bond_dim, rgen, dtype):
 
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                              randstate=rgen, dtype=dtype)
-    op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
+    op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
     mpo_part = factory.random_mpa(part_sites, (local_dim, local_dim), bond_dim,
                                   randstate=rgen, dtype=dtype)
-    op_part = mpo_to_global(mpo_part).reshape((local_dim**part_sites,) * 2)
+    op_part = mpo_part.to_array_global().reshape((local_dim**part_sites,) * 2)
     op_part_embedded = np.kron(
         np.kron(np.eye(local_dim**start_at), op_part),
         np.eye(local_dim**(nr_sites - part_sites - start_at)))
@@ -303,8 +301,8 @@ def test_partialdot(nr_sites, local_dim, bond_dim, rgen, dtype):
     prod2 = np.dot(op_part_embedded, op)
     prod1_mpo = mp.partialdot(mpo, mpo_part, start_at=start_at)
     prod2_mpo = mp.partialdot(mpo_part, mpo, start_at=start_at)
-    prod1_mpo = mpo_to_global(prod1_mpo).reshape((local_dim**nr_sites,) * 2)
-    prod2_mpo = mpo_to_global(prod2_mpo).reshape((local_dim**nr_sites,) * 2)
+    prod1_mpo = prod1_mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
+    prod2_mpo = prod2_mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
 
     assert_array_almost_equal(prod1, prod1_mpo)
     assert_array_almost_equal(prod2, prod2_mpo)
@@ -393,10 +391,10 @@ def test_inner_vec(nr_sites, local_dim, bond_dim, rgen, dtype):
 def test_inner_mat(nr_sites, local_dim, bond_dim, rgen, dtype):
     mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                               randstate=rgen, dtype=dtype)
-    op1 = mpo_to_global(mpo1).reshape((local_dim**nr_sites, ) * 2)
+    op1 = mpo1.to_array_global().reshape((local_dim**nr_sites, ) * 2)
     mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                               randstate=rgen, dtype=dtype)
-    op2 = mpo_to_global(mpo2).reshape((local_dim**nr_sites, ) * 2)
+    op2 = mpo2.to_array_global().reshape((local_dim**nr_sites, ) * 2)
 
     inner_np = np.trace(np.dot(op1.conj().transpose(), op2))
     inner_mp = mp.inner(mpo1, mpo2)
@@ -460,7 +458,7 @@ def test_normdist(nr_sites, local_dim, bond_dim, dtype, rgen):
 def test_partialtrace(nr_sites, local_dim, bond_dim, keep_width, rgen, dtype):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                              randstate=rgen, dtype=dtype)
-    op = mpo_to_global(mpo)
+    op = mpo.to_array_global()
 
     for site in range(nr_sites - keep_width + 1):
         traceout = tuple(range(site)) \
@@ -468,7 +466,7 @@ def test_partialtrace(nr_sites, local_dim, bond_dim, keep_width, rgen, dtype):
         axes = [(0, 1) if site in traceout else None for site in range(nr_sites)]
         red_mpo = mp.partialtrace(mpo, axes=axes)
         red_from_op = _tools.partial_trace(op, traceout)
-        assert_array_almost_equal(mpo_to_global(red_mpo), red_from_op,
+        assert_array_almost_equal(red_mpo.to_array_global(), red_from_op,
                                   err_msg="not equal at site {}".format(site))
         assert red_mpo.dtype == dtype
 
@@ -478,7 +476,7 @@ def test_partialtrace(nr_sites, local_dim, bond_dim, keep_width, rgen, dtype):
 def test_trace(nr_sites, local_dim, bond_dim, rgen, dtype):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                              randstate=rgen, dtype=dtype)
-    op = mpo_to_global(mpo).reshape((local_dim**nr_sites,) * 2)
+    op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
 
     mpo_trace = mp.trace(mpo)
     assert_almost_equal(np.trace(op), mpo_trace)
@@ -490,18 +488,18 @@ def test_trace(nr_sites, local_dim, bond_dim, rgen, dtype):
 def test_add_and_subtr(nr_sites, local_dim, bond_dim, rgen, dtype):
     mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                               randstate=rgen, dtype=dtype)
-    op1 = mpo_to_global(mpo1)
+    op1 = mpo1.to_array_global()
     mpo2 = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                               randstate=rgen, dtype=dtype)
-    op2 = mpo_to_global(mpo2)
+    op2 = mpo2.to_array_global()
 
-    assert_array_almost_equal(op1 + op2, mpo_to_global(mpo1 + mpo2))
-    assert_array_almost_equal(op1 - op2, mpo_to_global(mpo1 - mpo2))
+    assert_array_almost_equal(op1 + op2, (mpo1 + mpo2).to_array_global())
+    assert_array_almost_equal(op1 - op2, (mpo1 - mpo2).to_array_global())
     assert (mpo1 + mpo2).dtype == dtype
     assert (mpo1 + mpo2).dtype == dtype
 
     mpo1 += mpo2
-    assert_array_almost_equal(op1 + op2, mpo_to_global(mpo1))
+    assert_array_almost_equal(op1 + op2, mpo1.to_array_global())
     assert mpo1.dtype == dtype
 
 
@@ -561,13 +559,13 @@ def test_mult_mpo_scalar(nr_sites, local_dim, bond_dim, rgen, dtype):
     # FIXME Change behavior of to_array
     # For nr_sites == 1, changing `mpo` below will change `op` as
     # well, unless we call .copy().
-    op = mpo_to_global(mpo).copy()
+    op = mpo.to_array_global().copy()
     scalar = rgen.randn()
 
-    assert_array_almost_equal(scalar * op, mpo_to_global(scalar * mpo))
+    assert_array_almost_equal(scalar * op, (scalar * mpo).to_array_global())
 
     mpo *= scalar
-    assert_array_almost_equal(scalar * op, mpo_to_global(mpo))
+    assert_array_almost_equal(scalar * op, mpo.to_array_global())
     assert mpo.dtype == dtype
     assert (1.j * mpo).dtype == np.complex_
 
@@ -579,13 +577,13 @@ def test_div_mpo_scalar(nr_sites, local_dim, bond_dim, rgen):
     # FIXME Change behavior of to_array
     # For nr_sites == 1, changing `mpo` below will change `op` as
     # well, unless we call .copy().
-    op = mpo_to_global(mpo).copy()
+    op = mpo.to_array_global().copy()
     scalar = rgen.randn() + 1.j * rgen.randn()
 
-    assert_array_almost_equal(op / scalar, mpo_to_global(mpo / scalar))
+    assert_array_almost_equal(op / scalar, (mpo / scalar).to_array_global())
 
     mpo /= scalar
-    assert_array_almost_equal(op / scalar, mpo_to_global(mpo))
+    assert_array_almost_equal(op / scalar, mpo.to_array_global())
 
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
@@ -644,9 +642,9 @@ def test_inject(local_dim, bond_dim):
     abbc_mpo = mp.inject(ac_mpo, pos=1, num=2, inject_ten=b)
     abbc_mpo2 = mp.inject(ac_mpo, pos=[1], num=[2], inject_ten=[b])
     abbc_mpo3 = mp.inject(ac_mpo, pos=[1], num=None, inject_ten=[[b, b]])
-    assert_array_almost_equal(abbc, mpo_to_global(abbc_mpo))
-    assert_array_almost_equal(abbc, mpo_to_global(abbc_mpo2))
-    assert_array_almost_equal(abbc, mpo_to_global(abbc_mpo3))
+    assert_array_almost_equal(abbc, abbc_mpo.to_array_global())
+    assert_array_almost_equal(abbc, abbc_mpo2.to_array_global())
+    assert_array_almost_equal(abbc, abbc_mpo3.to_array_global())
 
     # Here, only local order.
     ac = factory._zrandn(local_dim * 2)
@@ -678,9 +676,9 @@ def test_inject(local_dim, bond_dim):
     abbc_mpo = mp.inject(ac_mpo, pos=1, num=2, inject_ten=None)
     abbc_mpo2 = mp.inject(ac_mpo, pos=[1], num=[2])
     abbc_mpo3 = mp.inject(ac_mpo, pos=[1], inject_ten=[[None, None]])
-    assert_array_almost_equal(abbc, mpo_to_global(abbc_mpo))
-    assert_array_almost_equal(abbc, mpo_to_global(abbc_mpo2))
-    assert_array_almost_equal(abbc, mpo_to_global(abbc_mpo3))
+    assert_array_almost_equal(abbc, abbc_mpo.to_array_global())
+    assert_array_almost_equal(abbc, abbc_mpo2.to_array_global())
+    assert_array_almost_equal(abbc, abbc_mpo3.to_array_global())
 
     # Here, only local order.
     ac = factory._zrandn(local_dim * 2)
@@ -936,20 +934,20 @@ def test_normalization_from_full(nr_sites, local_dim, _, rgen):
 def test_normalization_incremental(nr_sites, local_dim, bond_dim, rgen, dtype):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                              randstate=rgen, dtype=dtype)
-    op = mpo_to_global(mpo)
+    op = mpo.to_array_global()
     assert_correct_normalization(mpo, 0, nr_sites)
-    assert_array_almost_equal(op, mpo_to_global(mpo))
+    assert_array_almost_equal(op, mpo.to_array_global())
 
     for site in range(1, nr_sites):
         mpo.normalize(left=site)
         assert_correct_normalization(mpo, site, nr_sites)
-        assert_array_almost_equal(op, mpo_to_global(mpo))
+        assert_array_almost_equal(op, mpo.to_array_global())
         assert mpo.dtype == dtype
 
     for site in range(nr_sites - 1, 0, -1):
         mpo.normalize(right=site)
         assert_correct_normalization(mpo, site - 1, site)
-        assert_array_almost_equal(op, mpo_to_global(mpo))
+        assert_array_almost_equal(op, mpo.to_array_global())
         assert mpo.dtype == dtype
 
 
@@ -963,14 +961,14 @@ def test_normalization_jump(nr_sites, local_dim, bond_dim, rgen, dtype):
 
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                              randstate=rgen, dtype=dtype)
-    op = mpo_to_global(mpo)
+    op = mpo.to_array_global()
     assert_correct_normalization(mpo, 0, nr_sites)
-    assert_array_almost_equal(op, mpo_to_global(mpo))
+    assert_array_almost_equal(op, mpo.to_array_global())
 
     center = nr_sites // 2
     mpo.normalize(left=center - 1, right=center)
     assert_correct_normalization(mpo, center - 1, center)
-    assert_array_almost_equal(op, mpo_to_global(mpo))
+    assert_array_almost_equal(op, mpo.to_array_global())
     assert mpo.dtype == dtype
 
 
@@ -979,25 +977,25 @@ def test_normalization_jump(nr_sites, local_dim, bond_dim, rgen, dtype):
 def test_normalization_full(nr_sites, local_dim, bond_dim, rgen, dtype):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                              randstate=rgen, dtype=dtype)
-    op = mpo_to_global(mpo)
+    op = mpo.to_array_global()
     assert_correct_normalization(mpo, 0, nr_sites)
-    assert_array_almost_equal(op, mpo_to_global(mpo))
+    assert_array_almost_equal(op, mpo.to_array_global())
 
     mpo.normalize(right=1)
     assert_correct_normalization(mpo, 0, 1)
-    assert_array_almost_equal(op, mpo_to_global(mpo))
+    assert_array_almost_equal(op, mpo.to_array_global())
     assert mpo.dtype == dtype
 
     ###########################################################################
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                              randstate=rgen, dtype=dtype)
-    op = mpo_to_global(mpo)
+    op = mpo.to_array_global()
     assert_correct_normalization(mpo, 0, nr_sites)
-    assert_array_almost_equal(op, mpo_to_global(mpo))
+    assert_array_almost_equal(op, mpo.to_array_global())
 
     mpo.normalize(left=len(mpo) - 1)
     assert_correct_normalization(mpo, len(mpo) - 1, len(mpo))
-    assert_array_almost_equal(op, mpo_to_global(mpo))
+    assert_array_almost_equal(op, mpo.to_array_global())
     assert mpo.dtype == dtype
 
 
@@ -1050,18 +1048,18 @@ def test_mult_mpo_scalar_normalization(nr_sites, local_dim, bond_dim, rgen):
 
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
                              dtype=np.complex_, randstate=rgen)
-    op = mpo_to_global(mpo)
+    op = mpo.to_array_global()
     scalar = rgen.randn() + 1.j * rgen.randn()
 
     center = nr_sites // 2
     mpo.normalize(left=center - 1, right=center)
     mpo_times_two = scalar * mpo
 
-    assert_array_almost_equal(scalar * op, mpo_to_global(mpo_times_two))
+    assert_array_almost_equal(scalar * op, mpo_times_two.to_array_global())
     assert_correct_normalization(mpo_times_two, center - 1, center)
 
     mpo *= scalar
-    assert_array_almost_equal(scalar * op, mpo_to_global(mpo))
+    assert_array_almost_equal(scalar * op, mpo.to_array_global())
     assert_correct_normalization(mpo, center - 1, center)
 
 
