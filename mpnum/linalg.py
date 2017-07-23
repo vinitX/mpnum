@@ -153,25 +153,25 @@ def _mineig_rightvec_add_mps(rv, lt1, lt2):
 def _mineig_sum_leftvec_add(
         mpas, mpas_plegs, leftvec_out, leftvec, pos, mps_lten):
     """Add one column to the left vector (MPA list dispatching)"""
-    for i, mpa, plegs, lv in zip(it.count(), mpas, mpas_plegs, leftvec):
-        if plegs == 2:
+    for i, mpa, ndims, lv in zip(it.count(), mpas, mpas_plegs, leftvec):
+        if ndims == 2:
             leftvec_out[i] = _mineig_leftvec_add(lv, mpa.lt[pos], mps_lten)
-        elif plegs == 1:
+        elif ndims == 1:
             leftvec_out[i] = _mineig_leftvec_add_mps(lv, mpa.lt[pos], mps_lten)
         else:
-            raise ValueError('plegs = {!r} not supported'.format(plegs))
+            raise ValueError('ndims = {!r} not supported'.format(ndims))
 
 
 def _mineig_sum_rightvec_add(
         mpas, mpas_plegs, rightvec_out, rightvec, pos, mps_lten):
     """Add one column to the right vector (MPA list dispatching)"""
-    for i, mpa, plegs, rv in zip(it.count(), mpas, mpas_plegs, rightvec):
-        if plegs == 2:
+    for i, mpa, ndims, rv in zip(it.count(), mpas, mpas_plegs, rightvec):
+        if ndims == 2:
             rightvec_out[i] = _mineig_rightvec_add(rv, mpa.lt[pos], mps_lten)
-        elif plegs == 1:
+        elif ndims == 1:
             rightvec_out[i] = _mineig_rightvec_add_mps(rv, mpa.lt[pos], mps_lten)
         else:
-            raise ValueError('plegs = {!r} not supported'.format(plegs))
+            raise ValueError('ndims = {!r} not supported'.format(ndims))
     return rightvec
 
 
@@ -337,13 +337,13 @@ def _mineig_sum_minimize_locally(
     # Our task is quite simple: Compute the local operator for each
     # contribution in the sum and sum the results, then minimize.
     op = 0
-    for mpa, plegs, lv, rv in zip(mpas, mpas_plegs, leftvec, rightvec):
-        if plegs == 2:
+    for mpa, ndims, lv, rv in zip(mpas, mpas_plegs, leftvec, rightvec):
+        if ndims == 2:
             op += _mineig_local_op(lv, list(mpa.lt[pos]), rv)
-        elif plegs == 1:
+        elif ndims == 1:
             op += _mineig_local_op_mps(lv, list(mpa.lt[pos]), rv)
         else:
-            raise ValueError('plegs = {!r} not supported'.format(pdims))
+            raise ValueError('ndims = {!r} not supported'.format(pdims))
 
     return _mineig_minimize_locally2(op, list(eigvec_ltens), user_eigs_opts)
 
@@ -409,7 +409,7 @@ def mineig(mpo,
         .format(nr_sites, minimize_sites))
 
     if startvec is None:
-        pdims = max(dim[0] for dim in mpo.dims)
+        pdims = max(dim[0] for dim in mpo.shapes)
         if startvec_bonddim is None:
             startvec_bonddim = max(mpo.ranks)
         if startvec_bonddim == 1:
@@ -526,13 +526,13 @@ def mineig_sum(mpas,
     nr_mpas = len(mpas)
     nr_sites = len(mpas[0])
     assert all(len(m) == nr_sites for m in mpas)
-    plegs = [m.plegs[0] for m in mpas]
+    ndims = [m.ndims[0] for m in mpas]
     assert nr_sites - minimize_sites > 0, (
         'Require ({} =) nr_sites > minimize_sites (= {})'
         .format(nr_sites, minimize_sites))
 
     if startvec is None:
-        pdims = max(dim[0] for dim in mpas[0].dims)  # FIXME (also in mineig())
+        pdims = max(dim[0] for dim in mpas[0].shapes)  # FIXME (also in mineig())
         if startvec_bonddim is None:
             raise ValueError(
                 'At least one of startvec and startvec_bonddim is required')
@@ -573,13 +573,13 @@ def mineig_sum(mpas,
     #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
     eigvec = startvec
     eigvec.normalize(right=1)
-    leftvecs = [[np.array(1, ndmin=1 + pl) for pl in plegs]]
+    leftvecs = [[np.array(1, ndmin=1 + pl) for pl in ndims]]
     leftvecs.extend([None] * nr_mpas for _ in range(nr_sites - minimize_sites))
     rightvecs = [[None] * nr_mpas for _ in range(nr_sites - minimize_sites)]
     rightvecs.append(leftvecs[0][:])
     for pos in reversed(range(nr_sites - minimize_sites)):
         _mineig_sum_rightvec_add(
-            mpas, plegs, rightvecs[pos], rightvecs[pos + 1],
+            mpas, ndims, rightvecs[pos], rightvecs[pos + 1],
             pos + minimize_sites, eigvec.lt[pos + minimize_sites])
 
     # The iteration pattern is very similar to
@@ -596,11 +596,11 @@ def mineig_sum(mpas,
                 eigvec.normalize(left=pos)
                 rightvecs[pos - 1] = [None] * nr_mpas
                 _mineig_sum_leftvec_add(
-                    mpas, plegs, leftvecs[pos], leftvecs[pos - 1],
+                    mpas, ndims, leftvecs[pos], leftvecs[pos - 1],
                     pos - 1, eigvec.lt[pos - 1])
             pos_end = pos + minimize_sites
             eigval, eigvec_lten = _mineig_sum_minimize_locally(
-                mpas, plegs, leftvecs[pos], slice(pos, pos_end), rightvecs[pos],
+                mpas, ndims, leftvecs[pos], slice(pos, pos_end), rightvecs[pos],
                 eigvec.lt[pos:pos_end], eigs_opts)
             eigvec.lt[pos:pos_end] = eigvec_lten
 
@@ -612,10 +612,10 @@ def mineig_sum(mpas,
                 eigvec.normalize(right=pos_end)
                 leftvecs[pos + 1] = [None] * nr_mpas
                 _mineig_sum_rightvec_add(
-                    mpas, plegs, rightvecs[pos], rightvecs[pos + 1],
+                    mpas, ndims, rightvecs[pos], rightvecs[pos + 1],
                     pos_end, eigvec.lt[pos_end])
             eigval, eigvec_lten = _mineig_sum_minimize_locally(
-                mpas, plegs, leftvecs[pos], slice(pos, pos_end), rightvecs[pos],
+                mpas, ndims, leftvecs[pos], slice(pos, pos_end), rightvecs[pos],
                 eigvec.lt[pos:pos_end], eigs_opts)
             eigvec.lt[pos:pos_end] = eigvec_lten
 

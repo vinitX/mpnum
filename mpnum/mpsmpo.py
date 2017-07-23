@@ -182,7 +182,7 @@ def pmps_dm_to_array(pmps, global_=False):
         # Axes: 0 phys, 1 phys, 2 phys, 3 upper bound, 4 lower bond
         out = out.reshape((-1, out.shape[3], out.shape[4]))
         # Axes: 0 phys, 1 upper bond, 2 lower bond
-    out_shape = [dim for dim, _ in pmps.dims for rep in (1, 2) if dim > 1]
+    out_shape = [dim for dim, _ in pmps.shapes for rep in (1, 2) if dim > 1]
     out = out.reshape(out_shape)
     if global_:
         assert len(set(out_shape)) == 1
@@ -243,7 +243,7 @@ def reductions_mpo(mpa, width=None, startsites=None, stopsites=None):
     startsites, stopsites = \
         _check_reductions_args(len(mpa), width, startsites, stopsites)
 
-    assert_array_equal(mpa.plegs, 2)
+    assert_array_equal(mpa.ndims, 2)
     rem_left = {0: np.array(1, ndmin=2)}
     rem_right = rem_left.copy()
 
@@ -381,7 +381,7 @@ def mps_to_pmps(mps):
     :returns: An MPA with two physical legs (system and ancilla)
 
     """
-    assert_array_equal(mps.plegs, 1)
+    assert_array_equal(mps.ndims, 1)
     ltens = (lten.reshape(lten.shape[0:2] + (1, lten.shape[2])) for lten in mps.lt)
     return mp.MPArray(ltens)
 
@@ -393,9 +393,9 @@ def pmps_to_mps(pmps):
     removed. Otherwise, an AssertionError is raised.
 
     """
-    assert all(l == 2 for l in pmps.plegs)
-    assert all(d[1] == 1 for d in pmps.dims)
-    return pmps.reshape([(d[0],) for d in pmps.dims])
+    assert all(l == 2 for l in pmps.ndims)
+    assert all(d[1] == 1 for d in pmps.shapes)
+    return pmps.reshape([(d[0],) for d in pmps.shapes])
 
 
 def mps_to_mpo(mps):

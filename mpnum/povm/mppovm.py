@@ -183,10 +183,10 @@ class MPPovm(mp.MPArray):
 
     def __init__(self, *args, **kwargs):
         mp.MPArray.__init__(self, *args, **kwargs)
-        assert all(plegs == 3 for plegs in self.plegs), \
-            "Need 3 physical legs at each site: {!r}".format(self.dims)
-        assert all(pdims[1] == pdims[2] for pdims in self.dims), \
-            "Hilbert space dimension mismatch: {!r}".format(self.dims)
+        assert all(ndims == 3 for ndims in self.ndims), \
+            "Need 3 physical legs at each site: {!r}".format(self.shapes)
+        assert all(pdims[1] == pdims[2] for pdims in self.shapes), \
+            "Hilbert space dimension mismatch: {!r}".format(self.shapes)
         # Used to store single outcomes as np.uint8 with 255 = 0xff
         # denoting "no value" (see :func:`MPPovm.sample`,
         # :func:`MPPovm.unpack_samples`).
@@ -247,7 +247,7 @@ class MPPovm(mp.MPArray):
         # See :func:`.localpovm.POVM.probability_map` for explanation
         # of the transpose.
         return self.transpose((0, 2, 1)).reshape(
-            (pdim[0], -1) for pdim in self.dims)
+            (pdim[0], -1) for pdim in self.shapes)
 
     @classmethod
     def from_local_povm(cls, lelems, width):
@@ -367,9 +367,9 @@ class MPPovm(mp.MPArray):
         """
         assert len(self) <= len(mpa)
         if mode == 'auto':
-            if all(pleg == 1 for pleg in mpa.plegs):
+            if all(pleg == 1 for pleg in mpa.ndims):
                 mode = 'mps'
-            elif all(pleg == 2 for pleg in mpa.plegs):
+            elif all(pleg == 2 for pleg in mpa.ndims):
                 mode = 'mpdo'
 
         pmap = self.probability_map
@@ -1031,7 +1031,7 @@ class MPPovm(mp.MPArray):
         outdims = self.outdims
         assert len(support) == len(outcome_mpa)
         assert all(dim[0] == outdims[pos]
-                   for pos, dim in zip(support, outcome_mpa.dims))
+                   for pos, dim in zip(support, outcome_mpa.shapes))
         if len(support) == len(self):
             return outcome_mpa  # Nothing to do
         # `self` does not have outcomes on the entire chain. Need
@@ -1064,7 +1064,7 @@ class MPPovm(mp.MPArray):
         assert given.any(), "Some elements are required"
         any_missing = not given.all()
         given = self._fill_outcome_mpa_holes(
-            support, mp.MPArray.from_array(given, plegs=1))
+            support, mp.MPArray.from_array(given, ndims=1))
         elem_sum = mp.dot(given, self)
         eye = factory.eye(len(self), self.hdims)
         sum_norm, eye_norm = mp.norm(elem_sum), mp.norm(eye)

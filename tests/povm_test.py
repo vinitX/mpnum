@@ -382,11 +382,11 @@ def test_mppovm_match_elems_bell(eps=1e-10):
     proj = proj.reshape((3,) + (2,) * 5)
 
     # Big POVM: The four Bell states (repeated two times)
-    big = povm.MPPovm.from_array_global(bell_proj, plegs=3)
+    big = povm.MPPovm.from_array_global(bell_proj, ndims=3)
     big = mp.outer([big, big])
     # Small POVM: Two of the Bell states and four product states (on
     # the last two sites)
-    small = povm.MPPovm.from_array_global(proj, plegs=3).embed(4, 2, 2)
+    small = povm.MPPovm.from_array_global(proj, ndims=3).embed(4, 2, 2)
 
     # Check that the POVM is normalized: elements must sum to the identity
     for mppovm in big, small:

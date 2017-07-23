@@ -132,7 +132,7 @@ def _generate(sites, ldim, bdim, func, force_bdim):
         * scalar: Single physical leg for each site with given dimension
         * iterable of scalar: Same physical legs for all sites
         * iterable of iterable: Generated MPA will have exactly this
-          as `plegs`
+          as `ndims`
 
     :param bdim: Bond dimension, depending on the type passed:
 
@@ -182,7 +182,7 @@ def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
     :param ldim: Depending on the type passed (checked in the following order)
 
         * iterable of iterable: Detailed list of physical dimensions,
-          retured mpa will have exactly this for mpa.dims
+          retured mpa will have exactly this for mpa.shapes
         * iterable of scalar: Same physical dimension for each site
         * scalar: Single physical leg for each site with given
           dimension
@@ -200,15 +200,15 @@ def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
     :returns: randomly choosen matrix product array
 
     >>> mpa = random_mpa(4, 2, 10, force_bdim=True)
-    >>> mpa.ranks, mpa.dims
+    >>> mpa.ranks, mpa.shapes
     ((10, 10, 10), ((2,), (2,), (2,), (2,)))
 
     >>> mpa = random_mpa(4, (1, 2), 10, force_bdim=True)
-    >>> mpa.ranks, mpa.dims
+    >>> mpa.ranks, mpa.shapes
     ((10, 10, 10), ((1, 2), (1, 2), (1, 2), (1, 2)))
 
     >>> mpa = random_mpa(4, [(1, ), (2, 3), (4, 5), (1, )], 10, force_bdim=True)
-    >>> mpa.ranks, mpa.dims
+    >>> mpa.ranks, mpa.shapes
     ((10, 10, 10), ((1,), (2, 3), (4, 5), (1,)))
 
     """
@@ -226,7 +226,7 @@ def zero(sites, ldim, bdim, force_bdim=False):
     :param ldim: Depending on the type passed (checked in the following order)
 
         * iterable of iterable: Detailed list of physical dimensions,
-          retured mpa will have exactly this for mpa.dims
+          retured mpa will have exactly this for mpa.shapes
         * iterable of scalar: Same physical dimension for each site
         * scalar: Single physical leg for each site with given
           dimension
@@ -249,10 +249,10 @@ def eye(sites, ldim):
     :returns: Representation of the identity matrix as MPA
 
     >>> I = eye(4, 2)
-    >>> I.ranks, I.dims
+    >>> I.ranks, I.shapes
     ((1, 1, 1), ((2, 2), (2, 2), (2, 2), (2, 2)))
     >>> I = eye(3, (3, 4, 5))
-    >>> I.dims
+    >>> I.shapes
     ((3, 3), (4, 4), (5, 5))
     """
     if isinstance(ldim, collections.Iterable):
@@ -308,7 +308,7 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
     :returns: randomly choosen matrix product operator
 
     >>> mpo = random_mpo(4, 2, 10, force_bdim=True)
-    >>> mpo.ranks, mpo.dims
+    >>> mpo.ranks, mpo.shapes
     ((10, 10, 10), ((2, 2), (2, 2), (2, 2), (2, 2)))
     >>> mpo.normal_form
     (0, 4)
@@ -342,7 +342,7 @@ def random_mps(sites, ldim, bdim, randstate=None, force_bdim=False):
     :returns: randomly choosen matrix product (pure) state
 
     >>> mps = random_mps(4, 2, 10, force_bdim=True)
-    >>> mps.ranks, mps.dims
+    >>> mps.ranks, mps.shapes
     ((10, 10, 10), ((2,), (2,), (2,), (2,)))
     >>> mps.normal_form
     (0, 4)
@@ -365,7 +365,7 @@ def random_mpdo(sites, ldim, bdim, randstate=np.random):
     :returns: randomly choosen classicaly correlated matrix product density op.
 
     >>> rho = random_mpdo(4, 2, 4)
-    >>> rho.ranks, rho.dims
+    >>> rho.ranks, rho.shapes
     ((4, 4, 4), ((2, 2), (2, 2), (2, 2), (2, 2)))
     >>> rho.normal_form
     (0, 4)

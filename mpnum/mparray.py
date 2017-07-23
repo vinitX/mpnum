@@ -143,17 +143,12 @@ class MPArray(object):
         return tuple(m.shape[0] for m in self._lt[1:])
 
     @property
-    def dims(self):
+    def shapes(self):
         """Tuple of physical dimensions"""
         return tuple((m.shape[1:-1]) for m in self._lt)
 
     @property
-    def legs(self):
-        """Tuple of total number of legs per site"""
-        return tuple(lten.ndim for lten in self._lt)
-
-    @property
-    def plegs(self):
+    def ndims(self):
         """Tuple of number of physical legs per site"""
         return tuple(lten.ndim - 2 for lten in self._lt)
 
@@ -175,7 +170,7 @@ class MPArray(object):
             with h5py.File(target, 'w') as outfile:
                 return self.dump(outfile)
 
-        for prop in ('ranks', 'dims'):
+        for prop in ('ranks', 'shapes'):
             # these are only saved for convenience
             target.attrs[prop] = str(getattr(self, prop))
 
@@ -205,7 +200,7 @@ class MPArray(object):
 
     #FIXME Where is this used? Does it really have to be in here?
     @classmethod
-    def from_array_global(cls, array, plegs=None, has_bond=False):
+    def from_array_global(cls, array, ndims=None, has_bond=False):
         """Create MPA from array in global form.
 
         See :func:`mpnum._tools.global_to_local()` for global
@@ -216,14 +211,14 @@ class MPArray(object):
 
         """
         assert not has_bond, 'not implemented yet'
-        plegs = plegs if plegs is not None else array.ndim
-        assert array.ndim % plegs == 0, \
-            "plegs invalid: {} is not multiple of {}".format(array.ndim, plegs)
-        sites = array.ndim // plegs
-        return cls.from_array(global_to_local(array, sites), plegs, has_bond)
+        ndims = ndims if ndims is not None else array.ndim
+        assert array.ndim % ndims == 0, \
+            "ndims invalid: {} is not multiple of {}".format(array.ndim, ndims)
+        sites = array.ndim // ndims
+        return cls.from_array(global_to_local(array, sites), ndims, has_bond)
 
     @classmethod
-    def from_array(cls, array, plegs=None, has_bond=False):
+    def from_array(cls, array, ndims=None, has_bond=False):
         """Create MPA from array in local form.
 
         See :func:`mpnum._tools.global_to_local()` for global
@@ -237,8 +232,8 @@ class MPArray(object):
         left. This yields a left-canonical representation of
         `array`. [Sch11_, Sec. 4.3.1]
 
-        The result is a chain of local tensors with `plegs` physical legs at
-        each location and has array.ndim // plegs number of sites.
+        The result is a chain of local tensors with `ndims` physical legs at
+        each location and has array.ndim // ndims number of sites.
 
         has_bond = True allows to treat a part of the linear chain of
         an MPA as MPA as well. The bond dimension on the left and
@@ -251,19 +246,19 @@ class MPArray(object):
             array[(i1), ..., (iN)], i.e. the legs which are factorized into
             the same factor are already adjacent. (For me details see
             :func:`_tools.global_to_local`)
-        :param plegs: Number of physical legs per site (default array.ndim)
+        :param ndims: Number of physical legs per site (default array.ndim)
             or iterable over number of physical legs
         :param bool has_bond: True if array already has indices for
             the left and right bond
 
         """
 
-        plegs = plegs if plegs is not None else array.ndim
-        plegs = iter(plegs) if isinstance(plegs, collections.Iterable) else plegs
+        ndims = ndims if ndims is not None else array.ndim
+        ndims = iter(ndims) if isinstance(ndims, collections.Iterable) else ndims
 
         if not has_bond:
             array = array[None, ..., None]
-        ltens = _extract_factors(array, plegs=plegs)
+        ltens = _extract_factors(array, ndims=ndims)
         return cls(LocalTensors(ltens, nform=(len(ltens) - 1, len(ltens))))
 
     @classmethod
@@ -283,7 +278,7 @@ class MPArray(object):
         See :func:`mpnum._tools.global_to_local()` for global
         vs. local form.
 
-        :returns: ndarray of shape :code:`sum(self.dims, ())`
+        :returns: ndarray of shape :code:`sum(self.shapes, ())`
 
         .. note:: Full arrays can require much more memory than
                   MPAs. (That's why you are using MPAs, right?)
@@ -298,7 +293,7 @@ class MPArray(object):
         See :func:`mpnum._tools.global_to_local()` for global
         vs. local form.
 
-        :returns: ndarray of shape :code:`sum(zip(*self.dims, ()))`
+        :returns: ndarray of shape :code:`sum(zip(*self.shapes, ()))`
 
         See :func:`to_array()` for more details.
 
@@ -351,9 +346,9 @@ class MPArray(object):
 
         >>> from .factory import random_mpa
         >>> mpa = random_mpa(2, (2, 3, 4), 2)
-        >>> mpa.dims
+        >>> mpa.shapes
         ((2, 3, 4), (2, 3, 4))
-        >>> mpa.transpose((2, 0, 1)).dims
+        >>> mpa.transpose((2, 0, 1)).shapes
         ((4, 2, 3), (4, 2, 3))
 
         """
@@ -458,12 +453,12 @@ class MPArray(object):
                 axes = it.repeat(axes)  # Sum over same physical legs everywhere
             else:
                 assert len(axes) == len(self)
-        axes = (tuple(range(1, plegs + 1)) if ax is None
+        axes = (tuple(range(1, ndims + 1)) if ax is None
                 else tuple(a + 1 for a in ax)
-                for ax, plegs in zip(axes, self.plegs))
+                for ax, ndims in zip(axes, self.ndims))
         out = type(self)(lt.sum(ax) if ax else lt
                          for ax, lt in zip(axes, self.lt))
-        if sum(out.plegs) == 0:
+        if sum(out.ndims) == 0:
             out = out.to_array()
         return out
 
@@ -473,7 +468,7 @@ class MPArray(object):
     def reshape(self, newshapes):
         """Reshape physical legs in place.
 
-        Use self.dims to obtain the shapes of the physical legs.
+        Use self.shapes to obtain the shapes of the physical legs.
 
         :param newshapes: A single new shape or a list of new shapes.
             Alternatively, you can pass 'prune' to get rid of all physical legs
@@ -483,7 +478,7 @@ class MPArray(object):
         """
         # TODO Why is this here? What's wrong with the purne function?
         if newshapes == 'prune':
-            newshapes = (tuple(s for s in pdim if s > 1) for pdim in self.dims)
+            newshapes = (tuple(s for s in pdim if s > 1) for pdim in self.shapes)
 
         newshapes = tuple(newshapes)
         if not isinstance(newshapes[0], collections.Iterable):
@@ -503,11 +498,11 @@ class MPArray(object):
         """Group several MPA sites into one site.
 
         The resulting MPA has length len(self) // sites_per_group and
-        sites_per_group * self.plegs[i] physical legs on site i. The
+        sites_per_group * self.ndims[i] physical legs on site i. The
         physical legs on each sites are in local form.
 
         :param int sites_per_group: Number of sites to be grouped into one
-        :returns: An MPA with sites_per_group fewer sites and more plegs
+        :returns: An MPA with sites_per_group fewer sites and more ndims
 
         """
         assert (len(self) % sites_per_group) == 0, \
@@ -523,19 +518,19 @@ class MPArray(object):
         """Split MPA sites into several sites.
 
         The resulting MPA has length len(self) * sites_per_group and
-        self.plegs[i] // sites_per_group physical legs on site i. The
+        self.ndims[i] // sites_per_group physical legs on site i. The
         physical legs on before splitting must be in local form.
 
         :param int sites_per_group: Split each site in that many sites
-        :returns: An mpa with sites_per_group more sites and fewer plegs
+        :returns: An mpa with sites_per_group more sites and fewer ndims
 
         """
         ltens = []
         for i in range(len(self)):
-            plegs = self.plegs[i]
-            assert (plegs % sites_per_group) == 0, \
-                'plegs not a multiple of sites_per_group'
-            ltens += _extract_factors(self._lt[i], plegs // sites_per_group)
+            ndims = self.ndims[i]
+            assert (ndims % sites_per_group) == 0, \
+                'ndims not a multiple of sites_per_group'
+            ltens += _extract_factors(self._lt[i], ndims // sites_per_group)
         return MPArray(ltens)
 
     def bleg2pleg(self, pos):
@@ -896,14 +891,14 @@ class MPArray(object):
 
         if startmpa is None:
             from mpnum.factory import random_mpa
-            compr = random_mpa(len(self), self.dims, bdim, randstate=randstate,
+            compr = random_mpa(len(self), self.shapes, bdim, randstate=randstate,
                                dtype=self.dtype)
         else:
             compr = startmpa.copy()
-            assert all(d1 == d2 for d1, d2 in zip(self.dims, compr.dims))
+            assert all(d1 == d2 for d1, d2 in zip(self.shapes, compr.shapes))
 
         # flatten the array since MPS is expected & bring back
-        shape = self.dims
+        shape = self.shapes
         compr = compr.ravel()
         overlap = compr._adapt_to(self.ravel(), num_sweeps, var_sites)
         compr = compr.reshape(shape)
@@ -1016,7 +1011,7 @@ class MPArray(object):
             bdim = self.bdim
         bdims = it.repeat(bdim)
         if not force_bdim:
-            bdims = [min(f, b) for f, b in zip(full_bdim(self.dims), bdims)]
+            bdims = [min(f, b) for f, b in zip(full_bdim(self.shapes), bdims)]
         pad = [max(s, b) - s for s, b in zip(self.ranks, bdims)]
         lt = (np.pad(lt, [(0, lp)] + [(0, 0)] * (lt.ndim - 2) + [(0, rp)],
                      'constant')
@@ -1062,8 +1057,8 @@ class MPArray(object):
         # and rvecs[pos] is constructed from matrices on
         #
         #   range(pos_end, nr_sites),  pos_end = pos + var_sites
-        assert_array_equal(self.plegs, 1, "Self is not a MPS")
-        assert_array_equal(target.plegs, 1, "Target is not a MPS")
+        assert_array_equal(self.ndims, 1, "Self is not a MPS")
+        assert_array_equal(target.ndims, 1, "Target is not a MPS")
 
         nr_sites = len(target)
         lvecs = [np.array(1, ndmin=2)] + [None] * (nr_sites - var_sites)
@@ -1301,27 +1296,27 @@ def diag(mpa, axis=0):
     has more than one physical dimension, the result is a numpy array with
     :code:`MPArray` entries, otherwise its a numpy array with floats.
 
-    :param mpa: MPArray with dims > :code:`axis`
+    :param mpa: MPArray with shapes > :code:`axis`
     :param axis: The physical index to take diagonals over
     :returns: Array containing the diagonal elements (`MPArray`s with the
     physical dimension reduced by one, note that an `MPArray` with physical
     dimension 0 is a simple number)
 
     """
-    dim = mpa.dims[0][axis]
+    dim = mpa.shapes[0][axis]
     # work around http://bugs.python.org/issue21161
     try:
-        valid_axis = [d[axis] == dim for d in mpa.dims]
+        valid_axis = [d[axis] == dim for d in mpa.shapes]
         assert all(valid_axis)
     except NameError:
         pass
-    plegs = mpa.plegs[0]
-    assert all(p == plegs for p in mpa.plegs)
+    ndims = mpa.ndims[0]
+    assert all(p == ndims for p in mpa.ndims)
 
     slices = ((slice(None),) * (axis + 1) + (i,) for i in range(dim))
     mpas = [MPArray(ltens[s] for ltens in mpa.lt) for s in slices]
 
-    if len(mpa.dims[0]) == 1:
+    if len(mpa.shapes[0]) == 1:
         return np.array([mpa.to_array() for mpa in mpas])
     else:
         return np.array(mpas, dtype=object)
@@ -1339,7 +1334,7 @@ def inject(mpa, pos, num=None, inject_ten=None):
     that as it is a much simpler function.
 
     If `inject_ten` is omitted, use a square identity matrix of size
-    `mpa.dims[pos][0]`. If `pos = len(mpa)`, `mpa.dims[pos - 1][0]`
+    `mpa.shapes[pos][0]`. If `pos = len(mpa)`, `mpa.shapes[pos - 1][0]`
     will be used for the size of the matrix.
 
     :param mpa: An MPA.
@@ -1464,17 +1459,17 @@ def _prune_ltens(mpa):
     """
     mpa_iter = iter(mpa)
     last_lten = next(mpa_iter)
-    last_lten_plegs = last_lten.ndim - 2
+    last_lten_ndims = last_lten.ndim - 2
     for lten in mpa_iter:
-        num_plegs = lten.ndim - 2
-        if num_plegs == 0 or last_lten_plegs == 0:
+        num_ndims = lten.ndim - 2
+        if num_ndims == 0 or last_lten_ndims == 0:
             last_lten = matdot(last_lten, lten)
-            last_lten_plegs = last_lten.ndim - 2
+            last_lten_ndims = last_lten.ndim - 2
         else:
-            # num_plegs > 0 and last_lten_plegs > 0
+            # num_ndims > 0 and last_lten_ndims > 0
             yield last_lten
             last_lten = lten
-            last_lten_plegs = num_plegs
+            last_lten_ndims = num_ndims
     # If there are no physical legs at all, we will yield one scalar
     # here.
     yield last_lten
@@ -1489,8 +1484,8 @@ def prune(mpa, singletons=False):
     :returns: An MPA of smaller length
 
     """
-    if singletons and any(np.prod(p) == 1 for p in mpa.dims):
-        mpa = mpa.reshape(() if np.prod(p) == 1 else p for p in mpa.dims)
+    if singletons and any(np.prod(p) == 1 for p in mpa.shapes):
+        mpa = mpa.reshape(() if np.prod(p) == 1 else p for p in mpa.shapes)
     return MPArray(_prune_ltens(mpa.lt))
 
 
@@ -1614,9 +1609,9 @@ def _embed_ltens_identity(mpa, embed_tensor=None):
 
     """
     if embed_tensor is None:
-        pdims = mpa.dims[0]
+        pdims = mpa.shapes[0]
         assert len(pdims) == 2 and pdims[0] == pdims[1], (
-            "For plegs != 2 or non-square dims, you must supply a tensor"
+            "For ndims != 2 or non-square shapes, you must supply a tensor"
             "for embedding")
         embed_tensor = np.eye(pdims[0])
     embed_ltens = embed_tensor[None, ..., None]
@@ -1762,17 +1757,17 @@ def local_sum(mpas, embed_tensor=None, length=None, slices=None):
 ############################################################
 #  Functions for dealing with local operations on tensors  #
 ############################################################
-def _extract_factors(tens, plegs):
+def _extract_factors(tens, ndims):
     """Extract iteratively the leftmost MPO tensor with given number of
     legs by a qr-decomposition
 
     :param np.ndarray tens: Full tensor to be factorized
-    :param plegs: Number of physical legs per site or iterator over number of
+    :param ndims: Number of physical legs per site or iterator over number of
         physical legs
     :returns: List of local tensors with given number of legs yielding a
         factorization of tens
     """
-    current = next(plegs) if isinstance(plegs, collections.Iterator) else plegs
+    current = next(ndims) if isinstance(ndims, collections.Iterator) else ndims
     if tens.ndim == current + 2:
         return [tens]
     elif tens.ndim < current + 2:
@@ -1783,7 +1778,7 @@ def _extract_factors(tens, plegs):
         unitary = unitary.reshape(tens.shape[:current + 1] + rest.shape[:1])
         rest = rest.reshape(rest.shape[:1] + tens.shape[current + 1:])
 
-        return [unitary] + _extract_factors(rest, plegs)
+        return [unitary] + _extract_factors(rest, ndims)
 
 
 def _local_dot(ltens_l, ltens_r, axes):
@@ -2032,7 +2027,7 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
         # [Sch11_, p. 49] says that we can go with QR instead of SVD
         # here. However, this will generally increase the bond dimension of
         # our compressed MPS, which we do not want.
-        compr_ltens = MPArray.from_array(compr_lten, plegs=1, has_bond=True)
+        compr_ltens = MPArray.from_array(compr_lten, ndims=1, has_bond=True)
         compr_ltens.compress('svd', bdim=max_bonddim)
         return compr_ltens.lt
 

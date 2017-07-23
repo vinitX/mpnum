@@ -25,8 +25,8 @@ def inner_prod_mps(mpa1, mpa2):
 
     """
     assert all(bdim == 1 for bdim in mpa1.ranks)
-    assert all(pleg == 1 for pleg in mpa1.plegs)
-    assert all(pleg == 1 for pleg in mpa2.plegs)
+    assert all(pleg == 1 for pleg in mpa1.ndims)
+    assert all(pleg == 1 for pleg in mpa2.ndims)
 
     # asssume mpa1 is product
     ltens1 = iter(mpa1.lt)
@@ -100,7 +100,7 @@ def sumup(mpas, bdim, weights=None, svdfunc=truncated_svd):
 
     result_ltens = LocalTensors(ltens, nform=(len(ltens) - 1, None))
     result = mp.MPArray(result_ltens)
-    return result.reshape(mpas[0].dims)
+    return result.reshape(mpas[0].shapes)
 
 
 def _local_add_sparse(ltenss):

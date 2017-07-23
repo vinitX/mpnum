@@ -49,7 +49,7 @@ def test_inner_prod_mps(nr_sites, local_dim, bond_dim, dtype, rgen):
     except AssertionError:
         pass
     else:
-        raise AssertionError("inner_prod_mps should only accept plegs=1")
+        raise AssertionError("inner_prod_mps should only accept ndims=1")
 
 
 @pt.mark.benchmark(group="inner")

@@ -60,20 +60,20 @@ def test_from_full(nr_sites, local_dim, _, rgen, dtype):
 
 def test_from_inhomogenous(rgen):
     array = rgen.randn(4, 3, 3, 3)
-    mpa = mp.MPArray.from_array(array, plegs=(2, 1, 1))
+    mpa = mp.MPArray.from_array(array, ndims=(2, 1, 1))
     assert_array_almost_equal(array, mpa.to_array())
-    assert mpa.plegs == (2, 1, 1)
-    assert mpa.dims == ((4, 3), (3,), (3,))
+    assert mpa.ndims == (2, 1, 1)
+    assert mpa.shapes == ((4, 3), (3,), (3,))
 
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
 def test_from_kron(nr_sites, local_dim, bond_dim, dtype):
-    plegs = 2
+    ndims = 2
     randfun = factory._randfuncs[dtype]
-    factors = tuple(randfun([nr_sites] + ([local_dim] * plegs)))
+    factors = tuple(randfun([nr_sites] + ([local_dim] * ndims)))
     op = _tools.mkron(*factors)
-    op.shape = [local_dim] * (plegs * nr_sites)
+    op.shape = [local_dim] * (ndims * nr_sites)
     mpo = mp.MPArray.from_kron(factors)
     assert_array_almost_equal(op, mpo_to_global(mpo))
     assert mpo.dtype == dtype
@@ -115,7 +115,7 @@ def test_transpose_axes(rgen):
 
     # Easy (to implement) test: One physical site only.
     vec = factory._zrandn(ldim, rgen)
-    mps = mp.MPArray.from_array(vec, plegs=len(ldim))
+    mps = mp.MPArray.from_array(vec, ndims=len(ldim))
     assert len(mps) == 1
 
     vec_t = vec.transpose(axes)
@@ -128,16 +128,16 @@ def test_transpose_axes(rgen):
     # Test with 3 sites
     nr_sites = 3
     tensor = factory._zrandn(ldim * nr_sites, rgen)  # local form
-    mpa = mp.MPArray.from_array(tensor, plegs=len(ldim))
+    mpa = mp.MPArray.from_array(tensor, ndims=len(ldim))
     assert len(mpa) == nr_sites
-    assert mpa.dims == (ldim,) * nr_sites
+    assert mpa.shapes == (ldim,) * nr_sites
     # transpose axes in local form
     tensor_axes = tuple(ax + site * len(ldim)
                         for site in range(nr_sites) for ax in axes)
     tensor_t = tensor.transpose(tensor_axes)
     mpa_t = mpa.transpose(axes)
     mpa_t_to_tensor = mpa_t.to_array()
-    assert mpa_t.dims == (new_ldim,) * nr_sites
+    assert mpa_t.shapes == (new_ldim,) * nr_sites
     assert_array_almost_equal(mpa_t_to_tensor, tensor_t)
     assert_correct_normalization(mpa_t)
 
@@ -181,10 +181,10 @@ def test_sum(nr_sites, local_dim, bond_dim, rgen, dtype):
     n_plegs = 3 if nr_sites <= 4 and local_dim <= 2 else 2
     mpa = factory.random_mpa(nr_sites, [local_dim] * n_plegs, bond_dim, rgen, dtype)
     # Pseudo-randomly choose how many physical legs to sum over at each site.
-    num_sum = ((rgen.choice(range(plegs + 1)), plegs) for plegs in mpa.plegs)
+    num_sum = ((rgen.choice(range(ndims + 1)), ndims) for ndims in mpa.ndims)
     # Pseudo-randomly choose which physical legs to sum over.
     axes = tuple(
-        rgen.choice(range(plegs), num, replace=False) for num, plegs in num_sum)
+        rgen.choice(range(ndims), num, replace=False) for num, ndims in num_sum)
     array_axes = tuple(n_plegs * pos + a
                        for pos, ax in enumerate(axes) for a in ax)
     mpa_sum = mpa.sum(axes)
@@ -239,8 +239,8 @@ def test_dot_multiaxes(rgen):
     # Easy (to implement) test: One physical site.
     vec1 = factory._zrandn(ldim1, rgen)
     vec2 = factory._zrandn(ldim2, rgen)
-    mpa1 = mp.MPArray.from_array(vec1, plegs=len(ldim1))
-    mpa2 = mp.MPArray.from_array(vec2, plegs=len(ldim2))
+    mpa1 = mp.MPArray.from_array(vec1, ndims=len(ldim1))
+    mpa2 = mp.MPArray.from_array(vec2, ndims=len(ldim2))
     assert len(mpa1) == 1
     assert len(mpa2) == 1
 
@@ -252,8 +252,8 @@ def test_dot_multiaxes(rgen):
     nr_sites = 3
     vec1 = factory._zrandn(ldim1 * nr_sites, rgen)  # local form
     vec2 = factory._zrandn(ldim2 * nr_sites, rgen)  # local form
-    mpa1 = mp.MPArray.from_array(vec1, plegs=len(ldim1))
-    mpa2 = mp.MPArray.from_array(vec2, plegs=len(ldim2))
+    mpa1 = mp.MPArray.from_array(vec1, ndims=len(ldim1))
+    mpa2 = mp.MPArray.from_array(vec2, ndims=len(ldim2))
     assert len(mpa1) == nr_sites
     assert len(mpa2) == nr_sites
     mpa_prod = mp.dot(mpa1, mpa2, axes=(ax1, ax2)).to_array()
@@ -322,8 +322,8 @@ def test_partialdot_multiaxes(rgen):
     # Easy (to implement) test: One physical site.
     vec1 = factory._zrandn(ldim1, rgen)
     vec2 = factory._zrandn(ldim2, rgen)
-    mpa1 = mp.MPArray.from_array(vec1, plegs=len(ldim1))
-    mpa2 = mp.MPArray.from_array(vec2, plegs=len(ldim2))
+    mpa1 = mp.MPArray.from_array(vec1, ndims=len(ldim1))
+    mpa2 = mp.MPArray.from_array(vec2, ndims=len(ldim2))
     assert len(mpa1) == 1
     assert len(mpa2) == 1
 
@@ -337,8 +337,8 @@ def test_partialdot_multiaxes(rgen):
     start_at = 1
     vec1 = factory._zrandn(ldim1 * nr_sites, rgen)  # local form
     vec2 = factory._zrandn(ldim2 * nr_sites_shorter, rgen)  # local form
-    mpa1 = mp.MPArray.from_array(vec1, plegs=len(ldim1))
-    mpa2 = mp.MPArray.from_array(vec2, plegs=len(ldim2))
+    mpa1 = mp.MPArray.from_array(vec1, ndims=len(ldim1))
+    mpa2 = mp.MPArray.from_array(vec2, ndims=len(ldim2))
     assert len(mpa1) == nr_sites
     assert len(mpa2) == nr_sites_shorter
     mpa_prod = mp.partialdot(mpa1, mpa2, start_at, axes=(ax1, ax2)).to_array()
@@ -624,11 +624,11 @@ def test_inject(local_dim, bond_dim):
     if np.isnan(bond_dim):
         return
 
-    # plegs = 3 is hardcoded below (argument to .transpose()).
+    # ndims = 3 is hardcoded below (argument to .transpose()).
     # Uniform local dimension is also hardcoded below (arguments to
     # .reshape()).
-    plegs = 3
-    local_dim = (local_dim,) * plegs
+    ndims = 3
+    local_dim = (local_dim,) * ndims
 
     a, b, c = factory._zrandn((3, 2) + local_dim)
     # We don't use b[1, :]
@@ -640,7 +640,7 @@ def test_inject(local_dim, bond_dim):
     ac0 = np.kron(a[0, :], c[0, :])
     ac1 = np.kron(a[1, :], c[1, :])
     ac = (ac0 + ac1).reshape(2 * local_dim)
-    ac_mpo = mp.MPArray.from_array(global_to_local(ac, sites=2), plegs)
+    ac_mpo = mp.MPArray.from_array(global_to_local(ac, sites=2), ndims)
     abbc_mpo = mp.inject(ac_mpo, pos=1, num=2, inject_ten=b)
     abbc_mpo2 = mp.inject(ac_mpo, pos=[1], num=[2], inject_ten=[b])
     abbc_mpo3 = mp.inject(ac_mpo, pos=[1], num=None, inject_ten=[[b, b]])
@@ -653,17 +653,17 @@ def test_inject(local_dim, bond_dim):
     b = factory._zrandn(local_dim)
     acb = np.tensordot(ac, b, axes=((), ()))
     abc = acb.transpose((0, 1, 2, 6, 7, 8, 3, 4, 5))
-    ac_mpo = mp.MPArray.from_array(ac, plegs)
+    ac_mpo = mp.MPArray.from_array(ac, ndims)
     abc_mpo = mp.inject(ac_mpo, pos=1, num=1, inject_ten=b)
     # Keep local order
     abc_from_mpo = abc_mpo.to_array()
     assert_array_almost_equal(abc, abc_from_mpo)
 
-    # plegs = 2 is hardcoded below (argument to .transpose()).
+    # ndims = 2 is hardcoded below (argument to .transpose()).
     # Uniform local dimension is also hardcoded below (arguments to
     # .reshape()).
-    plegs = 2
-    local_dim = (local_dim[0],) * plegs
+    ndims = 2
+    local_dim = (local_dim[0],) * ndims
 
     a, c = factory._zrandn((2, 2) + local_dim)
     b = np.eye(local_dim[0])
@@ -674,7 +674,7 @@ def test_inject(local_dim, bond_dim):
     ac0 = np.kron(a[0, :], c[0, :])
     ac1 = np.kron(a[1, :], c[1, :])
     ac = (ac0 + ac1).reshape(2 * local_dim)
-    ac_mpo = mp.MPArray.from_array(global_to_local(ac, sites=2), plegs)
+    ac_mpo = mp.MPArray.from_array(global_to_local(ac, sites=2), ndims)
     abbc_mpo = mp.inject(ac_mpo, pos=1, num=2, inject_ten=None)
     abbc_mpo2 = mp.inject(ac_mpo, pos=[1], num=[2])
     abbc_mpo3 = mp.inject(ac_mpo, pos=[1], inject_ten=[[None, None]])
@@ -687,7 +687,7 @@ def test_inject(local_dim, bond_dim):
     b = np.eye(local_dim[0])
     acb = np.tensordot(ac, b, axes=((), ()))
     abc = acb.transpose((0, 1, 4, 5, 2, 3))
-    ac_mpo = mp.MPArray.from_array(ac, plegs)
+    ac_mpo = mp.MPArray.from_array(ac, ndims)
     abc_mpo = mp.inject(ac_mpo, pos=1, num=1, inject_ten=None)
     # Keep local order
     abc_from_mpo = abc_mpo.to_array()
@@ -719,11 +719,11 @@ def test_inject_many(local_dim, bond_dim, rgen):
 def test_inject_pdim(rgen):
     """Check that mp.inject() picks up the correct physical dimension"""
     mpa = factory.random_mpa(3, ([1], [2], [3]), 3, rgen, normalized=True)
-    print(mpa.dims)
+    print(mpa.shapes)
     mpa_inj = mp.inject(mpa, [0, 2], [1, 1])
-    assert mpa_inj.dims == ((1, 1), (1,), (2,), (3, 3), (3,))
+    assert mpa_inj.shapes == ((1, 1), (1,), (2,), (3, 3), (3,))
     mpa_inj = mp.inject(mpa, [1, 3], [1, 1], None)
-    assert mpa_inj.dims == ((1,), (2, 2), (2,), (3,), (3, 3))
+    assert mpa_inj.shapes == ((1,), (2, 2), (2,), (3,), (3, 3))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
@@ -757,7 +757,7 @@ def test_louter(nr_sites, local_dim, bond_dim, rgen):
     tensor_mp = mp.louter(mpa1, mpa2)
     tensor_np = arr1 * arr2
 
-    assert tensor_mp.plegs == (2,) * nr_sites
+    assert tensor_mp.ndims == (2,) * nr_sites
     assert tensor_np.shape == (local_dim,) * (2 * nr_sites)
 
     assert_array_almost_equal(tensor_np, tensor_mp.to_array_global())
@@ -817,7 +817,7 @@ def test_diag_2plegs(nr_sites, local_dim, bond_dim, rgen):
     diag_np = np.array([mpa_np[(slice(None), i) * nr_sites]
                         for i in range(local_dim)])
     for a, b in zip(diag_mp, diag_np):
-        assert a.plegs[0] == 1
+        assert a.ndims[0] == 1
         assert_array_almost_equal(a.to_array(), b)
 
 
@@ -841,22 +841,22 @@ def test_group_sites(nr_sites, local_dim, bond_dim, sites_per_group, rgen):
 def test_split_sites(nr_sites, local_dim, bond_dim, sites_per_group, rgen):
     assert (nr_sites % sites_per_group) == 0, \
         'nr_sites not a multiple of sites_per_group'
-    plegs = (local_dim,) * (2 * sites_per_group)
-    mpa = factory.random_mpa(nr_sites // sites_per_group, plegs, bond_dim, randstate=rgen)
+    ndims = (local_dim,) * (2 * sites_per_group)
+    mpa = factory.random_mpa(nr_sites // sites_per_group, ndims, bond_dim, randstate=rgen)
     split_mpa = mpa.split_sites(sites_per_group)
     op = mpa.to_array()
     split_op = split_mpa.to_array()
     assert_array_almost_equal(op, split_op)
 
 
-@pt.mark.parametrize('plegs', [1, 2, 3])
+@pt.mark.parametrize('ndims', [1, 2, 3])
 @pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_reverse(nr_sites, local_dim, bond_dim, plegs, rgen):
-    mpa = factory.random_mpa(nr_sites, (local_dim,) * plegs, bond_dim, rgen,
+def test_reverse(nr_sites, local_dim, bond_dim, ndims, rgen):
+    mpa = factory.random_mpa(nr_sites, (local_dim,) * ndims, bond_dim, rgen,
                              normalized=True)
     arr = mpa.to_array()
-    rev_arr = arr.transpose(np.arange(nr_sites * plegs)
-                            .reshape((nr_sites, plegs))[::-1, :].ravel())
+    rev_arr = arr.transpose(np.arange(nr_sites * ndims)
+                            .reshape((nr_sites, ndims))[::-1, :].ravel())
     rev_mpa = mpa.reverse()
     rev_arr2 = rev_mpa.to_array()
     assert_almost_equal(rev_arr, rev_arr2)
@@ -875,7 +875,7 @@ def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
             [(true_bond_dim, local_dim)] + [(local_dim,)] * (nr_sites - pos - 2)
         bdims = list(mpa.ranks)
         bdims[pos] = 1
-        assert_array_equal(mpa_t.dims, pshape)
+        assert_array_equal(mpa_t.shapes, pshape)
         assert_array_equal(mpa_t.ranks, bdims)
         assert_correct_normalization(mpa_t)
 
@@ -916,7 +916,7 @@ def test_reshape(rgen):
     mpa = factory.random_mpa(4, [(3, 2), (4,), (2, 5), (24,)], 4)
     mpa.normalize()
     mpa_r = mpa.reshape([(2, 3), (2, 2), (10,), (3, 2, 4)])
-    assert all(s1 == s2 for s1, s2 in zip(mpa_r.dims, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
+    assert all(s1 == s2 for s1, s2 in zip(mpa_r.shapes, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
     assert_correct_normalization(mpa_r, *mpa.normal_form)
 
 
@@ -1097,7 +1097,7 @@ def test_pad_bdim(nr_sites, local_dim, bond_dim, rgen):
     mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
                              normalized=True)
     mps2 = mps.pad_bdim(2 * bond_dim)
-    assert mps2.ranks == tuple(min(d, 2 * bond_dim) for d in mp.full_bdim(mps.dims))
+    assert mps2.ranks == tuple(min(d, 2 * bond_dim) for d in mp.full_bdim(mps.shapes))
     assert_almost_equal(mp.normdist(mps, mps2), 0.0)
     mps2 = mps.pad_bdim(2 * bond_dim, force_bdim=True)
     assert mps2.ranks == (2 * bond_dim,) * (nr_sites - 1)
@@ -1211,7 +1211,7 @@ def call_compression(mpa, comparg, bonddim, rgen, call_compress=False):
 
     """
     if not ('relerr' in comparg) and (comparg.get('startmpa') == 'fillbelow'):
-        startmpa = factory.random_mpa(len(mpa), mpa.dims[0], bonddim,
+        startmpa = factory.random_mpa(len(mpa), mpa.shapes[0], bonddim,
                                       normalized=True, randstate=rgen,
                                       dtype=mpa.dtype)
         comparg = update_copy_of(comparg, {'startmpa': startmpa})
