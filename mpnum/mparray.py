@@ -59,11 +59,11 @@ class MPArray(object):
 
        A_{i_1, \ldots, i_N} = A^{[1]}_{i_1} \ldots A^{[N]}_{i_N}
 
-    where the :math:`A^{[k]}` are local tensors (with N legs). The
-    matrix products in :eq:`mpa` are taken with respect to the left
-    and right leg and the multi-index :math:`i_k` corresponds to the
-    physical legs. Open boundary conditions imply that :math:`A^{[1]}`
-    is 1-by-something and :math:`A^{[N]}` is something-by-1.
+    where the :math:`A^{[k]}` are local tensors (with N legs/dimensions).
+    The matrix products in :eq:`mpa` are taken with respect to the left-
+    and right-most legs (virtual indices) and the multi-index :math:`i_k`
+    corresponds to the true tensor legs. Open boundary conditions imply that
+    :math:`A^{[1]}` is 1-by-something and :math:`A^{[N]}` is something-by-1.
 
     By convention, the 0th and last dimension of the local tensors are reserved
     for the auxillary legs.
