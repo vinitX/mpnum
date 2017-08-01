@@ -1915,6 +1915,8 @@ def _adapt_to_add_l(leftvec, compr_lten, tgt_lten):
     the top row of the figure without complex conjugation and tgt_lten
     in the bottom row with complex conjugation.
 
+    .. todo:: Adapt tensor leg names.
+
     """
     leftvec_names = ('compr_bond', 'tgt_bond')
     compr_names = ('compr_left_bond', 'compr_phys', 'compr_right_bond')
@@ -1951,6 +1953,8 @@ def _adapt_to_add_r(rightvec, compr_lten, tgt_lten):
 
     Construct R from [Sch11_, Fig. 27, p. 48]. See comments in
     :func:`_adapt_to_add_l()` for further details.
+
+    .. todo:: Adapt tensor leg names.
 
     """
     rightvec_names = ('compr_bond', 'tgt_bond')
@@ -1993,6 +1997,8 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_vdim):
 
     For len(tgt_ltens) > 1, compute the right-hand side of [Sch11_,
     Fig. 29, p. 49].
+
+    .. todo:: Adapt tensor leg names.
 
     """
     # Produce one MPS local tensor supported on len(tgt_ltens) sites.

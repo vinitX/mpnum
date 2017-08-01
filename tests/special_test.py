@@ -89,7 +89,7 @@ def test_sumup(nr_sites, local_dim, bond_dim, rgen):
     #  summed_slow = mp.sumup(mpa * w for mpa, w in zip(mpas, weights))
     summed_slow = mp.sumup(mpas, weights=weights)
     summed_slow.compress('svd', bdim=bond_dim, direction='right',
-                         normalize=False)
+                         canonicalize=False)
 
     assert_mpa_identical(summed_fast, summed_slow)
 
