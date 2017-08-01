@@ -124,7 +124,7 @@ class MPArray(object):
         MPArray
 
         >>> from .factory import zero
-        >>> zero(sites=3, ldim=4, rank=3).lt.shapes
+        >>> zero(sites=3, ldim=4, rank=3).lt.shape
         ((1, 4, 3), (3, 4, 3), (3, 4, 1))
         >>> zero(sites=3, ldim=4, rank=3).size
         60
@@ -143,7 +143,7 @@ class MPArray(object):
         return tuple(m.shape[0] for m in self._lt[1:])
 
     @property
-    def shapes(self):
+    def shape(self):
         """Tuple of physical dimensions"""
         return tuple((m.shape[1:-1]) for m in self._lt)
 
@@ -170,7 +170,7 @@ class MPArray(object):
             with h5py.File(target, 'w') as outfile:
                 return self.dump(outfile)
 
-        for prop in ('ranks', 'shapes'):
+        for prop in ('ranks', 'shape'):
             # these are only saved for convenience
             target.attrs[prop] = str(getattr(self, prop))
 
@@ -277,7 +277,7 @@ class MPArray(object):
         See :func:`mpnum._tools.global_to_local()` for global
         vs. local form.
 
-        :returns: ndarray of shape :code:`sum(self.shapes, ())`
+        :returns: ndarray of shape :code:`sum(self.shape, ())`
 
         .. note:: Full arrays can require much more memory than
                   MPAs. (That's why you are using MPAs, right?)
@@ -291,7 +291,7 @@ class MPArray(object):
         See :func:`mpnum._tools.global_to_local()` for global
         vs. local form.
 
-        :returns: ndarray of shape :code:`sum(zip(*self.shapes, ()))`
+        :returns: ndarray of shape :code:`sum(zip(*self.shape, ()))`
 
         See :func:`to_array()` for more details.
 
@@ -344,9 +344,9 @@ class MPArray(object):
 
         >>> from .factory import random_mpa
         >>> mpa = random_mpa(2, (2, 3, 4), 2)
-        >>> mpa.shapes
+        >>> mpa.shape
         ((2, 3, 4), (2, 3, 4))
-        >>> mpa.transpose((2, 0, 1)).shapes
+        >>> mpa.transpose((2, 0, 1)).shape
         ((4, 2, 3), (4, 2, 3))
 
         """
@@ -466,9 +466,9 @@ class MPArray(object):
     def reshape(self, newshapes):
         """Reshape physical legs in place.
 
-        Use self.shapes to obtain the shapes of the physical legs.
+        Use self.shape to obtain the shape of the physical legs.
 
-        :param newshapes: A single new shape or a list of new shapes.
+        :param newshapes: A single new shape or a list of new shape.
             Alternatively, you can pass 'prune' to get rid of all physical legs
             of size 1.
         :returns: Reshaped MPA
@@ -476,7 +476,7 @@ class MPArray(object):
         """
         # TODO Why is this here? What's wrong with the purne function?
         if newshapes == 'prune':
-            newshapes = (tuple(s for s in pdim if s > 1) for pdim in self.shapes)
+            newshapes = (tuple(s for s in pdim if s > 1) for pdim in self.shape)
 
         newshapes = tuple(newshapes)
         if not isinstance(newshapes[0], collections.Iterable):
@@ -891,14 +891,14 @@ class MPArray(object):
 
         if startmpa is None:
             from mpnum.factory import random_mpa
-            compr = random_mpa(len(self), self.shapes, rank, randstate=randstate,
+            compr = random_mpa(len(self), self.shape, rank, randstate=randstate,
                                dtype=self.dtype)
         else:
             compr = startmpa.copy()
-            assert all(d1 == d2 for d1, d2 in zip(self.shapes, compr.shapes))
+            assert all(d1 == d2 for d1, d2 in zip(self.shape, compr.shape))
 
         # flatten the array since MPS is expected & bring back
-        shape = self.shapes
+        shape = self.shape
         compr = compr.ravel()
         overlap = compr._adapt_to(self.ravel(), num_sweeps, var_sites)
         compr = compr.reshape(shape)
@@ -1011,7 +1011,7 @@ class MPArray(object):
             rank = max(self.ranks)
         ranks = it.repeat(rank)
         if not force_rank:
-            ranks = [min(f, b) for f, b in zip(full_rank(self.shapes), ranks)]
+            ranks = [min(f, b) for f, b in zip(full_rank(self.shape), ranks)]
         pad = [max(s, b) - s for s, b in zip(self.ranks, ranks)]
         lt = (np.pad(lt, [(0, lp)] + [(0, 0)] * (lt.ndim - 2) + [(0, rp)],
                      'constant')
@@ -1296,17 +1296,17 @@ def diag(mpa, axis=0):
     has more than one physical dimension, the result is a numpy array with
     :code:`MPArray` entries, otherwise its a numpy array with floats.
 
-    :param mpa: MPArray with shapes > :code:`axis`
+    :param mpa: MPArray with shape > :code:`axis`
     :param axis: The physical index to take diagonals over
     :returns: Array containing the diagonal elements (`MPArray`s with the
     physical dimension reduced by one, note that an `MPArray` with physical
     dimension 0 is a simple number)
 
     """
-    dim = mpa.shapes[0][axis]
+    dim = mpa.shape[0][axis]
     # work around http://bugs.python.org/issue21161
     try:
-        valid_axis = [d[axis] == dim for d in mpa.shapes]
+        valid_axis = [d[axis] == dim for d in mpa.shape]
         assert all(valid_axis)
     except NameError:
         pass
@@ -1316,7 +1316,7 @@ def diag(mpa, axis=0):
     slices = ((slice(None),) * (axis + 1) + (i,) for i in range(dim))
     mpas = [MPArray(ltens[s] for ltens in mpa.lt) for s in slices]
 
-    if len(mpa.shapes[0]) == 1:
+    if len(mpa.shape[0]) == 1:
         return np.array([mpa.to_array() for mpa in mpas])
     else:
         return np.array(mpas, dtype=object)
@@ -1334,7 +1334,7 @@ def inject(mpa, pos, num=None, inject_ten=None):
     that as it is a much simpler function.
 
     If `inject_ten` is omitted, use a square identity matrix of size
-    `mpa.shapes[pos][0]`. If `pos = len(mpa)`, `mpa.shapes[pos - 1][0]`
+    `mpa.shape[pos][0]`. If `pos = len(mpa)`, `mpa.shape[pos - 1][0]`
     will be used for the size of the matrix.
 
     :param mpa: An MPA.
@@ -1484,8 +1484,8 @@ def prune(mpa, singletons=False):
     :returns: An MPA of smaller length
 
     """
-    if singletons and any(np.prod(p) == 1 for p in mpa.shapes):
-        mpa = mpa.reshape(() if np.prod(p) == 1 else p for p in mpa.shapes)
+    if singletons and any(np.prod(p) == 1 for p in mpa.shape):
+        mpa = mpa.reshape(() if np.prod(p) == 1 else p for p in mpa.shape)
     return MPArray(_prune_ltens(mpa.lt))
 
 
@@ -1609,9 +1609,9 @@ def _embed_ltens_identity(mpa, embed_tensor=None):
 
     """
     if embed_tensor is None:
-        pdims = mpa.shapes[0]
+        pdims = mpa.shape[0]
         assert len(pdims) == 2 and pdims[0] == pdims[1], (
-            "For ndims != 2 or non-square shapes, you must supply a tensor"
+            "For ndims != 2 or non-square shape, you must supply a tensor"
             "for embedding")
         embed_tensor = np.eye(pdims[0])
     embed_ltens = embed_tensor[None, ..., None]

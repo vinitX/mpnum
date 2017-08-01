@@ -182,7 +182,7 @@ def pmps_dm_to_array(pmps, global_=False):
         # Axes: 0 phys, 1 phys, 2 phys, 3 upper bound, 4 lower rank
         out = out.reshape((-1, out.shape[3], out.shape[4]))
         # Axes: 0 phys, 1 upper rank, 2 lower rank
-    out_shape = [dim for dim, _ in pmps.shapes for rep in (1, 2) if dim > 1]
+    out_shape = [dim for dim, _ in pmps.shape for rep in (1, 2) if dim > 1]
     out = out.reshape(out_shape)
     if global_:
         assert len(set(out_shape)) == 1
@@ -394,8 +394,8 @@ def pmps_to_mps(pmps):
 
     """
     assert all(l == 2 for l in pmps.ndims)
-    assert all(d[1] == 1 for d in pmps.shapes)
-    return pmps.reshape([(d[0],) for d in pmps.shapes])
+    assert all(d[1] == 1 for d in pmps.shape)
+    return pmps.reshape([(d[0],) for d in pmps.shape])
 
 
 def mps_to_mpo(mps):

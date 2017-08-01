@@ -409,7 +409,7 @@ def mineig(mpo,
         .format(nr_sites, minimize_sites))
 
     if startvec is None:
-        pdims = max(dim[0] for dim in mpo.shapes)
+        pdims = max(dim[0] for dim in mpo.shape)
         if startvec_rank is None:
             startvec_rank = max(mpo.ranks)
         if startvec_rank == 1:
@@ -532,7 +532,7 @@ def mineig_sum(mpas,
         .format(nr_sites, minimize_sites))
 
     if startvec is None:
-        pdims = max(dim[0] for dim in mpas[0].shapes)  # FIXME (also in mineig())
+        pdims = max(dim[0] for dim in mpas[0].shape)  # FIXME (also in mineig())
         if startvec_rank is None:
             raise ValueError(
                 'At least one of startvec and startvec_rank is required')

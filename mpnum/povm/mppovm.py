@@ -184,9 +184,9 @@ class MPPovm(mp.MPArray):
     def __init__(self, *args, **kwargs):
         mp.MPArray.__init__(self, *args, **kwargs)
         assert all(ndims == 3 for ndims in self.ndims), \
-            "Need 3 physical legs at each site: {!r}".format(self.shapes)
-        assert all(pdims[1] == pdims[2] for pdims in self.shapes), \
-            "Hilbert space dimension mismatch: {!r}".format(self.shapes)
+            "Need 3 physical legs at each site: {!r}".format(self.shape)
+        assert all(pdims[1] == pdims[2] for pdims in self.shape), \
+            "Hilbert space dimension mismatch: {!r}".format(self.shape)
         # Used to store single outcomes as np.uint8 with 255 = 0xff
         # denoting "no value" (see :func:`MPPovm.sample`,
         # :func:`MPPovm.unpack_samples`).
@@ -247,7 +247,7 @@ class MPPovm(mp.MPArray):
         # See :func:`.localpovm.POVM.probability_map` for explanation
         # of the transpose.
         return self.transpose((0, 2, 1)).reshape(
-            (pdim[0], -1) for pdim in self.shapes)
+            (pdim[0], -1) for pdim in self.shape)
 
     @classmethod
     def from_local_povm(cls, lelems, width):
@@ -1031,7 +1031,7 @@ class MPPovm(mp.MPArray):
         outdims = self.outdims
         assert len(support) == len(outcome_mpa)
         assert all(dim[0] == outdims[pos]
-                   for pos, dim in zip(support, outcome_mpa.shapes))
+                   for pos, dim in zip(support, outcome_mpa.shape))
         if len(support) == len(self):
             return outcome_mpa  # Nothing to do
         # `self` does not have outcomes on the entire chain. Need

@@ -61,7 +61,7 @@ def test_from_inhomogenous(rgen):
     mpa = mp.MPArray.from_array(array, ndims=(2, 1, 1))
     assert_array_almost_equal(array, mpa.to_array())
     assert mpa.ndims == (2, 1, 1)
-    assert mpa.shapes == ((4, 3), (3,), (3,))
+    assert mpa.shape == ((4, 3), (3,), (3,))
 
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
@@ -128,14 +128,14 @@ def test_transpose_axes(rgen):
     tensor = factory._zrandn(ldim * nr_sites, rgen)  # local form
     mpa = mp.MPArray.from_array(tensor, ndims=len(ldim))
     assert len(mpa) == nr_sites
-    assert mpa.shapes == (ldim,) * nr_sites
+    assert mpa.shape == (ldim,) * nr_sites
     # transpose axes in local form
     tensor_axes = tuple(ax + site * len(ldim)
                         for site in range(nr_sites) for ax in axes)
     tensor_t = tensor.transpose(tensor_axes)
     mpa_t = mpa.transpose(axes)
     mpa_t_to_tensor = mpa_t.to_array()
-    assert mpa_t.shapes == (new_ldim,) * nr_sites
+    assert mpa_t.shape == (new_ldim,) * nr_sites
     assert_array_almost_equal(mpa_t_to_tensor, tensor_t)
     assert_correct_normalization(mpa_t)
 
@@ -715,13 +715,13 @@ def test_inject_many(local_dim, rank, rgen):
 
 
 def test_inject_shapes(rgen):
-    """Check that mp.inject() picks up the correct shapes"""
+    """Check that mp.inject() picks up the correct shape"""
     mpa = factory.random_mpa(3, ([1], [2], [3]), 3, rgen, normalized=True)
-    print(mpa.shapes)
+    print(mpa.shape)
     mpa_inj = mp.inject(mpa, [0, 2], [1, 1])
-    assert mpa_inj.shapes == ((1, 1), (1,), (2,), (3, 3), (3,))
+    assert mpa_inj.shape == ((1, 1), (1,), (2,), (3, 3), (3,))
     mpa_inj = mp.inject(mpa, [1, 3], [1, 1], None)
-    assert mpa_inj.shapes == ((1,), (2, 2), (2,), (3,), (3, 3))
+    assert mpa_inj.shape == ((1,), (2, 2), (2,), (3,), (3, 3))
 
 
 @pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
@@ -872,7 +872,7 @@ def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, rank, rgen):
             [(true_rank, local_dim)] + [(local_dim,)] * (nr_sites - pos - 2)
         ranks = list(mpa.ranks)
         ranks[pos] = 1
-        assert_array_equal(mpa_t.shapes, pshape)
+        assert_array_equal(mpa_t.shape, pshape)
         assert_array_equal(mpa_t.ranks, ranks)
         assert_correct_normalization(mpa_t)
 
@@ -913,7 +913,7 @@ def test_reshape(rgen):
     mpa = factory.random_mpa(4, [(3, 2), (4,), (2, 5), (24,)], 4)
     mpa.canonicalize()
     mpa_r = mpa.reshape([(2, 3), (2, 2), (10,), (3, 2, 4)])
-    assert all(s1 == s2 for s1, s2 in zip(mpa_r.shapes, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
+    assert all(s1 == s2 for s1, s2 in zip(mpa_r.shape, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
     assert_correct_normalization(mpa_r, *mpa.canonical_form)
 
 
@@ -1094,7 +1094,7 @@ def test_pad_ranks(nr_sites, local_dim, rank, rgen):
     mps = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen,
                              normalized=True)
     mps2 = mps.pad_ranks(2 * rank)
-    assert mps2.ranks == tuple(min(d, 2 * rank) for d in mp.full_rank(mps.shapes))
+    assert mps2.ranks == tuple(min(d, 2 * rank) for d in mp.full_rank(mps.shape))
     assert_almost_equal(mp.normdist(mps, mps2), 0.0)
     mps2 = mps.pad_ranks(2 * rank, force_rank=True)
     assert mps2.ranks == (2 * rank,) * (nr_sites - 1)
@@ -1208,7 +1208,7 @@ def call_compression(mpa, comparg, target_rank, rgen, call_compress=False):
 
     """
     if not ('relerr' in comparg) and (comparg.get('startmpa') == 'fillbelow'):
-        startmpa = factory.random_mpa(len(mpa), mpa.shapes[0], target_rank,
+        startmpa = factory.random_mpa(len(mpa), mpa.shape[0], target_rank,
                                       normalized=True, randstate=rgen,
                                       dtype=mpa.dtype)
         comparg = update_copy_of(comparg, {'startmpa': startmpa})

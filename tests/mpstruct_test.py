@@ -54,7 +54,7 @@ def test_update_normalization(mpa_norm, upd_pos, upd_norm, rgen,
     mpa.canonicalize(*mpa_norm)
     assert_correct_normalization(mpa, *mpa_norm)
 
-    dims = mpa.lt.shapes[upd_pos]
+    dims = mpa.lt.shape[upd_pos]
     tensor = factory._zrandn(dims, rgen)
     if upd_norm == 'left':
         tensor = tensor.reshape((-1, dims[-1]))

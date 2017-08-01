@@ -119,7 +119,7 @@ class LocalTensors(object):
         return self._lcanonical, self._rcanonical
 
     @property
-    def shapes(self):
+    def shape(self):
         return tuple(m.shape for m in self._ltens)
 
     def copy(self):
