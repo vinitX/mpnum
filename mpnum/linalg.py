@@ -317,14 +317,14 @@ def _mineig_minimize_locally2(local_op, eigvec_ltens, user_eigs_opts):
         eigvec_lten = (eigvec_lten,)
     else:
         # If we minimize on multiple sites, we must compress to the
-        # desired bond dimension.
+        # desired rank.
         #
         # TODO: Return the truncation error.
         #
         # "the truncation error of conventional DMRG [...] has emerged
         # as a highly reliable tool for gauging the quality of
         # results" [Sch11_, Sec. 6.4, p. 74]
-        eigvec_lten = mp.MPArray.from_array(eigvec_lten, 1, has_bond=True)
+        eigvec_lten = mp.MPArray.from_array(eigvec_lten, 1, has_virtual=True)
         eigvec_lten.compress(method='svd', rank=eigvec_rank)
         eigvec_lten = eigvec_lten.lt
     return eigval, eigvec_lten
@@ -358,8 +358,8 @@ def mineig(mpo,
     :param MPArray mpo: A matrix product operator (MPA with two physical legs)
     :param startvec: initial guess for eigenvector (default random MPS with
         bond `startvec_rank`)
-    :param startvec_rank: Bond dimension of random start vector if
-        no start vector is given. (default: Use the bond dimension of `mpo`)
+    :param startvec_rank: Rank of random start vector if
+        no start vector is given. (default: Use the rank of `mpo`)
     :param randstate: numpy.random.RandomState instance or None
     :param max_num_sweeps: Maximum number of sweeps to do (default 5)
     :param eigs_opts: kwargs for `scipy.sparse.linalg.eigs()`. If you
@@ -397,7 +397,7 @@ def mineig(mpo,
     #  - compute var(H) = <psi| H^2 |psi> - (<psi| H |psi>)^2 every n-th
     #    iteration to check whether we have converged (this criterion is
     #    better but more expensive to compute)
-    #  - increase the bond dimension of 'eigvec' if var(H) remains above
+    #  - increase the rank of 'eigvec' if var(H) remains above
     #    a given threshold
     #  - for multi-site updates, track the error in the SVD truncation
     #    (see comment there why)
@@ -428,8 +428,8 @@ def mineig(mpo,
     # conditions because of too small matrices.
     assert not any(rank12 == (1, 1) for rank12 in
                    zip((1,) + startvec.ranks, startvec.ranks + (1,))), \
-        'startvec must not contain two consecutive bonds of dimension 1, ' \
-        'ranks including dummy bonds = (1,) + {!r} + (1,)' \
+        'startvec must not contain two consecutive ranks 1, ' \
+        'ranks including dummy values = (1,) + {!r} + (1,)' \
             .format(startvec.ranks)
     # For
     #
@@ -512,7 +512,7 @@ def mineig_sum(mpas,
     `mpas` to an MPO.
 
     .. todo:: Add information on how the runtime of :func:`mineig` and
-        :func:`mineig_sum` with the the different bond dimensions.
+        :func:`mineig_sum` with the the different ranks.
 
     :param mpas: A sequence of MPOs or MPSs
 
@@ -551,8 +551,8 @@ def mineig_sum(mpas,
     # conditions because of too small matrices.
     assert not any(rank12 == (1, 1) for rank12 in
                    zip((1,) + startvec.ranks, startvec.ranks + (1,))), \
-        'startvec must not contain two consecutive bonds of dimension 1, ' \
-        'ranks including dummy bonds = (1,) + {!r} + (1,)' \
+        'startvec must not contain two consecutive ranks 1, ' \
+        'ranks including dummy values = (1,) + {!r} + (1,)' \
             .format(startvec.ranks)
     # For
     #

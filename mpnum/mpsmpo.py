@@ -162,26 +162,26 @@ def pmps_dm_to_array(pmps, global_=False):
     """Convert PMPS to full array representation of the density matrix
 
     The runtime of this method scales with D**3 instead of D**6 where
-    D is the bond and D**6 is the scaling of using :func:`pmps_to_mpo`
+    D is the rank and D**6 is the scaling of using :func:`pmps_to_mpo`
     and :func:`to_array`. This is useful for obtaining reduced states
     of a PMPS on non-consecutive sites, as normalizing before using
-    :func:`pmps_to_mpo` may not be sufficient to reduce the bond
-    dimension in that case.
+    :func:`pmps_to_mpo` may not be sufficient to reduce the rank
+    in that case.
 
     .. note:: The resulting array will have dimension-1 physical legs removed.
 
     """
     out = np.ones((1, 1, 1))
-    # Axes: 0 phys, 1 upper bond, 2 lower bond
+    # Axes: 0 phys, 1 upper rank, 2 lower rank
     for lt in pmps.lt:
         out = np.tensordot(out, lt, axes=(1, 0))
-        # Axes: 0 phys, 1 lower bond, 2 phys, 3 anc, 4 upper bond
+        # Axes: 0 phys, 1 lower rank, 2 phys, 3 anc, 4 upper rank
         out = np.tensordot(out, lt.conj(), axes=((1, 3), (0, 2)))
-        # Axes: 0 phys, 1 phys, 2 upper bond, 3 phys, 4 lower bond
+        # Axes: 0 phys, 1 phys, 2 upper rank, 3 phys, 4 lower rank
         out = np.rollaxis(out, 3, 2)
-        # Axes: 0 phys, 1 phys, 2 phys, 3 upper bound, 4 lower bond
+        # Axes: 0 phys, 1 phys, 2 phys, 3 upper bound, 4 lower rank
         out = out.reshape((-1, out.shape[3], out.shape[4]))
-        # Axes: 0 phys, 1 upper bond, 2 lower bond
+        # Axes: 0 phys, 1 upper rank, 2 lower rank
     out_shape = [dim for dim, _ in pmps.shapes for rep in (1, 2) if dim > 1]
     out = out.reshape(out_shape)
     if global_:

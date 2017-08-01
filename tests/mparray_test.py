@@ -784,8 +784,7 @@ def test_local_sum(nr_sites, local_dim, rank, local_width, dtype, rgen):
     for mpa in mpas_embedded[1:]:
         mpa_sum += mpa
 
-    # Compare with local_sum: Same result, smaller bond
-    # dimension.
+    # Compare with local_sum: Same result, smaller rank
     mpa_local_sum = mp.local_sum(mpas)
 
     # Check that local_sum() is no worse than naive sum
@@ -1026,8 +1025,8 @@ def test_canonicalization_default_args(nr_sites, local_dim, rank, rgen):
 
 
 def test_canonicalization_compression(rgen):
-    """If the bond dimension is too large at the boundary, qr decompostion
-    in normalization may yield smaller bond dimension"""
+    """If the rank is too large at the boundary, qr decompostion
+    in normalization may yield smaller rank"""
     mpo = factory.random_mpa(sites=2, ldim=2, rank=20, randstate=rgen)
     mpo.canonicalize(right=1)
     assert_correct_normalization(mpo, 0, 1)
@@ -1198,7 +1197,7 @@ def call_compression(mpa, comparg, target_rank, rgen, call_compress=False):
 
     Does not make a copy of `mpa` in any case.
 
-    :param target_rank: Compress to bond dimension `target_rank`.
+    :param target_rank: Compress to rank `target_rank`.
     :param call_compress: If `True`, call `mpa.compress` instead of
         `mpa.compression` (the default).
     :param comparg: Settings dict for compression.  If `relerr` is not
@@ -1272,7 +1271,7 @@ def test_compression_result_properties(nr_sites, local_dims, rank,
 
     * Check that all implementations return the correct overlap
 
-    * Check that the bond dimension has decreased and that it is as
+    * Check that the rank has decreased and that it is as
       prescribed
 
     * Check that the normalization advertised in the result is correct
@@ -1298,9 +1297,9 @@ def test_compression_result_properties(nr_sites, local_dims, rank,
     # 'relerr' is currently 1e-6 and no rank is provided, so no
     # compression will occur.
     if 'relerr' not in comparg:
-        # Check that the bond dimension has changed.
+        # Check that the rank has changed.
         assert max(compr.ranks) < max(mpa.ranks)
-        # Check that the target bond dimension is satisfied
+        # Check that the target rank is satisfied
         assert max(compr.ranks) <= rank
 
     # Check that the inner product is correct.
@@ -1343,10 +1342,10 @@ def test_var_no_worse_than_svd(nr_sites, local_dim, rank, rgen, dtype):
 
 
 @compr_test_params
-def test_compression_bonddim_noincrease(nr_sites, local_dims, rank,
+def test_compression_rank_noincrease(nr_sites, local_dims, rank,
                                          canonicalize, comparg, rgen):
-    """Check that bond dimension does not increase if the target bond
-    dimension is larger than the MPA bond dimension
+    """Check that rank does not increase if the target rank
+    is larger than the MPA rank
 
     """
     if 'relerr' in comparg:
@@ -1384,7 +1383,7 @@ def test_compression_trivialsum(nr_sites, local_dims, rank, canonicalize,
     msum = mpa + add
     assert_mpa_almost_equal(msum, factor * mpa, full=True)
 
-    # Check that bond dimension has increased (they exactly add)
+    # Check that rank has increased (they exactly add)
     for dim1, dim2, sum_dim in zip(mpa.ranks, add.ranks, msum.ranks):
         assert dim1 + dim2 == sum_dim
 

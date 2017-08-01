@@ -134,18 +134,17 @@ def _generate(sites, ldim, rank, func, force_rank):
         * iterable of iterable: Generated MPA will have exactly this
           as `ndims`
 
-    :param rank: Bond dimension, depending on the type passed:
+    :param rank: rank, depending on the type passed:
 
-        * scalar: Same bond dimension everywhere
+        * scalar: Same rank everywhere
         * iterable of length :code:`sites - 1`: Generated MPA will
           have exactly this as `ranks`
 
     :param func: Generator function for local tensors, should accept
         shape as tuple in first argument and should return
         numpy.ndarray of given shape
-    :param force_rank: If True, the bond dimension is exaclty `rank`.
-        Otherwise, it might be reduced if we reach the maximum sensible bond
-        dimension for a bond.
+    :param force_rank: If True, the rank is exaclty `rank`.
+        Otherwise, it might be reduced if we reach the maximum sensible rank.
     :returns: randomly choosen matrix product array
 
     """
@@ -155,7 +154,7 @@ def _generate(sites, ldim, rank, func, force_rank):
     # all sites.
     if not isinstance(ldim[0], collections.Iterable):
         ldim = (ldim,) * sites
-    # If rank is not iterable, we want the same bond dimension
+    # If rank is not iterable, we want the same rank
     # everywhere.
     if not isinstance(rank, collections.Iterable):
         rank = (rank,) * (sites - 1)
@@ -186,14 +185,12 @@ def random_mpa(sites, ldim, rank, randstate=None, normalized=False,
         * iterable of scalar: Same physical dimension for each site
         * scalar: Single physical leg for each site with given
           dimension
-
-    :param rank: Bond dimension
-    :param randn: Function used to generate random local tensors
+Rank
+    :param rank: Rank    :param randn: Function used to generate random local tensors
     :param randstate: numpy.random.RandomState instance or None
     :param normalized: Resulting `mpa` has `mp.norm(mpa) == 1`
-    :param force_rank: If True, the bond dimension is exaclty `rank`.
-        Otherwise, it might be reduced if we reach the maximum sensible bond
-        dimension for a bond.
+    :param force_rank: If True, the rank is exaclty `rank`.
+        Otherwise, it might be reduced if we reach the maximum sensible rank.
     :param dtype: Whicht type the returned array should have. Currently only
         `np.real_` and `np.complex_` is implemented (default: complex)
 
@@ -231,10 +228,9 @@ def zero(sites, ldim, rank, force_rank=False):
         * scalar: Single physical leg for each site with given
           dimension
 
-    :param rank: Bond dimension
-    :param force_rank: If True, the bond dimension is exaclty `rank`.
-        Otherwise, it might be reduced if we reach the maximum sensible bond
-        dimension for a bond.
+    :param rank: Rank
+    :param force_rank: If True, the rank is exaclty `rank`.
+        Otherwise, it might be reduced if we reach the maximum sensible rank.
     :returns: Representation of the zero-array as MPA
 
     """
@@ -298,13 +294,12 @@ def random_mpo(sites, ldim, rank, randstate=None, hermitian=False,
 
     :param sites: Number of sites
     :param ldim: Local dimension
-    :param rank: Bond dimension
+    :param rank: Rank
     :param randstate: numpy.random.RandomState instance or None
     :param hermitian: Is the operator supposed to be hermitian
     :param normalized: Operator should have unit norm
-    :param force_rank: If True, the bond dimension is exaclty `rank`.
-        Otherwise, it might be reduced if we reach the maximum sensible bond
-        dimension for a bond.
+    :param force_rank: If True, the rank is exaclty `rank`.
+        Otherwise, it might be reduced if we reach the maximum sensible rank.
     :returns: randomly choosen matrix product operator
 
     >>> mpo = random_mpo(4, 2, 10, force_rank=True)
@@ -318,7 +313,7 @@ def random_mpo(sites, ldim, rank, randstate=None, hermitian=False,
                      force_rank=force_rank, dtype=np.complex_)
 
     if hermitian:
-        # make mpa Herimitan in place, without increasing bond dimension:
+        # make mpa Herimitan in place, without increasing rank:
         ltens = (l + l.swapaxes(1, 2).conj() for l in mpo.lt)
         mpo = mp.MPArray(ltens)
     if normalized:
@@ -334,11 +329,10 @@ def random_mps(sites, ldim, rank, randstate=None, force_rank=False):
 
     :param sites: Number of sites
     :param ldim: Local dimension
-    :param rank: Bond dimension
+    :param rank: Rank
     :param randstate: numpy.random.RandomState instance or None
-    :param force_rank: If True, the bond dimension is exaclty `rank`.
-        Otherwise, it might be reduced if we reach the maximum sensible bond
-        dimension for a bond.
+    :param force_rank: If True, the rank is exaclty `rank`.
+        Otherwise, it might be reduced if we reach the maximum sensible rank.
     :returns: randomly choosen matrix product (pure) state
 
     >>> mps = random_mps(4, 2, 10, force_rank=True)
@@ -360,7 +354,7 @@ def random_mpdo(sites, ldim, rank, randstate=np.random):
 
     :param sites: Number of sites
     :param ldim: Local dimension
-    :param rank: Bond dimension
+    :param rank: Rank
     :param randstate: numpy.random.RandomState instance
     :returns: randomly choosen classicaly correlated matrix product density op.
 

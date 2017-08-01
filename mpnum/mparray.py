@@ -199,25 +199,25 @@ class MPArray(object):
         return cls(LocalTensors(ltens, cform=source.attrs['canonical_form']))
 
     @classmethod
-    def from_array_global(cls, array, ndims=None, has_bond=False):
+    def from_array_global(cls, array, ndims=None, has_virtual=False):
         """Create MPA from array in global form.
 
         See :func:`mpnum._tools.global_to_local()` for global
         vs. local form.
 
         Parameters and return value: See
-        `from_array()`. `has_bond=True` is not supported yet.
+        `from_array()`. `has_virtual=True` is not supported yet.
 
         """
-        assert not has_bond, 'not implemented yet'
+        assert not has_virtual, 'not implemented yet'
         ndims = ndims if ndims is not None else array.ndim
         assert array.ndim % ndims == 0, \
             "ndims invalid: {} is not multiple of {}".format(array.ndim, ndims)
         sites = array.ndim // ndims
-        return cls.from_array(global_to_local(array, sites), ndims, has_bond)
+        return cls.from_array(global_to_local(array, sites), ndims, has_virtual)
 
     @classmethod
-    def from_array(cls, array, ndims=None, has_bond=False):
+    def from_array(cls, array, ndims=None, has_virtual=False):
         """Create MPA from array in local form.
 
         See :func:`mpnum._tools.global_to_local()` for global
@@ -234,7 +234,7 @@ class MPArray(object):
         The result is a chain of local tensors with `ndims` physical legs at
         each location and has array.ndim // ndims number of sites.
 
-        has_bond = True allows to treat a part of the linear chain of
+        has_virtual = True allows to treat a part of the linear chain of
         an MPA as MPA as well. The rank on the left and
         right can be different from one and different from each other
         in that case.  This is useful to apply SVD compression only to
@@ -247,7 +247,7 @@ class MPArray(object):
             :func:`_tools.global_to_local`)
         :param ndims: Number of physical legs per site (default array.ndim)
             or iterable over number of physical legs
-        :param bool has_bond: True if array already has indices for
+        :param bool has_virtual: True if array already has indices for
             the left and right virtual
 
         """
@@ -255,7 +255,7 @@ class MPArray(object):
         ndims = ndims if ndims is not None else array.ndim
         ndims = iter(ndims) if isinstance(ndims, collections.Iterable) else ndims
 
-        if not has_bond:
+        if not has_virtual:
             array = array[None, ..., None]
         ltens = _extract_factors(array, ndims=ndims)
         return cls(LocalTensors(ltens, cform=(len(ltens) - 1, len(ltens))))
@@ -2033,7 +2033,7 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_rank):
         # [Sch11_, p. 49] says that we can go with QR instead of SVD
         # here. However, this will generally increase the rank of
         # our compressed MPS, which we do not want.
-        compr_ltens = MPArray.from_array(compr_lten, ndims=1, has_bond=True)
+        compr_ltens = MPArray.from_array(compr_lten, ndims=1, has_virtual=True)
         compr_ltens.compress('svd', rank=max_rank)
         return compr_ltens.lt
 

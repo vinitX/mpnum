@@ -68,7 +68,7 @@ class LocalTensors(object):
             indices = index.indices(len(self))
             # In Python 3, we can do range(*indices).start etc. Python 2 compat:
             start, stop, step = indices
-            # Allow bond dimension changes if multiple consecutive
+            # Allow rank changes if multiple consecutive
             # local tensors are changed. Callers should switch to
             tens = list(tens)
             assert self[start].shape[0] == tens[0].shape[0]

@@ -239,7 +239,7 @@ def compression_svd(array, rank, direction='right', retproj=False):
     on each bipartition sequentially.
 
     :param mpa: Array to compress
-    :param rank: Compress to this bond dimension
+    :param rank: Compress to this rank
     :param direction: 'right' means sweep from left to right, 'left' vice versa
     :param retproj: Besides the compressed array, also return the projectors
         on the appropriate eigenspaces

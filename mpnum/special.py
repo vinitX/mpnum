@@ -19,7 +19,7 @@ __all__ = ['inner_prod_mps', 'sumup']
 def inner_prod_mps(mpa1, mpa2):
     """Same as :func:`mparray.inner`, but assumes that `mpa1` is a product MPS
 
-    :param mpa1: MPArray with one physical leg per site and bond dimension 1
+    :param mpa1: MPArray with one physical leg per site and rank 1
     :param mpa2: MPArray with same physical shape as mpa1
     :returns: <mpa1|mpa2>
 
@@ -47,7 +47,7 @@ def sumup(mpas, rank, weights=None, svdfunc=truncated_svd):
     Right now, only the sum of product tensors is supported.
 
     :param mpas: Iterator over MPArrays
-    :param rank: Bond dimension of the final result.
+    :param rank: Rank of the final result.
     :param weights: Iterator of same length as mpas containing weights for
         computing weighted sum (default: None)
     :param svdfunc: Function implementing the truncated svd, for required
@@ -58,7 +58,7 @@ def sumup(mpas, rank, weights=None, svdfunc=truncated_svd):
           singular values/vectors, but slow if `rank` is not small enough
         - :func:`sklearn.utils.extmath.randomized_svd`: Randomized truncated
           SVD, fast and efficient, but only approximation.
-    :returns: Sum of `mpas` with max. bond dimension `rank`
+    :returns: Sum of `mpas` with max. rank `rank`
 
     """
     mpas = list(mpas)

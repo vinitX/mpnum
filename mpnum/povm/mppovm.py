@@ -331,7 +331,7 @@ class MPPovm(mp.MPArray):
 
         The resulting POVM will have length `nr_sites`. If `nr_sites`
         is not an integer multiple of `len(self)`, `self` must
-        factorize (have bond dimension one) at the position where it
+        factorize (have leg  dimension one) at the position where it
         will be cut. For example, consider the tensor product MP-POVM
         of Pauli X and Pauli Y. Calling `repeat(nr_sites=5)` will
         construct the tensor product POVM XYXYX:
@@ -418,19 +418,19 @@ class MPPovm(mp.MPArray):
         to bottom and from left to right along the chain::
 
 
-            +-----+  PMPS bond     +---------+     PMPS bond
+            +-----+  PMPS leg      +---------+     PMPS leg
             |     |----------------| PMPS    |-------------------
             |     |                +---------+
             |     |                   |  |_______ system
             |     |           ancilla |         |
             |     |                   |         |
-            |     |  PMPS-cc bond  +---------+  |  PMPS-cc bond
+            |     |  PMPS-cc leg   +---------+  |  PMPS-cc leg
             |  p  |----------------| PMPS-cc |--|----------------
             |     |                +---------+  |
             |     |                   |         |
             |     |           system' |   ______|
             |     |                   |  |
-            |     |  POVM bond     +---------+     POVM bond
+            |     |  POVM leg      +---------+     POVM leg
             |     |----------------| MPPOVM  |-------------------
             +-----+                +---------+
               |                      |
@@ -438,7 +438,7 @@ class MPPovm(mp.MPArray):
 
         """
         p = np.ones((1, 1, 1, 1), dtype=float)
-        # Axes: 0 probab, 1 POVM bond, 2 PMPS bond, 3 PMPS-cc bond
+        # Axes: 0 probab, 1 POVM leg , 2 PMPS leg , 3 PMPS-cc leg
         for povm_lt, pmps_lt in zip(self.lt, pmps.lt):
             p = np.tensordot(p, pmps_lt, axes=(2, 0))
             # 0 probab, 1 POVM bd, 2 PMPS-cc bd, 3 system, 4 ancilla, 5 PMPS bd
@@ -448,12 +448,12 @@ class MPPovm(mp.MPArray):
             # NB: We basically transpose povm_lt by specifying suitable axes.
             # The transpose is explained in localpovm.POVM.probability_map.
             p = np.tensordot(p, povm_lt, axes=((1, 2, 4), (0, 3, 2)))
-            # 0 probab, 1 PMPS bond, 2 PMPS-cc bond, 3 probab', 4 POVM bond
+            # 0 probab, 1 PMPS leg , 2 PMPS-cc leg , 3 probab', 4 POVM leg
             p = p.transpose((0, 3, 4, 1, 2))
-            # 0 probab, 1 probab', 2 POVM bond, 3 PMPS bond, 4 PMPS-cc bond
+            # 0 probab, 1 probab', 2 POVM leg , 3 PMPS leg , 4 PMPS-cc leg
             s = p.shape
             p = p.reshape((s[0] * s[1], s[2], s[3], s[4]))
-            # 0 probab, 1 POVM bond, 2 PMPS bond, 3 PMPS-cc bond
+            # 0 probab, 1 POVM leg , 2 PMPS leg , 3 PMPS-cc leg
         if partial:
             return p
         s = self.nsoutdims
@@ -473,7 +473,7 @@ class MPPovm(mp.MPArray):
 
         """
         # Axes of p_left and p_right (below):
-        # 0 probab, 1 POVM bond, 2 PMPS bond, 3 PMPS-cc bond
+        # 0 probab, 1 POVM leg , 2 PMPS leg , 3 PMPS-cc leg
         #
         # p_size[i, j] will contain the p_left.size (i = 0) or
         # p_right.size (i = 1) for j + 1 probabilities in p_left and
