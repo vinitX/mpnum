@@ -669,7 +669,7 @@ class MPPovm(mp.MPArray):
             # `n_out + n_group` sites.
             p = marginal_pmf[min(n_sites, n_out + n_group)]
             # Obtain conditional probab. from joint `p` and marginal `out_p`
-            p = p.get_phys(tuple(out[:n_out]) + (slice(None),) * (len(p) - n_out))
+            p = p.get(tuple(out[:n_out]) + (slice(None),) * (len(p) - n_out))
             p = check_pmf(mp.prune(p).to_array() / out_p, eps, eps)
             # Sample from conditional probab. for next `n_group` sites
             choice = rng.choice(p.size, p=p.flat)
@@ -677,7 +677,7 @@ class MPPovm(mp.MPArray):
             # Update probability of the partial output
             out_p *= np.prod(p.flat[choice])
         # Verify we have the correct partial output probability
-        p = marginal_pmf[-1].get_phys(tuple(out)).to_array()
+        p = marginal_pmf[-1].get(tuple(out)).to_array()
         assert abs(p - out_p) <= eps
 
     def _sample_cond(self, rng, state, mode, n_samples, n_group, out, eps):
@@ -1525,7 +1525,7 @@ def pauli_mpp(nr_sites, local_dim):
     >>> pauli = pauli_mpp(nr_sites, local_dim)
     >>> xy = np.kron([1, -1], [1, -1j]) / 2
     >>> xyproj = np.outer(xy, xy.conj())
-    >>> proj = pauli.get_phys([1, 3], astype=mp.MPArray) \
+    >>> proj = pauli.get([1, 3], astype=mp.MPArray) \
     ...             .to_array_global().reshape((4, 4))
     >>> abs(proj - xyproj / 3**nr_sites).max() <= 1e-10
     True

@@ -101,7 +101,7 @@ class MPArray(object):
     def __len__(self):
         return len(self._lt)
 
-    def get_phys(self, pind, astype=None):
+    def get(self, pind, astype=None):
         """Fix values for first physical leg
 
         :param pind: Length `len(self)` sequence of index values for
