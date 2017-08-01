@@ -121,7 +121,7 @@ def _random_state(sites, ldim, randstate=None):
 #  Factory functions for MPArrays  #
 ####################################
 
-def _generate(sites, ldim, bdim, func, force_bdim):
+def _generate(sites, ldim, rank, func, force_rank):
     """Returns a matrix product operator with identical number and dimensions
     of the physical legs. The local tensors are generated using `func`
 
@@ -134,7 +134,7 @@ def _generate(sites, ldim, bdim, func, force_bdim):
         * iterable of iterable: Generated MPA will have exactly this
           as `ndims`
 
-    :param bdim: Bond dimension, depending on the type passed:
+    :param rank: Bond dimension, depending on the type passed:
 
         * scalar: Same bond dimension everywhere
         * iterable of length :code:`sites - 1`: Generated MPA will
@@ -143,7 +143,7 @@ def _generate(sites, ldim, bdim, func, force_bdim):
     :param func: Generator function for local tensors, should accept
         shape as tuple in first argument and should return
         numpy.ndarray of given shape
-    :param force_bdim: If True, the bond dimension is exaclty `bdim`.
+    :param force_rank: If True, the bond dimension is exaclty `rank`.
         Otherwise, it might be reduced if we reach the maximum sensible bond
         dimension for a bond.
     :returns: randomly choosen matrix product array
@@ -155,27 +155,27 @@ def _generate(sites, ldim, bdim, func, force_bdim):
     # all sites.
     if not isinstance(ldim[0], collections.Iterable):
         ldim = (ldim,) * sites
-    # If bdim is not iterable, we want the same bond dimension
+    # If rank is not iterable, we want the same bond dimension
     # everywhere.
-    if not isinstance(bdim, collections.Iterable):
-        bdim = (bdim,) * (sites - 1)
+    if not isinstance(rank, collections.Iterable):
+        rank = (rank,) * (sites - 1)
     else:
-        bdim = tuple(bdim)
+        rank = tuple(rank)
 
-    if not force_bdim:
-        bdim = tuple(min(b1, b2) for b1, b2 in zip(bdim, mp.full_rank(ldim)))
+    if not force_rank:
+        rank = tuple(min(b1, b2) for b1, b2 in zip(rank, mp.full_rank(ldim)))
 
     assert len(ldim) == sites
-    assert len(bdim) == sites - 1
+    assert len(rank) == sites - 1
 
-    bdim = (1,) + bdim + (1,)
-    ltens = (func((bdim[n],) + tuple(ld) + (bdim[n + 1],))
+    rank = (1,) + rank + (1,)
+    ltens = (func((rank[n],) + tuple(ld) + (rank[n + 1],))
              for n, ld in enumerate(ldim))
     return mp.MPArray(ltens)
 
 
-def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
-               force_bdim=False, dtype=np.float_):
+def random_mpa(sites, ldim, rank, randstate=None, normalized=False,
+               force_rank=False, dtype=np.float_):
     """Returns a MPA with randomly choosen local tensors
 
     :param sites: Number of sites
@@ -187,11 +187,11 @@ def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
         * scalar: Single physical leg for each site with given
           dimension
 
-    :param bdim: Bond dimension
+    :param rank: Bond dimension
     :param randn: Function used to generate random local tensors
     :param randstate: numpy.random.RandomState instance or None
     :param normalized: Resulting `mpa` has `mp.norm(mpa) == 1`
-    :param force_bdim: If True, the bond dimension is exaclty `bdim`.
+    :param force_rank: If True, the bond dimension is exaclty `rank`.
         Otherwise, it might be reduced if we reach the maximum sensible bond
         dimension for a bond.
     :param dtype: Whicht type the returned array should have. Currently only
@@ -199,27 +199,27 @@ def random_mpa(sites, ldim, bdim, randstate=None, normalized=False,
 
     :returns: randomly choosen matrix product array
 
-    >>> mpa = random_mpa(4, 2, 10, force_bdim=True)
+    >>> mpa = random_mpa(4, 2, 10, force_rank=True)
     >>> mpa.ranks, mpa.shapes
     ((10, 10, 10), ((2,), (2,), (2,), (2,)))
 
-    >>> mpa = random_mpa(4, (1, 2), 10, force_bdim=True)
+    >>> mpa = random_mpa(4, (1, 2), 10, force_rank=True)
     >>> mpa.ranks, mpa.shapes
     ((10, 10, 10), ((1, 2), (1, 2), (1, 2), (1, 2)))
 
-    >>> mpa = random_mpa(4, [(1, ), (2, 3), (4, 5), (1, )], 10, force_bdim=True)
+    >>> mpa = random_mpa(4, [(1, ), (2, 3), (4, 5), (1, )], 10, force_rank=True)
     >>> mpa.ranks, mpa.shapes
     ((10, 10, 10), ((1,), (2, 3), (4, 5), (1,)))
 
     """
     randfun = ft.partial(_randfuncs[dtype], randstate=randstate)
-    mpa = _generate(sites, ldim, bdim, randfun, force_bdim)
+    mpa = _generate(sites, ldim, rank, randfun, force_rank)
     if normalized:
         mpa /= mp.norm(mpa.copy())
     return mpa
 
 
-def zero(sites, ldim, bdim, force_bdim=False):
+def zero(sites, ldim, rank, force_rank=False):
     """Returns a MPA with localtensors beeing zero (but of given shape)
 
     :param sites: Number of sites
@@ -231,14 +231,14 @@ def zero(sites, ldim, bdim, force_bdim=False):
         * scalar: Single physical leg for each site with given
           dimension
 
-    :param bdim: Bond dimension
-    :param force_bdim: If True, the bond dimension is exaclty `bdim`.
+    :param rank: Bond dimension
+    :param force_rank: If True, the bond dimension is exaclty `rank`.
         Otherwise, it might be reduced if we reach the maximum sensible bond
         dimension for a bond.
     :returns: Representation of the zero-array as MPA
 
     """
-    return _generate(sites, ldim, bdim, np.zeros, force_bdim)
+    return _generate(sites, ldim, rank, np.zeros, force_rank)
 
 
 def eye(sites, ldim):
@@ -292,30 +292,30 @@ def diagonal_mpa(entries, sites):
 #########################
 #  More physical stuff  #
 #########################
-def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
-               normalized=True, force_bdim=False):
+def random_mpo(sites, ldim, rank, randstate=None, hermitian=False,
+               normalized=True, force_rank=False):
     """Returns an hermitian MPO with randomly choosen local tensors
 
     :param sites: Number of sites
     :param ldim: Local dimension
-    :param bdim: Bond dimension
+    :param rank: Bond dimension
     :param randstate: numpy.random.RandomState instance or None
     :param hermitian: Is the operator supposed to be hermitian
     :param normalized: Operator should have unit norm
-    :param force_bdim: If True, the bond dimension is exaclty `bdim`.
+    :param force_rank: If True, the bond dimension is exaclty `rank`.
         Otherwise, it might be reduced if we reach the maximum sensible bond
         dimension for a bond.
     :returns: randomly choosen matrix product operator
 
-    >>> mpo = random_mpo(4, 2, 10, force_bdim=True)
+    >>> mpo = random_mpo(4, 2, 10, force_rank=True)
     >>> mpo.ranks, mpo.shapes
     ((10, 10, 10), ((2, 2), (2, 2), (2, 2), (2, 2)))
     >>> mpo.canonical_form
     (0, 4)
 
     """
-    mpo = random_mpa(sites, (ldim,) * 2, bdim, randstate=randstate,
-                     force_bdim=force_bdim, dtype=np.complex_)
+    mpo = random_mpa(sites, (ldim,) * 2, rank, randstate=randstate,
+                     force_rank=force_rank, dtype=np.complex_)
 
     if hermitian:
         # make mpa Herimitan in place, without increasing bond dimension:
@@ -329,19 +329,19 @@ def random_mpo(sites, ldim, bdim, randstate=None, hermitian=False,
     return mpo
 
 
-def random_mps(sites, ldim, bdim, randstate=None, force_bdim=False):
+def random_mps(sites, ldim, rank, randstate=None, force_rank=False):
     """Returns a randomly choosen normalized matrix product state
 
     :param sites: Number of sites
     :param ldim: Local dimension
-    :param bdim: Bond dimension
+    :param rank: Bond dimension
     :param randstate: numpy.random.RandomState instance or None
-    :param force_bdim: If True, the bond dimension is exaclty `bdim`.
+    :param force_rank: If True, the bond dimension is exaclty `rank`.
         Otherwise, it might be reduced if we reach the maximum sensible bond
         dimension for a bond.
     :returns: randomly choosen matrix product (pure) state
 
-    >>> mps = random_mps(4, 2, 10, force_bdim=True)
+    >>> mps = random_mps(4, 2, 10, force_rank=True)
     >>> mps.ranks, mps.shapes
     ((10, 10, 10), ((2,), (2,), (2,), (2,)))
     >>> mps.canonical_form
@@ -350,17 +350,17 @@ def random_mps(sites, ldim, bdim, randstate=None, force_bdim=False):
     0.0
 
     """
-    return random_mpa(sites, ldim, bdim, normalized=True, randstate=randstate,
-                      force_bdim=force_bdim, dtype=np.complex_)
+    return random_mpa(sites, ldim, rank, normalized=True, randstate=randstate,
+                      force_rank=force_rank, dtype=np.complex_)
 
 
-def random_mpdo(sites, ldim, bdim, randstate=np.random):
+def random_mpdo(sites, ldim, rank, randstate=np.random):
     """Returns a randomly choosen matrix product density operator (i.e.
     positive semidefinite matrix product operator with trace 1).
 
     :param sites: Number of sites
     :param ldim: Local dimension
-    :param bdim: Bond dimension
+    :param rank: Bond dimension
     :param randstate: numpy.random.RandomState instance
     :returns: randomly choosen classicaly correlated matrix product density op.
 
@@ -371,15 +371,15 @@ def random_mpdo(sites, ldim, bdim, randstate=np.random):
     (0, 4)
 
     """
-    # generate density matrix as a mixture of `bdim` pure product states
-    psis = [random_mps(sites, ldim, 1, randstate=randstate) for _ in range(bdim)]
-    weights = (lambda x: x / np.sum(x))(randstate.rand(bdim))
+    # generate density matrix as a mixture of `rank` pure product states
+    psis = [random_mps(sites, ldim, 1, randstate=randstate) for _ in range(rank)]
+    weights = (lambda x: x / np.sum(x))(randstate.rand(rank))
     rho = mp.sumup(mpsmpo.mps_to_mpo(psi) * weight
                    for weight, psi in zip(weights, psis))
 
     # Scramble the local tensors
-    for n, bdim in enumerate(rho.ranks):
-        unitary = _unitary_haar(bdim, randstate)
+    for n, rank in enumerate(rho.ranks):
+        unitary = _unitary_haar(rank, randstate)
         rho.lt[n] = matdot(rho.lt[n], unitary)
         rho.lt[n + 1] = matdot(np.transpose(unitary).conj(), rho.lt[n + 1])
 

@@ -13,11 +13,11 @@ from mparray_test import MP_TEST_PARAMETERS, MP_TEST_DTYPES
 from mpnum._testing import assert_correct_normalization
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', [(2, 3, 3), (3, 2, 4),
+@pt.mark.parametrize('nr_sites, local_dim, rank', [(2, 3, 3), (3, 2, 4),
                                                        (6, 2, 4), (4, 3, 5),
                                                        (5, 2, 1)])
-def test_mpdo_positivity(nr_sites, local_dim, bond_dim, rgen):
-    rho = factory.random_mpdo(nr_sites, local_dim, bond_dim, rgen)
+def test_mpdo_positivity(nr_sites, local_dim, rank, rgen):
+    rho = factory.random_mpdo(nr_sites, local_dim, rank, rgen)
     rho_dense = rho.to_array_global().reshape((local_dim**nr_sites,) * 2)
 
     np.testing.assert_array_almost_equal(rho_dense, rho_dense.conj().T)

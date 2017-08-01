@@ -233,26 +233,26 @@ def verify_real_nonnegative(values, zero_tol=1e-6, zero_cutoff=None):
     return check_nonneg_trunc(values, zero_tol, zero_tol, zero_cutoff)
 
 
-def compression_svd(array, bdim, direction='right', retproj=False):
+def compression_svd(array, rank, direction='right', retproj=False):
     """Re-implement MPArray.compress('svd') but on the level of the full
     array representation, i.e. it truncates the Schmidt-decompostion
     on each bipartition sequentially.
 
     :param mpa: Array to compress
-    :param bdim: Compress to this bond dimension
+    :param rank: Compress to this bond dimension
     :param direction: 'right' means sweep from left to right, 'left' vice versa
     :param retproj: Besides the compressed array, also return the projectors
         on the appropriate eigenspaces
     :returns: Result as numpy.ndarray
 
     """
-    def singlecut(array, nr_left, target_bonddim):
+    def singlecut(array, nr_left, target_rank):
         array_shape = array.shape
         array = array.reshape((np.prod(array_shape[:nr_left]), -1))
         u, s, vt = np.linalg.svd(array, full_matrices=False)
-        u = u[:, :target_bonddim]
-        s = s[:target_bonddim]
-        vt = vt[:target_bonddim, :]
+        u = u[:, :target_rank]
+        s = s[:target_rank]
+        vt = vt[:target_rank, :]
         opt_compr = np.dot(u * s, vt)
         opt_compr = opt_compr.reshape(array_shape)
 
@@ -271,7 +271,7 @@ def compression_svd(array, bdim, direction='right', retproj=False):
         nr_left_values = range(nr_sites-1, 0, -1)
 
     for nr_left in nr_left_values:
-        array, proj = singlecut(array, nr_left, bdim)
+        array, proj = singlecut(array, nr_left, rank)
         projectors.append(proj)
 
     if direction != 'right':

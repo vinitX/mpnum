@@ -14,15 +14,15 @@ import mpnum.factory as factory
 from mparray_test import MP_TEST_PARAMETERS
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_mineig(nr_sites, local_dim, bond_dim, rgen):
+@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+def test_mineig(nr_sites, local_dim, rank, rgen):
     # Need at least two sites
     if nr_sites < 2:
         return
-    # With startvec_bonddim = 2 * bonddim and this seed, mineig() gets
-    # stuck in a local minimum. With startvec_bonddim = 3 * bonddim,
+    # With startvec_rank = 2 * rank and this seed, mineig() gets
+    # stuck in a local minimum. With startvec_rank = 3 * rank,
     # it does not.
-    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
+    mpo = factory.random_mpo(nr_sites, local_dim, rank, randstate=rgen,
                              hermitian=True, normalized=True)
     mpo.canonicalize()
     op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
@@ -34,7 +34,7 @@ def test_mineig(nr_sites, local_dim, bond_dim, rgen):
     mineig = eigvals[mineig_pos]
     mineig_eigvec = eigvec[:, mineig_pos]
     mineig_mp, mineig_eigvec_mp = mpnum.linalg.mineig(
-        mpo, startvec_bonddim=3 * bond_dim, randstate=rgen)
+        mpo, startvec_rank=3 * rank, randstate=rgen)
     mineig_eigvec_mp = mineig_eigvec_mp.to_array().flatten()
 
     overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec_mp)
@@ -42,15 +42,15 @@ def test_mineig(nr_sites, local_dim, bond_dim, rgen):
     assert_almost_equal(1, abs(overlap))
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
+@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+def test_mineig_minimize_sites(nr_sites, local_dim, rank, rgen):
     # Need at least three sites for minimize_sites = 2
     if nr_sites < 3:
         return
-    # With startvec_bonddim = 2 * bonddim and minimize_sites=1,
+    # With startvec_rank = 2 * rank and minimize_sites=1,
     # mineig() gets stuck in a local minimum. With minimize_sites=2,
     # it does not.
-    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
+    mpo = factory.random_mpo(nr_sites, local_dim, rank, randstate=rgen,
                              hermitian=True, normalized=True)
     mpo.canonicalize()
     op = mpo.to_array_global().reshape((local_dim**nr_sites,) * 2)
@@ -62,7 +62,7 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
     mineig_pos = eigvals.argmin()
     mineig, mineig_eigvec = eigvals[mineig_pos], eigvec[:, mineig_pos]
     mineig_mp, mineig_eigvec_mp = mpnum.linalg.mineig(
-        mpo, startvec_bonddim=2 * bond_dim, randstate=rgen,
+        mpo, startvec_rank=2 * rank, randstate=rgen,
         minimize_sites=2, eigs_opts=eigs_opts)
     mineig_eigvec_mp = mineig_eigvec_mp.to_array().flatten()
 
@@ -71,16 +71,16 @@ def test_mineig_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
     assert_almost_equal(abs(overlap), 1)
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_mineig_sum_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
+@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+def test_mineig_sum_minimize_sites(nr_sites, local_dim, rank, rgen):
     # Need at least three sites for minimize_sites = 2
     if nr_sites < 3:
         return
-    bond_dim = max(1, bond_dim // 2)
-    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
+    rank = max(1, rank // 2)
+    mpo = factory.random_mpo(nr_sites, local_dim, rank, randstate=rgen,
                              hermitian=True, normalized=True)
     mpo.canonicalize()
-    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
+    mps = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen,
                              dtype=np.complex_, normalized=True)
     mpas = [mpo, mps]
 
@@ -94,7 +94,7 @@ def test_mineig_sum_minimize_sites(nr_sites, local_dim, bond_dim, rgen):
     mineig_pos = eigvals.argmin()
     mineig, mineig_eigvec = eigvals[mineig_pos], eigvec[:, mineig_pos]
     mineig_mp, mineig_eigvec_mp = mpnum.linalg.mineig_sum(
-        mpas, startvec_bonddim=5 * bond_dim, randstate=rgen,
+        mpas, startvec_rank=5 * rank, randstate=rgen,
         minimize_sites=2)
     mineig_eigvec_mp = mineig_eigvec_mp.to_array().flatten()
 
@@ -107,43 +107,43 @@ BENCHMARK_MINEIG_PARAMS = [(20, 2, 12, 12)]
 
 @pt.mark.benchmark(group='mineig_sum', min_rounds=2)
 @pt.mark.parametrize(
-    'nr_sites, local_dim, bond_dim, ev_bond_dim', BENCHMARK_MINEIG_PARAMS)
+    'nr_sites, local_dim, rank, ev_rank', BENCHMARK_MINEIG_PARAMS)
 def test_mineig_benchmark(
-        nr_sites, local_dim, bond_dim, ev_bond_dim, rgen, benchmark):
-    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
+        nr_sites, local_dim, rank, ev_rank, rgen, benchmark):
+    mpo = factory.random_mpo(nr_sites, local_dim, rank, randstate=rgen,
                              hermitian=True, normalized=True)
     mpo.canonicalize()
-    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
+    mps = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen,
                              dtype=np.complex_, normalized=True)
     mpo = mpo + mp.mps_to_mpo(mps)
 
     benchmark(
         mpnum.linalg.mineig,
-        mpo, startvec_bonddim=ev_bond_dim, randstate=rgen,
+        mpo, startvec_rank=ev_rank, randstate=rgen,
         minimize_sites=1, max_num_sweeps=1,
     )
 
 
 @pt.mark.benchmark(group='mineig_sum', min_rounds=2)
 @pt.mark.parametrize(
-    'nr_sites, local_dim, bond_dim, ev_bond_dim', BENCHMARK_MINEIG_PARAMS)
+    'nr_sites, local_dim, rank, ev_rank', BENCHMARK_MINEIG_PARAMS)
 def test_mineig_sum_benchmark(
-        nr_sites, local_dim, bond_dim, ev_bond_dim, rgen, benchmark):
-    mpo = factory.random_mpo(nr_sites, local_dim, bond_dim, randstate=rgen,
+        nr_sites, local_dim, rank, ev_rank, rgen, benchmark):
+    mpo = factory.random_mpo(nr_sites, local_dim, rank, randstate=rgen,
                              hermitian=True, normalized=True)
     mpo.canonicalize()
-    mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
+    mps = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen,
                              dtype=np.complex_, normalized=True)
 
     benchmark(
         mpnum.linalg.mineig_sum,
-        [mpo, mps], startvec_bonddim=ev_bond_dim, randstate=rgen,
+        [mpo, mps], startvec_rank=ev_rank, randstate=rgen,
         minimize_sites=1, max_num_sweeps=1,
     )
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim', MP_TEST_PARAMETERS)
-def test_mineig_eigs_opts(nr_sites, local_dim, bond_dim, rgen):
+@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+def test_mineig_eigs_opts(nr_sites, local_dim, rank, rgen):
     """Verify correct operation if eigs_opts() is specified
 
     This test mainly verifies correct operation if the user specifies
@@ -155,12 +155,12 @@ def test_mineig_eigs_opts(nr_sites, local_dim, bond_dim, rgen):
     if nr_sites < 2:
         return
 
-    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
+    mps = factory.random_mps(nr_sites, local_dim, rank, rgen)
     mpo = mp.mps_to_mpo(mps)
-    # mineig does not support startvec_bonddim = 1
-    bond_dim = 2 if bond_dim == 1 else bond_dim
+    # mineig does not support startvec_rank = 1
+    rank = 2 if rank == 1 else rank
     eigval, eigvec = mpnum.linalg.mineig(
-        mpo, startvec_bonddim=bond_dim, randstate=rgen, max_num_sweeps=10,
+        mpo, startvec_rank=rank, randstate=rgen, max_num_sweeps=10,
         eigs_opts=dict(tol=1e-5), minimize_sites=1)
     # Check correct eigenvalue
     assert_almost_equal(eigval, 0)

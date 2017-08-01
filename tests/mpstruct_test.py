@@ -47,8 +47,8 @@ def test_update_normalization(mpa_norm, upd_pos, upd_norm, rgen,
     """
     n_sites = UPDATE_N_SITES
     ldim = 4
-    bdim = 3
-    mpa = factory.random_mpa(n_sites, ldim, bdim, rgen)
+    rank = 3
+    mpa = factory.random_mpa(n_sites, ldim, rank, rgen)
     assert_correct_normalization(mpa, 0, n_sites)
 
     mpa.canonicalize(*mpa_norm)

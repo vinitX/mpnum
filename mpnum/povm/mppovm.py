@@ -480,8 +480,8 @@ class MPPovm(mp.MPArray):
         # the rest in p_right.
         cp = np.cumprod(self.outdims, dtype=int)
         p_size = np.array([cp[:-1], cp[-1] // cp[:-1]])
-        bdims = np.array(state.ranks, int) ** 2 * np.array(self.ranks, int)
-        p_size *= bdims[None, :]
+        ranks = np.array(state.ranks, int) ** 2 * np.array(self.ranks, int)
+        p_size *= ranks[None, :]
         # For a given possible choice of n_left, compute the maximum
         # value of max(p_left.size, p_right.size) encountered during
         # the computation. Considering all sizes during the

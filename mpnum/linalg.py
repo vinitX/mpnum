@@ -305,7 +305,7 @@ def _mineig_minimize_locally2(local_op, eigvec_ltens, user_eigs_opts):
     if eigs_opts['k'] != 1:
         raise ValueError('Supplying k != 1 in requires changes in the code, '
                          'k={} was requested'.format(user_eigs_opts['k']))
-    eigvec_bonddim = max(lten.shape[0] for lten in eigvec_ltens)
+    eigvec_rank = max(lten.shape[0] for lten in eigvec_ltens)
     eigvec_lten = eigvec_ltens[0]
     for lten in eigvec_ltens[1:]:
         eigvec_lten = _tools.matdot(eigvec_lten, lten)
@@ -325,7 +325,7 @@ def _mineig_minimize_locally2(local_op, eigvec_ltens, user_eigs_opts):
         # as a highly reliable tool for gauging the quality of
         # results" [Sch11_, Sec. 6.4, p. 74]
         eigvec_lten = mp.MPArray.from_array(eigvec_lten, 1, has_bond=True)
-        eigvec_lten.compress(method='svd', bdim=eigvec_bonddim)
+        eigvec_lten.compress(method='svd', rank=eigvec_rank)
         eigvec_lten = eigvec_lten.lt
     return eigval, eigvec_lten
 
@@ -349,7 +349,7 @@ def _mineig_sum_minimize_locally(
 
 
 def mineig(mpo,
-           startvec=None, startvec_bonddim=None, randstate=None,
+           startvec=None, startvec_rank=None, randstate=None,
            max_num_sweeps=5, eigs_opts=None, minimize_sites=1):
     """Iterative search for smallest eigenvalue and eigenvector of an MPO.
 
@@ -357,8 +357,8 @@ def mineig(mpo,
 
     :param MPArray mpo: A matrix product operator (MPA with two physical legs)
     :param startvec: initial guess for eigenvector (default random MPS with
-        bond `startvec_bonddim`)
-    :param startvec_bonddim: Bond dimension of random start vector if
+        bond `startvec_rank`)
+    :param startvec_rank: Bond dimension of random start vector if
         no start vector is given. (default: Use the bond dimension of `mpo`)
     :param randstate: numpy.random.RandomState instance or None
     :param max_num_sweeps: Maximum number of sweeps to do (default 5)
@@ -410,13 +410,13 @@ def mineig(mpo,
 
     if startvec is None:
         pdims = max(dim[0] for dim in mpo.shapes)
-        if startvec_bonddim is None:
-            startvec_bonddim = max(mpo.ranks)
-        if startvec_bonddim == 1:
-            raise ValueError('startvec_bonddim must be at least 2')
+        if startvec_rank is None:
+            startvec_rank = max(mpo.ranks)
+        if startvec_rank == 1:
+            raise ValueError('startvec_rank must be at least 2')
 
         # FIXME Can we choose dtype as mpo.dtype? If so, also adapt mineig_sum
-        startvec = random_mpa(nr_sites, pdims, startvec_bonddim,
+        startvec = random_mpa(nr_sites, pdims, startvec_rank,
                               randstate=randstate, dtype=np.complex_)
         startvec.canonicalize(right=1)
         startvec /= mp.norm(startvec)
@@ -426,7 +426,7 @@ def mineig(mpo,
     # Can we avoid this overly complex check by improving
     # _mineig_minimize_locally()? eigs() will fail under the excluded
     # conditions because of too small matrices.
-    assert not any(bdim12 == (1, 1) for bdim12 in
+    assert not any(rank12 == (1, 1) for rank12 in
                    zip((1,) + startvec.ranks, startvec.ranks + (1,))), \
         'startvec must not contain two consecutive bonds of dimension 1, ' \
         'ranks including dummy bonds = (1,) + {!r} + (1,)' \
@@ -496,7 +496,7 @@ def mineig(mpo,
 
 
 def mineig_sum(mpas,
-           startvec=None, startvec_bonddim=None, randstate=None,
+           startvec=None, startvec_rank=None, randstate=None,
            max_num_sweeps=5, eigs_opts=None, minimize_sites=1):
     """Iterative search for smallest eigenvalue+vector of a sum
 
@@ -533,13 +533,13 @@ def mineig_sum(mpas,
 
     if startvec is None:
         pdims = max(dim[0] for dim in mpas[0].shapes)  # FIXME (also in mineig())
-        if startvec_bonddim is None:
+        if startvec_rank is None:
             raise ValueError(
-                'At least one of startvec and startvec_bonddim is required')
-        if startvec_bonddim == 1:
-            raise ValueError('startvec_bonddim must be at least 2')
+                'At least one of startvec and startvec_rank is required')
+        if startvec_rank == 1:
+            raise ValueError('startvec_rank must be at least 2')
 
-        startvec = random_mpa(nr_sites, pdims, startvec_bonddim,
+        startvec = random_mpa(nr_sites, pdims, startvec_rank,
                               randstate=randstate, dtype=np.complex_)
         startvec.canonicalize(right=1)
         startvec /= mp.norm(startvec)
@@ -549,7 +549,7 @@ def mineig_sum(mpas,
     # Can we avoid this overly complex check by improving
     # _mineig_minimize_locally()? eigs() will fail under the excluded
     # conditions because of too small matrices.
-    assert not any(bdim12 == (1, 1) for bdim12 in
+    assert not any(rank12 == (1, 1) for rank12 in
                    zip((1,) + startvec.ranks, startvec.ranks + (1,))), \
         'startvec must not contain two consecutive bonds of dimension 1, ' \
         'ranks including dummy bonds = (1,) + {!r} + (1,)' \

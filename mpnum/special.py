@@ -24,9 +24,9 @@ def inner_prod_mps(mpa1, mpa2):
     :returns: <mpa1|mpa2>
 
     """
-    assert all(bdim == 1 for bdim in mpa1.ranks)
-    assert all(pleg == 1 for pleg in mpa1.ndims)
-    assert all(pleg == 1 for pleg in mpa2.ndims)
+    assert all(rank == 1 for rank in mpa1.ranks)
+    assert all(dim == 1 for dim in mpa1.ndims)
+    assert all(dim == 1 for dim in mpa2.ndims)
 
     # asssume mpa1 is product
     ltens1 = iter(mpa1.lt)
@@ -38,7 +38,7 @@ def inner_prod_mps(mpa1, mpa2):
     return res[0, 0]
 
 
-def sumup(mpas, bdim, weights=None, svdfunc=truncated_svd):
+def sumup(mpas, rank, weights=None, svdfunc=truncated_svd):
     """Same as :func:`mparray.sumup` with a consequent compression, but with
     in-place svd compression.  Also, we use a sparse-matrix format for the
     intermediate local tensors of the sum. Therefore, the memory footprint
@@ -47,7 +47,7 @@ def sumup(mpas, bdim, weights=None, svdfunc=truncated_svd):
     Right now, only the sum of product tensors is supported.
 
     :param mpas: Iterator over MPArrays
-    :param bdim: Bond dimension of the final result.
+    :param rank: Bond dimension of the final result.
     :param weights: Iterator of same length as mpas containing weights for
         computing weighted sum (default: None)
     :param svdfunc: Function implementing the truncated svd, for required
@@ -55,10 +55,10 @@ def sumup(mpas, bdim, weights=None, svdfunc=truncated_svd):
         - :func:`truncated_svd`: Almost no speedup compared to the standard
           sumup and compression, since it computes the full SVD
         - :func:`scipy.sparse.linalg.svds`: Only computes the necessary
-          singular values/vectors, but slow if `bdim` is not small enough
+          singular values/vectors, but slow if `rank` is not small enough
         - :func:`sklearn.utils.extmath.randomized_svd`: Randomized truncated
           SVD, fast and efficient, but only approximation.
-    :returns: Sum of `mpas` with max. bond dimension `bdim`
+    :returns: Sum of `mpas` with max. bond dimension `rank`
 
     """
     mpas = list(mpas)
@@ -83,15 +83,15 @@ def sumup(mpas, bdim, weights=None, svdfunc=truncated_svd):
         summands = [(w * next(lt)) for w, lt in zip(weights, ltensiter)]
 
     current = np.concatenate(summands, axis=-1)
-    u, sv, v = svdfunc(current.reshape((-1, nr_summands)), bdim)
+    u, sv, v = svdfunc(current.reshape((-1, nr_summands)), rank)
     ltens = [u.reshape((1, -1, len(sv)))]
 
     for sites in range(1, length - 1):
         current = _local_add_sparse([next(lt).ravel() for lt in ltensiter])
         current = ((sv[:, None] * v) * current).reshape((-1, nr_summands))
-        bdim_t = min(bdim, *current.shape)
-        u, sv, v = svdfunc(current.reshape((-1, nr_summands)), bdim_t)
-        ltens.append(u.reshape((ltens[-1].shape[-1], -1, bdim_t)))
+        rank_t = min(rank, *current.shape)
+        u, sv, v = svdfunc(current.reshape((-1, nr_summands)), rank_t)
+        ltens.append(u.reshape((ltens[-1].shape[-1], -1, rank_t)))
 
     current = np.concatenate([next(lt) for lt in ltensiter], axis=0) \
         .reshape((nr_summands, -1))

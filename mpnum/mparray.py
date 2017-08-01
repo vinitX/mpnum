@@ -124,9 +124,9 @@ class MPArray(object):
         MPArray
 
         >>> from .factory import zero
-        >>> zero(sites=3, ldim=4, bdim=3).lt.shapes
+        >>> zero(sites=3, ldim=4, rank=3).lt.shapes
         ((1, 4, 3), (3, 4, 3), (3, 4, 1))
-        >>> zero(sites=3, ldim=4, bdim=3).size
+        >>> zero(sites=3, ldim=4, rank=3).size
         60
 
         """
@@ -139,7 +139,7 @@ class MPArray(object):
 
     @property
     def ranks(self):
-        """Tuple of virtual dimensions"""
+        """Tuple of ranks"""
         return tuple(m.shape[0] for m in self._lt[1:])
 
     @property
@@ -224,7 +224,7 @@ class MPArray(object):
         vs. local form.
 
         Computes the (exact) representation of `array` as MPA with
-        open boundary conditions, i.e. virtual dimension 1 at the
+        open boundary conditions, i.e. rank 1 at the
         boundary. This is done by factoring the off the left and the
         "physical" legs from the rest of the tensor by a QR
         decomposition and working its way through the tensor from the
@@ -235,7 +235,7 @@ class MPArray(object):
         each location and has array.ndim // ndims number of sites.
 
         has_bond = True allows to treat a part of the linear chain of
-        an MPA as MPA as well. The virtual dimension on the left and
+        an MPA as MPA as well. The rank on the left and
         right can be different from one and different from each other
         in that case.  This is useful to apply SVD compression only to
         part of an MPA. It is used in
@@ -263,7 +263,7 @@ class MPArray(object):
     @classmethod
     def from_kron(cls, factors):
         """Returns the (exact) representation of an n-fold  Kronecker (tensor)
-        product as MPA with virtual dimensions 1 and n sites.
+        product as MPA with ranks 1 and n sites.
 
         :param factors: A list of arrays with arbitrary number of physical legs
         :returns: The kronecker product of the factors as MPA
@@ -695,7 +695,7 @@ class MPArray(object):
             ltens = self._lt[site]
             q, r = qr(ltens.reshape((-1, ltens.shape[-1])))
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
-            # can be accounted by adapting virtual dimension here
+            # can be accounted by adapting rank here
             newtens = (q.reshape(ltens.shape[:-1] + (-1,)),
                        matdot(r, self._lt[site + 1]))
             self._lt.update(slice(site, site + 2), newtens,
@@ -715,7 +715,7 @@ class MPArray(object):
             ltens = self._lt[site]
             q, r = qr(ltens.reshape((ltens.shape[0], -1)).T)
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
-            # can be accounted by adapting virtual dimension here
+            # can be accounted by adapting rank here
             newtens = (matdot(self._lt[site - 1], r.T),
                        q.T.reshape((-1,) + ltens.shape[1:]))
             self._lt.update(slice(site - 1, site + 1), newtens,
@@ -763,12 +763,12 @@ class MPArray(object):
 
         .. rubric:: Parameters for 'svd':
 
-        :param bdim: Maximal virtual dimension of the result. Default
+        :param rank: Maximal rank of the result. Default
             `None`.
 
         :param relerr: Maximal fraction of discarded singular values.
-            Default `0`.  If both bdim and relerr are given, the
-            smaller resulting virtual dimension is used.
+            Default `0`.  If both rank and relerr are given, the
+            smaller resulting rank is used.
 
         :param direction: `right` (sweep from left to right), `left`
             (inverse) or `None` (choose depending on
@@ -782,11 +782,11 @@ class MPArray(object):
 
         .. rubric:: Parameters for 'var':
 
-        :param startmpa: Start vector, also fixes the virtual dimension
+        :param startmpa: Start vector, also fixes the rank
             of the result. Default: Random, with same norm as self.
 
-        :param bdim: Maximal virtual dimension for the result. Either
-            `startmpa` or `bdim` is required.
+        :param rank: Maximal rank for the result. Either
+            `startmpa` or `rank` is required.
 
         :param randstate: `numpy.random.RandomState` instance used for
             random start vector. Default: `numpy.random`.
@@ -832,7 +832,7 @@ class MPArray(object):
         else:
             raise ValueError('{!r} is not a valid method'.format(method))
 
-    def _compress_svd(self, bdim=None, relerr=None, direction=None,
+    def _compress_svd(self, rank=None, relerr=None, direction=None,
                       canonicalize=True, svdfunc=truncated_svd):
         """Compress `self` using SVD [Sch11_, Sec. 4.5.1]
 
@@ -846,24 +846,24 @@ class MPArray(object):
         ln, rn = self.canonical_form
         default_direction = 'left' if len(self) - rn > ln else 'right'
         direction = default_direction if direction is None else direction
-        bdim = max(self.ranks) if bdim is None else bdim
+        rank = max(self.ranks) if rank is None else rank
 
         if direction == 'right':
             if canonicalize:
                 self.canonicalize(right=1)
-            for item in self._compress_svd_r(bdim, relerr, svdfunc):
+            for item in self._compress_svd_r(rank, relerr, svdfunc):
                 pass
             return item
         elif direction == 'left':
             if canonicalize:
                 self.canonicalize(left=len(self) - 1)
-            for item in self._compress_svd_l(bdim, relerr, svdfunc):
+            for item in self._compress_svd_l(rank, relerr, svdfunc):
                 pass
             return item
 
         raise ValueError('{} is not a valid direction'.format(direction))
 
-    def _compression_var(self, startmpa=None, bdim=None, randstate=np.random,
+    def _compression_var(self, startmpa=None, rank=None, randstate=np.random,
                          num_sweeps=5, var_sites=1):
         """Return a compression from variational compression [Sch11_,
         Sec. 4.5.2]
@@ -878,10 +878,10 @@ class MPArray(object):
             return copy, norm(copy)**2
 
         if startmpa is not None:
-            bdim = max(startmpa.ranks)
-        elif bdim is None:
-            raise ValueError('You must provide startmpa or bdim')
-        if bdim > max(self.ranks):
+            rank = max(startmpa.ranks)
+        elif rank is None:
+            raise ValueError('You must provide startmpa or rank')
+        if rank > max(self.ranks):
             # The caller expects that the result is independent from
             # `self`. Take a copy. If we are called from .compress()
             # instead of .compression(), we could avoid the copy and
@@ -891,7 +891,7 @@ class MPArray(object):
 
         if startmpa is None:
             from mpnum.factory import random_mpa
-            compr = random_mpa(len(self), self.shapes, bdim, randstate=randstate,
+            compr = random_mpa(len(self), self.shapes, rank, randstate=randstate,
                                dtype=self.dtype)
         else:
             compr = startmpa.copy()
@@ -904,14 +904,14 @@ class MPArray(object):
         compr = compr.reshape(shape)
         return compr, overlap
 
-    def _compress_svd_l(self, bdim, relerr, svdfunc):
+    def _compress_svd_l(self, rank, relerr, svdfunc):
         """Compresses the MPA in place from right to left using SVD;
         yields a right-canonical state
 
         See :func:`MPArray.compress` for parameters
 
         """
-        assert bdim > 0, "Cannot compress to bdim={}".format(bdim)
+        assert rank > 0, "Cannot compress to rank={}".format(rank)
         assert (relerr is None) or ((0. <= relerr) and (relerr <= 1.)), \
             "Relerr={} not allowed".format(relerr)
 
@@ -919,30 +919,30 @@ class MPArray(object):
             ltens = self._lt[site]
             matshape = (ltens.shape[0], -1)
             if relerr is None:
-                u, sv, v = svdfunc(ltens.reshape(matshape), bdim)
-                bdim_t = len(sv)
+                u, sv, v = svdfunc(ltens.reshape(matshape), rank)
+                rank_t = len(sv)
             else:
                 u, sv, v = svd(ltens.reshape(matshape))
                 svsum = np.cumsum(sv) / np.sum(sv)
-                bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
-                bdim_t = min(ltens.shape[0], v.shape[0], bdim, bdim_relerr)
+                rank_relerr = np.searchsorted(svsum, 1 - relerr) + 1
+                rank_t = min(ltens.shape[0], v.shape[0], rank, rank_relerr)
 
-            yield sv, bdim_t
+            yield sv, rank_t
 
-            newtens = (matdot(self._lt[site - 1], u[:, :bdim_t] * sv[None, :bdim_t]),
-                       v[:bdim_t, :].reshape((bdim_t, ) + ltens.shape[1:]))
+            newtens = (matdot(self._lt[site - 1], u[:, :rank_t] * sv[None, :rank_t]),
+                       v[:rank_t, :].reshape((rank_t, ) + ltens.shape[1:]))
             self._lt.update(slice(site - 1, site + 1), newtens,
                             normalization=(None, 'right'))
 
         yield np.sum(np.abs(self._lt[0])**2)
 
-    def _compress_svd_r(self, bdim, relerr, svdfunc):
+    def _compress_svd_r(self, rank, relerr, svdfunc):
         """Compresses the MPA in place from left to right using SVD;
         yields a left-canonical state
 
         See :func:`MPArray.compress` for parameters
         """
-        assert bdim > 0, "Cannot compress to bdim={}".format(bdim)
+        assert rank > 0, "Cannot compress to rank={}".format(rank)
         assert (relerr is None) or ((0. <= relerr) and (relerr <= 1.)), \
             "Relerr={} not allowed".format(relerr)
 
@@ -950,18 +950,18 @@ class MPArray(object):
             ltens = self._lt[site]
             matshape = (-1, ltens.shape[-1])
             if relerr is None:
-                u, sv, v = svdfunc(ltens.reshape(matshape), bdim)
-                bdim_t = len(sv)
+                u, sv, v = svdfunc(ltens.reshape(matshape), rank)
+                rank_t = len(sv)
             else:
                 u, sv, v = svd(ltens.reshape(matshape))
                 svsum = np.cumsum(sv) / np.sum(sv)
-                bdim_relerr = np.searchsorted(svsum, 1 - relerr) + 1
-                bdim_t = min(ltens.shape[-1], u.shape[1], bdim, bdim_relerr)
+                rank_relerr = np.searchsorted(svsum, 1 - relerr) + 1
+                rank_t = min(ltens.shape[-1], u.shape[1], rank, rank_relerr)
 
-            yield sv, bdim_t
+            yield sv, rank_t
 
-            newtens = (u[:, :bdim_t].reshape(ltens.shape[:-1] + (bdim_t, )),
-                       matdot(sv[:bdim_t, None] * v[:bdim_t, :], self._lt[site + 1]))
+            newtens = (u[:, :rank_t].reshape(ltens.shape[:-1] + (rank_t, )),
+                       matdot(sv[:rank_t, None] * v[:rank_t, :], self._lt[site + 1]))
             self._lt.update(slice(site, site + 2), newtens,
                             normalization=('left', None))
 
@@ -974,7 +974,7 @@ class MPArray(object):
             1, 2, ... len(self) - 1 sites on left hand side of
             bipartition
 
-        .. note:: May decrease the virtual dimension (without changing
+        .. note:: May decrease the rank (without changing
             the represented tensor).
 
         """
@@ -983,28 +983,28 @@ class MPArray(object):
         self.canonicalize(right=1)
         iterator = self._compress_svd_r(max(self.ranks), None, truncated_svd)
         # We want everything from the iterator except for the last element.
-        for _, (sv, bdim) in zip(range(len(self) - 1), iterator):
-            # We could verify that `bdim` did not decrease but it may
+        for _, (sv, rank) in zip(range(len(self) - 1), iterator):
+            # We could verify that `rank` did not decrease but it may
             # decrease because of zero singular values -- let's trust
             # that relerr=0.0 behaves as intended.
-            #assert old_bdim == bdim
+            #assert old_rank == rank
             yield sv
 
     def pad_ranks(self, rank=None, force_rank=False):
-        """Increase virtual dimension by padding with zeros
+        """Increase rank by padding with zeros
 
         This function is useful to prepare initial states for
         variational compression. E.g. for a five-qubit pure state with
-        virtual dimensions `(2, 2, 4, 2)` it is desirable to increase the
-        virtual dimensions to `(2, 4, 4, 2)` before using it as an
+        ranks `(2, 2, 4, 2)` it is desirable to increase the
+        ranks to `(2, 4, 4, 2)` before using it as an
         initial state for variational compression.
 
         :param int rank: Increase rank to this value, use
-            `self.bdim` if `None`
+            `self.rank` if `None`
         :param force_rank: Use full rank even at the beginning and
             end of the MPS (generally not useful)
         :returns: MPA representation of the same array with increased
-            virtual dimension
+            rank
 
         """
         if rank is None:
@@ -1023,7 +1023,7 @@ class MPArray(object):
     #  - Can we refactor this function into several shorter functions?
     #  - track overlap between 'compr' and 'target' and stop sweeping if it
     #    is small
-    #  - maybe increase virtual dimension of given error cannot be reached
+    #  - maybe increase rank of given error cannot be reached
     #  - Shall we track the error in the SVD truncation for multi-site
     #    updates? [Sch11_] says it turns out to be useful in actual DMRG.
     #  - return these details for tracking errors in larger computations
@@ -1078,7 +1078,7 @@ class MPArray(object):
         #    \___________________/    \______________/    \______________/
         #     num_sweep = 0            num_sweep = 1       num_sweep = 1
 
-        max_vdim = max(self.ranks)
+        max_rank = max(self.ranks)
         for num_sweep in range(num_sweeps):
             # Sweep from left to right (LTR)
             for pos in range(nr_sites - var_sites + 1):
@@ -1092,7 +1092,7 @@ class MPArray(object):
                                                  target.lt[pos - 1])
                 pos_end = pos + var_sites
                 new_ltens = _adapt_to_new_lten(lvecs[pos], target.lt[pos:pos_end],
-                                               rvecs[pos], max_vdim)
+                                               rvecs[pos], max_rank)
                 self._lt[pos:pos_end] = new_ltens
 
             # Sweep from right to left (RTL; don't do `pos = nr_sites
@@ -1107,7 +1107,7 @@ class MPArray(object):
                                                  target.lt[pos_end])
 
                 new_ltens = _adapt_to_new_lten(lvecs[pos], target.lt[pos:pos_end],
-                                               rvecs[pos], max_vdim)
+                                               rvecs[pos], max_rank)
                 self._lt[pos:pos_end] = new_ltens
 
         # Let u the uncompressed vector and c the compression which we
@@ -1257,7 +1257,7 @@ def sandwich(mpo, mps, mps2=None):
     """Compute <mps|MPO|mps> efficiently
 
     The runtime of this method scales with `D**3 Dp + D**2 Dp**3`
-    where `D` and `Dp` are the virtual dimensions of `mps` and `mpo`. This
+    where `D` and `Dp` are the ranks of `mps` and `mpo`. This
     is more efficient than `inner(mps, dot(mpo, mps))`, whose runtime
     scales with `D**4 Dp**3`, and also more efficient that
     `dot(mps.conj(), dot(mpo, mps)).to_array()`, whose runtime scales
@@ -1322,7 +1322,7 @@ def diag(mpa, axis=0):
         return np.array(mpas, dtype=object)
 
 def inject(mpa, pos, num=None, inject_ten=None):
-    """Interleaved outer product of an MPA and a virtual dimension 1 MPA
+    """Interleaved outer product of an MPA and a rank 1 MPA
 
     Return the outer product between mpa and `num` copies of the local
     tensor `inject_ten`, but place the copies of `inject_ten` before
@@ -1365,16 +1365,16 @@ def inject(mpa, pos, num=None, inject_ten=None):
     pos = (0,) + pos + (len(mpa),)
     pieces = tuple(tuple(mpa.lt[begin:end])
                    for begin, end in zip(pos[:-1], pos[1:]))
-    bdims = (l[-1].shape[-1] if l else 1 for l in pieces[:-1])
+    ranks = (l[-1].shape[-1] if l else 1 for l in pieces[:-1])
     pdims = (r[0].shape[1] if r else mpa.lt[-1].shape[1] for r in pieces[1:])
     inject_ten = (
         (
             np.rollaxis(np.tensordot(
                 np.eye(pdim) if ten is None else ten,
-                np.eye(bdim), axes=((), ())), -1)
+                np.eye(rank), axes=((), ())), -1)
             for ten in (inj if n is None else (inj,) * n)
         )
-        for bdim, pdim, n, inj in zip(bdims, pdims, num, inject_ten)
+        for rank, pdim, n, inj in zip(ranks, pdims, num, inject_ten)
     )
     ltens = (lt for ltens in zip(pieces, inject_ten) for lten in ltens
              for lt in lten)
@@ -1428,7 +1428,7 @@ def normdist(mpa1, mpa2):
 
     """
     return norm(mpa1 - mpa2)
-    # This implementation doesn't produce an MPA with double virtual dimension:
+    # This implementation doesn't produce an MPA with double rank:
     #
     # return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
     #
@@ -1644,14 +1644,14 @@ def _local_sum_identity(mpas, embed_tensor=None):
     """Implement a special case of :func:`local_sum`.
 
     See :func:`local_sum` for a description.  We return an MPA with
-    smaller virtual dimension than naive embed+MPA-sum.
+    smaller rank than naive embed+MPA-sum.
 
     mpas is a list of MPAs. The width 'width' of all the mpas[i] must
     be the same. mpas[i] is embedded onto a linear chain on sites i,
     ..., i + width - 1.
 
-    Let D the virtual dimension of the mpas[i]. Then the MPA we return
-    has virtual dimension width * D + 1 instead of width * D + len(mpas).
+    Let D the rank of the mpas[i]. Then the MPA we return
+    has rank width * D + 1 instead of width * D + len(mpas).
 
     The basic idea behind the construction we use is similar to
     [Sch11_, Sec. 6.1].
@@ -1980,7 +1980,7 @@ def _adapt_to_add_r(rightvec, compr_lten, tgt_lten):
     return rightvec
 
 
-def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_vdim):
+def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_rank):
     """Create new local tensors for the compressed MPS.
 
     :param leftvec: Left vector
@@ -1988,7 +1988,7 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_vdim):
     :param tgt_ltens: List of local tensor of the target MPS
     :param rightvec: Right vector
         It has two indices: compr_mps_bond and tgt_mps_bond
-    :param int max_vdim: Maximal virtual dimension of the result
+    :param int max_rank: Maximal rank of the result
 
     Compute the right-hand side of [Sch11_, Fig. 27, p. 48]. We have
     compr_lten in the top row of the figure without complex
@@ -2031,10 +2031,10 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_vdim):
         return (compr_lten,)
     else:
         # [Sch11_, p. 49] says that we can go with QR instead of SVD
-        # here. However, this will generally increase the virtual dimension of
+        # here. However, this will generally increase the rank of
         # our compressed MPS, which we do not want.
         compr_ltens = MPArray.from_array(compr_lten, ndims=1, has_bond=True)
-        compr_ltens.compress('svd', bdim=max_vdim)
+        compr_ltens.compress('svd', rank=max_rank)
         return compr_ltens.lt
 
 
