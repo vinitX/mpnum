@@ -163,7 +163,7 @@ def _generate(sites, ldim, bdim, func, force_bdim):
         bdim = tuple(bdim)
 
     if not force_bdim:
-        bdim = tuple(min(b1, b2) for b1, b2 in zip(bdim, mp.full_bdim(ldim)))
+        bdim = tuple(min(b1, b2) for b1, b2 in zip(bdim, mp.full_rank(ldim)))
 
     assert len(ldim) == sites
     assert len(bdim) == sites - 1

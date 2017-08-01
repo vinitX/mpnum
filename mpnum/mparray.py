@@ -62,7 +62,7 @@ class MPArray(object):
     where the :math:`A^{[k]}` are local tensors (with N legs/dimensions).
     The matrix products in :eq:`mpa` are taken with respect to the left-
     and right-most legs (virtual indices) and the multi-index :math:`i_k`
-    corresponds to the true tensor legs. Open boundary conditions imply that
+    corresponds to the true local legs. Open boundary conditions imply that
     :math:`A^{[1]}` is 1-by-something and :math:`A^{[N]}` is something-by-1.
 
     By convention, the 0th and last dimension of the local tensors are reserved
@@ -534,7 +534,7 @@ class MPArray(object):
     # FIXME More appropriate naming?
     def vleg2leg(self, pos):
         """Transforms the virtual leg between site `pos` and `pos + 1` into
-        tensor legs at those sites. The new leg will be the rightmost one
+        local legs at those sites. The new leg will be the rightmost one
         at site `pos` and the leftmost one at site `pos + 1`. The new virtual
         dimension is 1.
 
@@ -1011,7 +1011,7 @@ class MPArray(object):
             rank = max(self.ranks)
         ranks = it.repeat(rank)
         if not force_rank:
-            ranks = [min(f, b) for f, b in zip(full_bdim(self.shapes), ranks)]
+            ranks = [min(f, b) for f, b in zip(full_rank(self.shapes), ranks)]
         pad = [max(s, b) - s for s, b in zip(self.ranks, ranks)]
         lt = (np.pad(lt, [(0, lp)] + [(0, 0)] * (lt.ndim - 2) + [(0, rp)],
                      'constant')
@@ -2038,17 +2038,17 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_vdim):
         return compr_ltens.lt
 
 
-def full_bdim(ldims):
-    """@todo: Docstring for full_bdim.
+def full_rank(ldims):
+    """Computes a list of maximal ranks for a tensor with given local dimesions
 
     :param ldims: @todo
     :returns: @todo
 
-    >>> full_bdim([3] * 5)
+    >>> full_rank([3] * 5)
     [3, 9, 9, 3]
-    >>> full_bdim([2] * 8)
+    >>> full_rank([2] * 8)
     [2, 4, 8, 16, 8, 4, 2]
-    >>> full_bdim([(2, 3)] * 4)
+    >>> full_rank([(2, 3)] * 4)
     [6, 36, 6]
 
     """

@@ -1095,7 +1095,7 @@ def test_pad_bdim(nr_sites, local_dim, bond_dim, rgen):
     mps = factory.random_mpa(nr_sites, local_dim, bond_dim, randstate=rgen,
                              normalized=True)
     mps2 = mps.pad_ranks(2 * bond_dim)
-    assert mps2.ranks == tuple(min(d, 2 * bond_dim) for d in mp.full_bdim(mps.shapes))
+    assert mps2.ranks == tuple(min(d, 2 * bond_dim) for d in mp.full_rank(mps.shapes))
     assert_almost_equal(mp.normdist(mps, mps2), 0.0)
     mps2 = mps.pad_ranks(2 * bond_dim, force_rank=True)
     assert mps2.ranks == (2 * bond_dim,) * (nr_sites - 1)
