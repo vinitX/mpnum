@@ -225,7 +225,7 @@ class MPPovm(mp.MPArray):
         `next(iter(mppovm))` would not be equal to `mppovm[0]`.
 
         """
-        return self.paxis_iter(axes=0)
+        return self.axis_iter(axes=0)
 
     @property
     def probability_map(self):

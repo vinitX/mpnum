@@ -298,13 +298,13 @@ class MPArray(object):
         """
         return local_to_global(self.to_array(), sites=len(self))
 
-    def paxis_iter(self, axes=0):
+    def axis_iter(self, axes=0):
         """Returns an iterator yielding Sub-MPArrays of `self` by iterating
         over the specified physical axes.
 
         **Example:** If `self` represents a bipartite (i.e. length 2)
         array with 2 physical dimensions on each site A[(k,l), (m,n)],
-        self.paxis_iter(0) is equivalent to::
+        self.axis_iter(0) is equivalent to::
 
             (A[(k, :), (m, :)] for m in range(...) for k in range(...))
 
