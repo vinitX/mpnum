@@ -139,7 +139,7 @@ class MPArray(object):
 
     @property
     def ranks(self):
-        """Tuple of bond dimensions"""
+        """Tuple of virtual dimensions"""
         return tuple(m.shape[0] for m in self._lt[1:])
 
     @property
@@ -224,7 +224,7 @@ class MPArray(object):
         vs. local form.
 
         Computes the (exact) representation of `array` as MPA with
-        open boundary conditions, i.e. bond dimension 1 at the
+        open boundary conditions, i.e. virtual dimension 1 at the
         boundary. This is done by factoring the off the left and the
         "physical" legs from the rest of the tensor by a QR
         decomposition and working its way through the tensor from the
@@ -235,7 +235,7 @@ class MPArray(object):
         each location and has array.ndim // ndims number of sites.
 
         has_bond = True allows to treat a part of the linear chain of
-        an MPA as MPA as well. The bond dimension on the left and
+        an MPA as MPA as well. The virtual dimension on the left and
         right can be different from one and different from each other
         in that case.  This is useful to apply SVD compression only to
         part of an MPA. It is used in
@@ -248,7 +248,7 @@ class MPArray(object):
         :param ndims: Number of physical legs per site (default array.ndim)
             or iterable over number of physical legs
         :param bool has_bond: True if array already has indices for
-            the left and right bond
+            the left and right virtual
 
         """
 
@@ -263,7 +263,7 @@ class MPArray(object):
     @classmethod
     def from_kron(cls, factors):
         """Returns the (exact) representation of an n-fold  Kronecker (tensor)
-        product as MPA with bond dimensions 1 and n sites.
+        product as MPA with virtual dimensions 1 and n sites.
 
         :param factors: A list of arrays with arbitrary number of physical legs
         :returns: The kronecker product of the factors as MPA
@@ -535,13 +535,13 @@ class MPArray(object):
     def vleg2leg(self, pos):
         """Transforms the virtual leg between site `pos` and `pos + 1` into
         tensor legs at those sites. The new leg will be the rightmost one
-        at site `pos` and the leftmost one at site `pos + 1`. The new bond
+        at site `pos` and the leftmost one at site `pos + 1`. The new virtual
         dimension is 1.
 
         Also see :func:`leg2vleg`.
 
-        :param pos: Number of the bond to perform the transformation
-        :returns: read-only MPA with transformed bond
+        :param pos: Number of the virtual to perform the transformation
+        :returns: read-only MPA with transformed virtual
 
         """
         ltens = list(self._lt)
@@ -556,8 +556,8 @@ class MPArray(object):
     def leg2vleg(self, pos):
         """Performs the inverse operation to :func:`vleg2leg`.
 
-        :param pos: Number of the bond to perform the transformation
-        :returns: read-only MPA with transformed bond
+        :param pos: Number of the virtual to perform the transformation
+        :returns: read-only MPA with transformed virtual
 
         """
         ltens = list(self._lt)
@@ -571,10 +571,10 @@ class MPArray(object):
         return MPArray(LocalTensors(ltens, cform=new_normal_form))
 
     def split(self, pos):
-        """Splits the MPA into two by transforming the bond legs into physical
+        """Splits the MPA into two by transforming the virtual legs into physical
         legs
 
-        :param pos: Number of the bond to perform the transformation
+        :param pos: Number of the virtual to perform the transformation
         :returns: (mpa_left, mpa_right)
 
         """
@@ -695,7 +695,7 @@ class MPArray(object):
             ltens = self._lt[site]
             q, r = qr(ltens.reshape((-1, ltens.shape[-1])))
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
-            # can be accounted by adapting bond dimension here
+            # can be accounted by adapting virtual dimension here
             newtens = (q.reshape(ltens.shape[:-1] + (-1,)),
                        matdot(r, self._lt[site + 1]))
             self._lt.update(slice(site, site + 2), newtens,
@@ -715,7 +715,7 @@ class MPArray(object):
             ltens = self._lt[site]
             q, r = qr(ltens.reshape((ltens.shape[0], -1)).T)
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
-            # can be accounted by adapting bond dimension here
+            # can be accounted by adapting virtual dimension here
             newtens = (matdot(self._lt[site - 1], r.T),
                        q.T.reshape((-1,) + ltens.shape[1:]))
             self._lt.update(slice(site - 1, site + 1), newtens,
@@ -763,18 +763,18 @@ class MPArray(object):
 
         .. rubric:: Parameters for 'svd':
 
-        :param bdim: Maximal bond dimension of the result. Default
+        :param bdim: Maximal virtual dimension of the result. Default
             `None`.
 
         :param relerr: Maximal fraction of discarded singular values.
             Default `0`.  If both bdim and relerr are given, the
-            smaller resulting bond dimension is used.
+            smaller resulting virtual dimension is used.
 
         :param direction: `right` (sweep from left to right), `left`
             (inverse) or `None` (choose depending on
             normalization). Default `None`.
 
-        :param normalize: SVD compression works best when the MPA is
+        :param canonicalize: SVD compression works best when the MPA is
             brought into full left-/right-cannonical form first. This variable
             determines whether cannonical form is enforced before compression
             (default: True)
@@ -782,10 +782,10 @@ class MPArray(object):
 
         .. rubric:: Parameters for 'var':
 
-        :param startmpa: Start vector, also fixes the bond dimension
+        :param startmpa: Start vector, also fixes the virtual dimension
             of the result. Default: Random, with same norm as self.
 
-        :param bdim: Maximal bond dimension for the result. Either
+        :param bdim: Maximal virtual dimension for the result. Either
             `startmpa` or `bdim` is required.
 
         :param randstate: `numpy.random.RandomState` instance used for
@@ -833,7 +833,7 @@ class MPArray(object):
             raise ValueError('{!r} is not a valid method'.format(method))
 
     def _compress_svd(self, bdim=None, relerr=None, direction=None,
-                      normalize=True, svdfunc=truncated_svd):
+                      canonicalize=True, svdfunc=truncated_svd):
         """Compress `self` using SVD [Sch11_, Sec. 4.5.1]
 
         Parameters: See :func:`MPArray.compress()`.
@@ -849,13 +849,13 @@ class MPArray(object):
         bdim = max(self.ranks) if bdim is None else bdim
 
         if direction == 'right':
-            if normalize:
+            if canonicalize:
                 self.canonicalize(right=1)
             for item in self._compress_svd_r(bdim, relerr, svdfunc):
                 pass
             return item
         elif direction == 'left':
-            if normalize:
+            if canonicalize:
                 self.canonicalize(left=len(self) - 1)
             for item in self._compress_svd_l(bdim, relerr, svdfunc):
                 pass
@@ -974,7 +974,7 @@ class MPArray(object):
             1, 2, ... len(self) - 1 sites on left hand side of
             bipartition
 
-        .. note:: May decrease the bond dimension (without changing
+        .. note:: May decrease the virtual dimension (without changing
             the represented tensor).
 
         """
@@ -991,12 +991,12 @@ class MPArray(object):
             yield sv
 
     def pad_ranks(self, rank=None, force_rank=False):
-        """Increase bond dimension by padding with zeros
+        """Increase virtual dimension by padding with zeros
 
         This function is useful to prepare initial states for
         variational compression. E.g. for a five-qubit pure state with
-        bond dimensions `(2, 2, 4, 2)` it is desirable to increase the
-        bond dimensions to `(2, 4, 4, 2)` before using it as an
+        virtual dimensions `(2, 2, 4, 2)` it is desirable to increase the
+        virtual dimensions to `(2, 4, 4, 2)` before using it as an
         initial state for variational compression.
 
         :param int rank: Increase rank to this value, use
@@ -1004,7 +1004,7 @@ class MPArray(object):
         :param force_rank: Use full rank even at the beginning and
             end of the MPS (generally not useful)
         :returns: MPA representation of the same array with increased
-            bond dimension
+            virtual dimension
 
         """
         if rank is None:
@@ -1023,7 +1023,7 @@ class MPArray(object):
     #  - Can we refactor this function into several shorter functions?
     #  - track overlap between 'compr' and 'target' and stop sweeping if it
     #    is small
-    #  - maybe increase bond dimension of given error cannot be reached
+    #  - maybe increase virtual dimension of given error cannot be reached
     #  - Shall we track the error in the SVD truncation for multi-site
     #    updates? [Sch11_] says it turns out to be useful in actual DMRG.
     #  - return these details for tracking errors in larger computations
@@ -1078,7 +1078,7 @@ class MPArray(object):
         #    \___________________/    \______________/    \______________/
         #     num_sweep = 0            num_sweep = 1       num_sweep = 1
 
-        max_bonddim = max(self.ranks)
+        max_vdim = max(self.ranks)
         for num_sweep in range(num_sweeps):
             # Sweep from left to right (LTR)
             for pos in range(nr_sites - var_sites + 1):
@@ -1092,7 +1092,7 @@ class MPArray(object):
                                                  target.lt[pos - 1])
                 pos_end = pos + var_sites
                 new_ltens = _adapt_to_new_lten(lvecs[pos], target.lt[pos:pos_end],
-                                               rvecs[pos], max_bonddim)
+                                               rvecs[pos], max_vdim)
                 self._lt[pos:pos_end] = new_ltens
 
             # Sweep from right to left (RTL; don't do `pos = nr_sites
@@ -1107,7 +1107,7 @@ class MPArray(object):
                                                  target.lt[pos_end])
 
                 new_ltens = _adapt_to_new_lten(lvecs[pos], target.lt[pos:pos_end],
-                                               rvecs[pos], max_bonddim)
+                                               rvecs[pos], max_vdim)
                 self._lt[pos:pos_end] = new_ltens
 
         # Let u the uncompressed vector and c the compression which we
@@ -1257,7 +1257,7 @@ def sandwich(mpo, mps, mps2=None):
     """Compute <mps|MPO|mps> efficiently
 
     The runtime of this method scales with `D**3 Dp + D**2 Dp**3`
-    where `D` and `Dp` are the bond dimensions of `mps` and `mpo`. This
+    where `D` and `Dp` are the virtual dimensions of `mps` and `mpo`. This
     is more efficient than `inner(mps, dot(mpo, mps))`, whose runtime
     scales with `D**4 Dp**3`, and also more efficient that
     `dot(mps.conj(), dot(mpo, mps)).to_array()`, whose runtime scales
@@ -1322,7 +1322,7 @@ def diag(mpa, axis=0):
         return np.array(mpas, dtype=object)
 
 def inject(mpa, pos, num=None, inject_ten=None):
-    """Interleaved outer product of an MPA and a bond dimension 1 MPA
+    """Interleaved outer product of an MPA and a virtual dimension 1 MPA
 
     Return the outer product between mpa and `num` copies of the local
     tensor `inject_ten`, but place the copies of `inject_ten` before
@@ -1428,7 +1428,7 @@ def normdist(mpa1, mpa2):
 
     """
     return norm(mpa1 - mpa2)
-    # This implementation doesn't produce an MPA with double bond dimension:
+    # This implementation doesn't produce an MPA with double virtual dimension:
     #
     # return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
     #
@@ -1604,7 +1604,7 @@ def _embed_ltens_identity(mpa, embed_tensor=None):
         embedding tensor. The default is to use the square identity
         matrix, assuming that the size of the two physical legs is the
         same at each site.
-    :returns: `embed_tensor` with one size-one bond leg added at each
+    :returns: `embed_tensor` with one size-one virtual leg added at each
         end.
 
     """
@@ -1644,14 +1644,14 @@ def _local_sum_identity(mpas, embed_tensor=None):
     """Implement a special case of :func:`local_sum`.
 
     See :func:`local_sum` for a description.  We return an MPA with
-    smaller bond dimension than naive embed+MPA-sum.
+    smaller virtual dimension than naive embed+MPA-sum.
 
     mpas is a list of MPAs. The width 'width' of all the mpas[i] must
     be the same. mpas[i] is embedded onto a linear chain on sites i,
     ..., i + width - 1.
 
-    Let D the bond dimension of the mpas[i]. Then the MPA we return
-    has bond dimension width * D + 1 instead of width * D + len(mpas).
+    Let D the virtual dimension of the mpas[i]. Then the MPA we return
+    has virtual dimension width * D + 1 instead of width * D + len(mpas).
 
     The basic idea behind the construction we use is similar to
     [Sch11_, Sec. 6.1].
@@ -1724,7 +1724,7 @@ def local_sum(mpas, embed_tensor=None, length=None, slices=None):
     - offset`.
 
     If `slices` is omitted or if the slices just described are given,
-    we call :func:`_local_sum_identity()`, which gives a smaller bond
+    we call :func:`_local_sum_identity()`, which gives a smaller virtual
     dimension than naive embedding and summing.
 
     :param mpas: List of local MPAs.
@@ -1785,7 +1785,7 @@ def _local_dot(ltens_l, ltens_r, axes):
     """Computes the local tensors of a dot product dot(l, r).
 
     Besides computing the normal dot product, this function rearranges the
-    bond legs in such a way that the result is a valid local tensor again.
+    virtual legs in such a way that the result is a valid local tensor again.
 
     :param ltens_l: Array with ndim > 1
     :param ltens_r: Array with ndim > 1
@@ -1801,7 +1801,7 @@ def _local_dot(ltens_l, ltens_r, axes):
     assert clegs_l == clegs_r, \
         "Number of contracted legs differ: {} != {}".format(clegs_l, clegs_r)
     res = np.tensordot(ltens_l, ltens_r, axes=axes)
-    # Rearrange the bond-dimension legs
+    # Rearrange the virtual-dimension legs
     res = np.rollaxis(res, ltens_l.ndim - clegs_l, 1)
     res = np.rollaxis(res, ltens_l.ndim - clegs_l,
                       ltens_l.ndim + ltens_r.ndim - clegs_l - clegs_r - 1)
@@ -1841,7 +1841,7 @@ def _local_add(ltenss):
 
 
 def _local_ravel(ltens):
-    """Flattens the physical legs of ltens, the bond-legs remain untouched
+    """Flattens the physical legs of ltens, the virtual-legs remain untouched
 
     :param ltens: :func:`numpy.ndarray` with :code:`ndim > 1`
 
@@ -1854,7 +1854,7 @@ def _local_ravel(ltens):
 
 
 def _local_reshape(ltens, shape):
-    """Reshapes the physical legs of ltens, the bond-legs remain untouched
+    """Reshapes the physical legs of ltens, the virtual-legs remain untouched
 
     :param ltens: numpy.ndarray with ndim > 1
     :param shape: New shape of physical legs
@@ -1884,7 +1884,7 @@ def _local_transpose(ltens, axes=None):
 
 def _ltens_to_array(ltens):
     """Computes the full array representation from an iterator yielding the
-    local tensors. Note that it does not get rid of bond legs.
+    local tensors. Note that it does not get rid of virtual legs.
 
     :param ltens: Iterator over local tensors
     :returns: numpy.ndarray representing the contracted MPA
@@ -1976,7 +1976,7 @@ def _adapt_to_add_r(rightvec, compr_lten, tgt_lten):
     return rightvec
 
 
-def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
+def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_vdim):
     """Create new local tensors for the compressed MPS.
 
     :param leftvec: Left vector
@@ -1984,7 +1984,7 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
     :param tgt_ltens: List of local tensor of the target MPS
     :param rightvec: Right vector
         It has two indices: compr_mps_bond and tgt_mps_bond
-    :param int max_bonddim: Maximal bond dimension of the result
+    :param int max_vdim: Maximal virtual dimension of the result
 
     Compute the right-hand side of [Sch11_, Fig. 27, p. 48]. We have
     compr_lten in the top row of the figure without complex
@@ -2025,10 +2025,10 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_bonddim):
         return (compr_lten,)
     else:
         # [Sch11_, p. 49] says that we can go with QR instead of SVD
-        # here. However, this will generally increase the bond dimension of
+        # here. However, this will generally increase the virtual dimension of
         # our compressed MPS, which we do not want.
         compr_ltens = MPArray.from_array(compr_lten, ndims=1, has_bond=True)
-        compr_ltens.compress('svd', bdim=max_bonddim)
+        compr_ltens.compress('svd', bdim=max_vdim)
         return compr_ltens.lt
 
 
