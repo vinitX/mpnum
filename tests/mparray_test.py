@@ -867,7 +867,7 @@ def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
     mpa.canonicalize(left=nr_sites // 2, right=min(nr_sites // 2 + 2, nr_sites))
 
     for pos in range(nr_sites - 1):
-        mpa_t = mpa.bleg2pleg(pos)
+        mpa_t = mpa.vleg2leg(pos)
         true_bond_dim = mpa.ranks[pos]
         pshape = [(local_dim,)] * pos + [(local_dim, true_bond_dim)] + \
             [(true_bond_dim, local_dim)] + [(local_dim,)] * (nr_sites - pos - 2)
@@ -877,7 +877,7 @@ def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
         assert_array_equal(mpa_t.ranks, bdims)
         assert_correct_normalization(mpa_t)
 
-        mpa_t = mpa_t.pleg2bleg(pos)
+        mpa_t = mpa_t.leg2vleg(pos)
         # This is an ugly hack, but necessary to use the assert_mpa_identical
         # function. Normalization-awareness gets lost in the process!
         mpa_t._lt._lcanonical, mpa_t._lt._rcanonical = mpa.canonical_form
@@ -886,7 +886,7 @@ def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, bond_dim, rgen):
     if nr_sites > 1:
         mpa = factory.random_mpa(nr_sites, local_dim, 1, randstate=rgen)
         mpa.canonicalize()
-        mpa_t = mpa.pleg2bleg(nr_sites // 2 - 1)
+        mpa_t = mpa.leg2vleg(nr_sites // 2 - 1)
         assert_correct_normalization(mpa_t)
 
 

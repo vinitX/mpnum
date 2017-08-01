@@ -532,13 +532,13 @@ class MPArray(object):
         return MPArray(ltens)
 
     # FIXME More appropriate naming?
-    def bleg2pleg(self, pos):
-        """Transforms the bond leg between site `pos` and `pos + 1` into
-        physical legs at those sites. The new leg will be the rightmost one
+    def vleg2leg(self, pos):
+        """Transforms the virtual leg between site `pos` and `pos + 1` into
+        tensor legs at those sites. The new leg will be the rightmost one
         at site `pos` and the leftmost one at site `pos + 1`. The new bond
         dimension is 1.
 
-        Also see :func:`pleg2bleg`.
+        Also see :func:`leg2vleg`.
 
         :param pos: Number of the bond to perform the transformation
         :returns: read-only MPA with transformed bond
@@ -553,8 +553,8 @@ class MPArray(object):
         return MPArray(LocalTensors(ltens, cform=new_normal_form))
 
     # FIXME More appropriate naming?
-    def pleg2bleg(self, pos):
-        """Performs the inverse operation to :func:`bleg2pleg`.
+    def leg2vleg(self, pos):
+        """Performs the inverse operation to :func:`vleg2leg`.
 
         :param pos: Number of the bond to perform the transformation
         :returns: read-only MPA with transformed bond
@@ -583,7 +583,7 @@ class MPArray(object):
         elif pos >= len(self):
             return self, None
 
-        mpa_t = self.bleg2pleg(pos)
+        mpa_t = self.vleg2leg(pos)
         lnorm, rnorm = mpa_t.canonical_form
 
         ltens_l = LocalTensors(it.islice(mpa_t.lt, 0, pos + 1),
