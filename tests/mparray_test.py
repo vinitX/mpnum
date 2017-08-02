@@ -588,7 +588,7 @@ def test_div_mpo_scalar(nr_sites, local_dim, rank, rgen):
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
-def test_outer(nr_sites, local_dim, rank, rgen, dtype):
+def test_chain(nr_sites, local_dim, rank, rgen, dtype):
     # This test produces at most `nr_sites` by tensoring two
     # MPOs. This doesn't work for :code:`nr_sites = 1`.
     if nr_sites < 2:
@@ -600,7 +600,7 @@ def test_outer(nr_sites, local_dim, rank, rgen, dtype):
     op = mpo.to_array()
 
     # Test with 2-factors with full form
-    mpo_double = mp.outer((mpo, mpo))
+    mpo_double = mp.chain((mpo, mpo))
     op_double = np.tensordot(op, op, axes=(tuple(), ) * 2)
     assert len(mpo_double) == 2 * len(mpo)
     assert_array_almost_equal(op_double, mpo_double.to_array())
@@ -608,7 +608,7 @@ def test_outer(nr_sites, local_dim, rank, rgen, dtype):
     assert mpo.dtype == dtype
 
     # Test 3-factors iteratively (since full form would be too large!!
-    diff = mp.outer((mpo, mpo, mpo)) - mp.outer((mpo, mp.outer((mpo, mpo))))
+    diff = mp.chain((mpo, mpo, mpo)) - mp.chain((mpo, mp.chain((mpo, mpo))))
     diff.canonicalize()
     assert len(diff) == 3 * len(mpo)
     assert mp.norm(diff) < 1e-6
@@ -725,8 +725,8 @@ def test_inject_shapes(rgen):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
-def test_inject_outer(nr_sites, local_dim, rank, rgen):
-    """Compare mp.inject() with mp.outer()"""
+def test_inject_vs_chain(nr_sites, local_dim, rank, rgen):
+    """Compare mp.inject() with mp.chain()"""
     if nr_sites == 1:
         return
     mpa = factory.random_mpa(nr_sites // 2, local_dim, rank, rgen,
@@ -734,11 +734,11 @@ def test_inject_outer(nr_sites, local_dim, rank, rgen):
     pten = [factory._zrandn((local_dim,) * 2) for _ in range(nr_sites // 2)]
     pten_mpa = mp.MPArray.from_kron(pten)
 
-    outer1 = mp.outer((pten_mpa, mpa))
+    outer1 = mp.chain((pten_mpa, mpa))
     outer2 = mp.inject(mpa, 0, inject_ten=pten)
     assert_mpa_almost_equal(outer1, outer2, True)
 
-    outer1 = mp.outer((mpa, pten_mpa))
+    outer1 = mp.chain((mpa, pten_mpa))
     outer2 = mp.inject(mpa, [len(mpa)], [None], inject_ten=[pten])
     assert_mpa_almost_equal(outer1, outer2, True)
 
@@ -770,7 +770,7 @@ def test_local_sum(nr_sites, local_dim, rank, local_width, dtype, rgen):
     def embed_mpa(mpa, startpos):
         mpas = [eye_mpa] * startpos + [mpa] + \
                [eye_mpa] * (nr_sites - startpos - local_width)
-        res = mp.outer(mpas)
+        res = mp.chain(mpas)
         return res
 
     nr_startpos = nr_sites - local_width + 1
@@ -778,7 +778,7 @@ def test_local_sum(nr_sites, local_dim, rank, local_width, dtype, rgen):
                                dtype=dtype, randstate=rgen)
             for i in range(nr_startpos)]
 
-    # Embed with mp.outer() and calculate naive MPA sum:
+    # Embed with mp.chain() and calculate naive MPA sum:
     mpas_embedded = [embed_mpa(mpa, i) for i, mpa in enumerate(mpas)]
     mpa_sum = mpas_embedded[0]
     for mpa in mpas_embedded[1:]:

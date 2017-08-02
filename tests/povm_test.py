@@ -57,7 +57,7 @@ def mp_from_array_repeat(array, nr_sites):
     array.
     """
     mpa = mp.MPArray.from_array(array)
-    return mp.outer(it.repeat(mpa, nr_sites))
+    return mp.chain(it.repeat(mpa, nr_sites))
 
 
 @pt.fixture(params=['random', 'pauli'])
@@ -189,7 +189,7 @@ def test_mppovm_embed_expectation(
 
     # Create a local POVM `red_povm`, embed it onto a larger chain
     # (`full_povm`), and go back to the reduced POVM.
-    red_povm = mp.outer(
+    red_povm = mp.chain(
         mp.povm.MPPovm.from_local_povm(mp.povm.pauli_povm(d), 1)
         for d, _ in local_dim2[startsite:startsite + width]
     )
@@ -251,7 +251,7 @@ def test_mppovm_pmf_as_array_pmps(
         nr_sites, local_dim, rank, startsite, width, rgen):
     if hasattr(local_dim, '__len__'):
         pdims = [d for d, _ in local_dim]
-        mppaulis = mp.outer(
+        mppaulis = mp.chain(
             povm.MPPovm.from_local_povm(povm.pauli_povm(d), 1)
             for d in pdims[startsite:startsite + width]
         )
@@ -383,7 +383,7 @@ def test_mppovm_match_elems_bell(eps=1e-10):
 
     # Big POVM: The four Bell states (repeated two times)
     big = povm.MPPovm.from_array_global(bell_proj, ndims=3)
-    big = mp.outer([big, big])
+    big = mp.chain([big, big])
     # Small POVM: Two of the Bell states and four product states (on
     # the last two sites)
     small = povm.MPPovm.from_array_global(proj, ndims=3).embed(4, 2, 2)
@@ -428,7 +428,7 @@ def test_mppovm_sample(
     local_y = povm.y_povm(local_dim)
     xx = povm.MPPovm.from_local_povm(local_x, 2)
     y = povm.MPPovm.from_local_povm(local_y, 1)
-    mpp = mp.outer([xx, povm.MPPovm.eye([local_dim]), y]) \
+    mpp = mp.chain([xx, povm.MPPovm.eye([local_dim]), y]) \
             .embed(nr_sites, startsite, local_dim)
 
     pmf_exact = mpp.pmf_as_array(mps, 'mps', eps)
@@ -464,11 +464,11 @@ def test_mppovm_est_pmf_from(
     x = povm.MPPovm.from_local_povm(lx, 1)
     y = povm.MPPovm.from_local_povm(ly, 1)
     pauli = povm.MPPovm.from_local_povm(lp, 1)
-    xy = mp.outer((x, y))
-    mpp = mp.outer((xy,) * (nr_sites // 2))
+    xy = mp.chain((x, y))
+    mpp = mp.chain((xy,) * (nr_sites // 2))
     if (nr_sites % 2) == 1:
-        mpp = mp.outer((mpp, x))
-    small_mpp = mp.outer((pauli, povm.MPPovm.eye([local_dim]), pauli, pauli)) \
+        mpp = mp.chain((mpp, x))
+    small_mpp = mp.chain((pauli, povm.MPPovm.eye([local_dim]), pauli, pauli)) \
                   .embed(nr_sites, startsite, local_dim)
 
     x_given = np.arange(len(lp)) < len(lx)
@@ -514,7 +514,7 @@ def test_mppovm_est(
     local_y = povm.y_povm(local_dim)
     xx = povm.MPPovm.from_local_povm(local_x, 2)
     y = povm.MPPovm.from_local_povm(local_y, 1)
-    mpp = mp.outer([xx, povm.MPPovm.eye([local_dim]), y]) \
+    mpp = mp.chain([xx, povm.MPPovm.eye([local_dim]), y]) \
             .embed(nr_sites, startsite, local_dim)
 
     p_exact = mpp.pmf_as_array(mps, 'mps', eps)
@@ -656,7 +656,7 @@ def test_mppovmlist_est_pmf_from(
     # POVM list with global support
     g_povm = povm.pauli_mpps(measure_width, local_dim).repeat(nr_sites)
     if nonuniform:
-        add_povm = mp.outer((nr_sites - 1) * (x,) + (y,))
+        add_povm = mp.chain((nr_sites - 1) * (x,) + (y,))
         g_povm = povm.MPPovmList(g_povm.mpps + (add_povm,))
     # POVM list with local support
     l_povm = povm.pauli_mpps if splitpauli else povm.pauli_mpp

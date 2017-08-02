@@ -45,7 +45,7 @@ from .mpstruct import LocalTensors
 
 
 __all__ = ['MPArray', 'dot', 'inject', 'inner', 'local_sum', 'louter',
-           'norm', 'normdist', 'outer', 'partialdot', 'partialtrace',
+           'norm', 'normdist', 'chain', 'partialdot', 'partialtrace',
            'prune', 'regular_slices', 'sandwich', 'embed_slice',
            'trace', 'diag', 'sumup']
 
@@ -70,7 +70,7 @@ class MPArray(object):
 
     .. todo:: As it is now, e.g. :func:`MPArray.__imul__()` modifies
               items from `self._ltens`.  This requires
-              e.g. :func:`outer()` to take copies of the local
+              e.g. :func:`chain()` to take copies of the local
               tensors.  The data model seems to be that an `MPArray`
               instance owns its local tensors and everyone else,
               including each new `MPArray` instance, must take
@@ -268,7 +268,7 @@ class MPArray(object):
         :param factors: A list of arrays with arbitrary number of physical legs
         :returns: The kronecker product of the factors as MPA
         """
-        # FIXME Do we still need this or shall we prefer mp.outer?
+        # FIXME Do we still need this or shall we prefer mp.chain?
         return cls(a[None, ..., None] for a in factors)
 
     def to_array(self):
@@ -1274,15 +1274,20 @@ def sandwich(mpo, mps, mps2=None):
     return arr.flat[0]
 
 
-def outer(mpas, astype=None):
-    """Performs the tensor product of MPAs given in `*args`
+def chain(mpas, astype=None):
+    """Computes the tensor product of MPAs given in `*args` by adding more
+    sites to the array.
 
-    :param mpas: Iterable of MPAs same order as they should appear in the chain
-    :param astype: Return type. If `None`, use the type of the first MPA.
+    :param mpas: Iterable of MPAs in the order as they should appear in the
+        chain
+    :param astype: dtype of the returned MPA. If `None`, use the type of the
+        first MPA.
     :returns: MPA of length len(args[0]) + ... + len(args[-1])
 
+    .. todo:: Make this canonicalization aware
+    .. todo:: Raise warning when casting complex to real dtype
+
     """
-    # TODO Make this normalization aware
     mpas = iter(mpas)
     first = next(mpas)
     rest = (lt for mpa in mpas for lt in mpa.lt)
@@ -1322,15 +1327,15 @@ def diag(mpa, axis=0):
         return np.array(mpas, dtype=object)
 
 def inject(mpa, pos, num=None, inject_ten=None):
-    """Interleaved outer product of an MPA and a rank 1 MPA
+    """Interleaved chain product of an MPA and a rank 1 MPA
 
-    Return the outer product between mpa and `num` copies of the local
+    Return the chain product between mpa and `num` copies of the local
     tensor `inject_ten`, but place the copies of `inject_ten` before
     site `pos` inside or outside `mpa`. You can also supply `num =
     None` and a sequence of local tensors. All legs of the local
     tensors are interpreted as physical legs. Placing the local
     tensors at the beginning or end of `mpa` using `pos = 0` or `pos =
-    len(mpa)` is also supported, but :func:`outer()` is preferred for
+    len(mpa)` is also supported, but :func:`chain()` is preferred for
     that as it is a much simpler function.
 
     If `inject_ten` is omitted, use a square identity matrix of size
@@ -1343,7 +1348,7 @@ def inject(mpa, pos, num=None, inject_ten=None):
         `inject_ten` must be a sequence of values.
     :param inject_ten: Physical tensor to inject (if omitted, an
         identity matrix will be used; cf. above)
-    :returns: The outer product
+    :returns: The chain product
 
     `pos` can also be a sequence of positions. In this case, `num` and
     `inject_ten` must be either sequences or `None`, where `None` is

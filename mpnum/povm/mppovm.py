@@ -303,7 +303,7 @@ class MPPovm(mp.MPArray):
         factors.append(self)
         if n_right > 0:
             factors.append(MPPovm.eye(local_dim[-n_right:]))
-        return mp.outer(factors)
+        return mp.chain(factors)
 
     def block(self, nr_sites):
         """Embed an MP-POVM on local blocks
@@ -340,8 +340,8 @@ class MPPovm(mp.MPArray):
         >>> import mpnum.povm as mpp
         >>> x, y = (mpp.MPPovm.from_local_povm(lp(3), 1) for lp in
         ...         (mpp.x_povm, mpp.y_povm))
-        >>> xy = mp.outer([x, y])
-        >>> xyxyx = mp.outer([x, y, x, y, x])
+        >>> xy = mp.chain([x, y])
+        >>> xyxyx = mp.chain([x, y, x, y, x])
         >>> mp.norm(xyxyx - xy.repeat(5)) <= 1e-10
         True
 
@@ -350,7 +350,7 @@ class MPPovm(mp.MPArray):
         if n_last > 0:
             assert self.ranks[n_last - 1] == 1, \
                 "Partial repetition requires factorizing MP-POVM"
-        return mp.outer([self] * n_repeat
+        return mp.chain([self] * n_repeat
                         + ([MPPovm(self.lt[:n_last])] if n_last > 0 else []))
 
     def expectations(self, mpa, mode='auto'):
@@ -1221,13 +1221,13 @@ class MPPovmList:
         >>> x, y = (mpp.MPPovm.from_local_povm(lp(ldim), 1) for lp in
         ...         (mpp.x_povm, mpp.y_povm))
         >>> e = mpp.MPPovm.eye([ldim])
-        >>> xx = mp.outer([x, x])
-        >>> xy = mp.outer([x, y])
+        >>> xx = mp.chain([x, x])
+        >>> xy = mp.chain([x, y])
         >>> mppl = mpp.MPPovmList((xx, xy))
-        >>> xxe = mp.outer([x, x, e])
-        >>> xye = mp.outer([x, y, e])
-        >>> exx = mp.outer([e, x, x])
-        >>> exy = mp.outer([e, x, y])
+        >>> xxe = mp.chain([x, x, e])
+        >>> xye = mp.chain([x, y, e])
+        >>> exx = mp.chain([e, x, x])
+        >>> exy = mp.chain([e, x, y])
         >>> expect = (xxe, xye, exx, exy)
         >>> [abs(mp.norm(a - b)) <= 1e-10
         ...  for a, b in zip(mppl.block(3).mpps, expect)]
@@ -1255,10 +1255,10 @@ class MPPovmList:
         ...         (mpp.x_povm, mpp.y_povm))
         >>> pauli = mpp.pauli_mpps(block_sites, ldim)
         >>> expect = (
-        ...     mp.outer((x, x)),
-        ...     mp.outer((x, y)),
-        ...     mp.outer((y, x)),
-        ...     mp.outer((y, y)),
+        ...     mp.chain((x, x)),
+        ...     mp.chain((x, y)),
+        ...     mp.chain((y, x)),
+        ...     mp.chain((y, y)),
         ... )
         >>> [abs(mp.norm(a - b)) <= 1e-10 for a, b in zip(pauli.mpps, expect)]
         [True, True, True, True]
@@ -1267,10 +1267,10 @@ class MPPovmList:
         :class:`MPPovmList`:
 
         >>> expect = (
-        ...     mp.outer((x, x, x, x, x)),
-        ...     mp.outer((x, y, x, y, x)),
-        ...     mp.outer((y, x, y, x, y)),
-        ...     mp.outer((y, y, y, y, y)),
+        ...     mp.chain((x, x, x, x, x)),
+        ...     mp.chain((x, y, x, y, x)),
+        ...     mp.chain((y, x, y, x, y)),
+        ...     mp.chain((y, y, y, y, y)),
         ... )
         >>> [abs(mp.norm(a - b)) <= 1e-10 for a, b in zip(pauli.repeat(5).mpps, expect)]
         [True, True, True, True]
@@ -1552,10 +1552,10 @@ def pauli_mpps(nr_sites, local_dim):
     ...         (mpp.x_povm, mpp.y_povm))
     >>> pauli = mpp.pauli_mpps(block_sites, ldim)
     >>> expect = (
-    ...     mp.outer((x, x)),
-    ...     mp.outer((x, y)),
-    ...     mp.outer((y, x)),
-    ...     mp.outer((y, y)),
+    ...     mp.chain((x, x)),
+    ...     mp.chain((x, y)),
+    ...     mp.chain((y, x)),
+    ...     mp.chain((y, y)),
     ... )
     >>> [abs(mp.norm(a - b)) <= 1e-10 for a, b in zip(pauli.mpps, expect)]
     [True, True, True, True]
@@ -1567,5 +1567,5 @@ def pauli_mpps(nr_sites, local_dim):
     """
     from mpnum.povm import pauli_parts
     parts = [MPPovm.from_local_povm(x, 1) for x in pauli_parts(local_dim)]
-    return MPPovmList(mp.outer(factors)
+    return MPPovmList(mp.chain(factors)
                       for factors in it.product(parts, repeat=nr_sites))
