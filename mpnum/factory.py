@@ -178,15 +178,20 @@ def random_mpa(sites, ldim, rank, randstate=None, normalized=False,
     """Returns a MPA with randomly choosen local tensors
 
     :param sites: Number of sites
-    :param ldim: Depending on the type passed (checked in the following order)
+    :param ldim: Physical legs, depending on the type passed:
 
-        * iterable of iterable: Detailed list of physical dimensions,
-          retured mpa will have exactly this for mpa.shape
-        * iterable of scalar: Same physical dimension for each site
-        * scalar: Single physical leg for each site with given
-          dimension
-Rank
-    :param rank: Rank    :param randn: Function used to generate random local tensors
+        * scalar: Single physical leg for each site with given dimension
+        * iterable of scalar: Same physical legs for all sites
+        * iterable of iterable: Generated MPA will have exactly this
+          as `ndims`
+
+    :param rank: rank, depending on the type passed:
+
+        * scalar: Same rank everywhere
+        * iterable of length :code:`sites - 1`: Generated MPA will
+          have exactly this as `ranks`
+
+    :param randn: Function used to generate random local tensors
     :param randstate: numpy.random.RandomState instance or None
     :param normalized: Resulting `mpa` has `mp.norm(mpa) == 1`
     :param force_rank: If True, the rank is exaclty `rank`.

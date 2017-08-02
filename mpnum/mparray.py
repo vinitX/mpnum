@@ -611,16 +611,16 @@ class MPArray(object):
         The following values for `left` and `right` will be needed
         most frequently:
 
-        +--------------+--------------+-----------------------+
-        | Left-/Right- | Do Nothing   | To canonicalize          |
-        | canonicalize:   |              | maximally             |
-        +==============+==============+=======================+
-        | `left`       | :code:`None` | :code:`'afull'`,      |
-        |              |              | :code:`len(self) - 1` |
-        +--------------+--------------+-----------------------+
-        | `right`      | :code:`None` | :code:`'afull'`,      |
-        |              |              | :code:`1`             |
-        +--------------+--------------+-----------------------+
+        +---------------+--------------+-----------------------+
+        | Left-/Right-  | Do Nothing   | To canonicalize       |
+        | canonicalize: |              | maximally             |
+        +===============+==============+=======================+
+        | `left`        | :code:`None` | :code:`'afull'`,      |
+        |               |              | :code:`len(self) - 1` |
+        +---------------+--------------+-----------------------+
+        | `right`       | :code:`None` | :code:`'afull'`,      |
+        |               |              | :code:`1`             |
+        +---------------+--------------+-----------------------+
 
         :code:`'afull'` is short for "almost full" (we do not support
         normalizing the outermost sites).
@@ -970,7 +970,7 @@ class MPArray(object):
     def singularvals(self):
         """Return singular values for all bipartitions
 
-        :returns: Iterator over `np.ndarray`s with singular values for
+        :returns: Iterator over `np.ndarray` with singular values for
             1, 2, ... len(self) - 1 sites on left hand side of
             bipartition
 
@@ -1303,9 +1303,9 @@ def diag(mpa, axis=0):
 
     :param mpa: MPArray with shape > :code:`axis`
     :param axis: The physical index to take diagonals over
-    :returns: Array containing the diagonal elements (`MPArray`s with the
-    physical dimension reduced by one, note that an `MPArray` with physical
-    dimension 0 is a simple number)
+    :returns: Array containing the diagonal elements (multiple `MPArray` with
+        the physical dimension reduced by one, note that an `MPArray` with
+        physical dimension 0 is a simple number)
 
     """
     dim = mpa.shape[0][axis]

@@ -498,11 +498,11 @@ def mineig(mpo,
 def mineig_sum(mpas,
            startvec=None, startvec_rank=None, randstate=None,
            max_num_sweeps=5, eigs_opts=None, minimize_sites=1):
-    """Iterative search for smallest eigenvalue+vector of a sum
+    """Iterative search for smallest eigenvalue+vector of a sum of MPAs
 
     Try to compute the ground state of the sum of the objects in
-    `mpas`. MPOs are taken as-is. An MPS |psi> is interpreted as
-    |psiXpsi| in the sum.
+    `mpas`. MPOs are taken as-is. An MPS \|psi> is interpreted as
+    \|psiXpsi\| in the sum.
 
     This function executes exactly the same algorithm as
     :func:`mineig` applied to an uncompressed MPO sum of the elements

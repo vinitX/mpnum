@@ -58,7 +58,7 @@ mpnum Package
     :show-inheritance:
 
 :mod:`_testing` Module
----------------------
+----------------------
 
 .. automodule:: mpnum._testing
     :members:
