@@ -110,7 +110,7 @@ class MPArray(object):
         :returns: `type(self)` object
 
         """
-        assert len(i) == len(self)
+        assert len(indices) == len(self)
         if astype is None:
             astype = type(self)
         return astype(lt[:, i, ..., :] for i, lt in zip(indices, self._lt))
