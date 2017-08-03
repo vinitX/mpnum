@@ -203,14 +203,14 @@ class MPArray(object):
     def from_array_global(cls, array, ndims=None, has_virtual=False):
         """Create MPA from array in global form.
 
-        See :func:`mpnum._tools.global_to_local()` for global
-        vs. local form.
+        See :func:`mpnum._tools.global_to_local()` for global vs. local form.
 
-        Parameters and return value: See
-        `from_array()`. `has_virtual=True` is not supported yet.
+        Parameters and return value: See `from_array()`.
+            `has_virtual=True` is not supported yet.
 
         """
-        assert not has_virtual, 'not implemented yet'
+        if has_virtual:
+            raise NotImplementedError('has_virtual=True not implemeted')
         ndims = ndims if ndims is not None else array.ndim
         assert array.ndim % ndims == 0, \
             "ndims invalid: {} is not multiple of {}".format(array.ndim, ndims)
