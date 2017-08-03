@@ -42,7 +42,7 @@ mpnum Package
     :show-inheritance:
 
 :mod:`mpstruct` Module
---------------------
+----------------------
 
 .. automodule:: mpnum.mpstruct
     :members:
@@ -50,7 +50,7 @@ mpnum Package
     :show-inheritance:
 
 :mod:`special` Module
---------------------
+---------------------
 
 .. automodule:: mpnum.special
     :members:
