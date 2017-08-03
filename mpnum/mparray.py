@@ -504,8 +504,9 @@ class MPArray(object):
         :returns: An MPA with sites_per_group fewer sites and more ndims
 
         """
-        assert (len(self) % sites_per_group) == 0, \
-            'Cannot group: {} not a multiple of {}'.format(len(self), sites_per_group)
+        if (len(self) % sites_per_group) != 0:
+            raise ValueError('Cannot group: {} not a multiple of {}'
+                             .format(len(self), sites_per_group))
 
         if sites_per_group == 1:
             return self
