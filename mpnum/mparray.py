@@ -101,18 +101,19 @@ class MPArray(object):
     def __len__(self):
         return len(self._lt)
 
-    def get(self, pind, astype=None):
-        """Fix values for first physical leg
+    def get(self, indices, astype=None):
+        """Returns the current MPA but with the first index at each sites
+        evaluated at the corresponding value of `indices`
 
-        :param pind: Length `len(self)` sequence of index values for
+        :param indices: Length `len(self)` sequence of index values for
             first physical leg at each site
         :returns: `type(self)` object
 
         """
-        assert len(pind) == len(self)
+        assert len(i) == len(self)
         if astype is None:
             astype = type(self)
-        return astype(lt[:, i, ..., :] for i, lt in zip(pind, self._lt))
+        return astype(lt[:, i, ..., :] for i, lt in zip(indices, self._lt))
 
     @property
     def lt(self):

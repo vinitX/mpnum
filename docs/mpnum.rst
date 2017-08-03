@@ -41,6 +41,22 @@ mpnum Package
     :undoc-members:
     :show-inheritance:
 
+:mod:`mpstruct` Module
+--------------------
+
+.. automodule:: mpnum.mpstruct
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+:mod:`special` Module
+--------------------
+
+.. automodule:: mpnum.special
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 :mod:`_tools` Module
 --------------------
 
