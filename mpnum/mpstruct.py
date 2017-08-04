@@ -107,9 +107,7 @@ class LocalTensors(object):
         if isinstance(index, slice):
             return (_roview(lten) for lten in self._ltens[index])
         else:
-            view = self._ltens[index].view()
-            view.setflags(write=False)
-            return view
+            return _roview(self._ltens[index])
 
     def __setitem__(self, index, value):
         self.update(index, value)
