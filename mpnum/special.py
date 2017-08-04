@@ -1,10 +1,10 @@
 # encoding: utf-8
-"""Module contains some specialiced versions of some functions from mparray.
+"""Optimized functions
+
+Module contains some specialiced versions of some functions from mparray.
 They are tuned for speed with special applications in mind
 """
 from __future__ import absolute_import, division, print_function
-
-from math import ceil
 
 import numpy as np
 import scipy.sparse as ssp
@@ -19,8 +19,8 @@ __all__ = ['inner_prod_mps', 'sumup']
 def inner_prod_mps(mpa1, mpa2):
     """Same as :func:`mparray.inner`, but assumes that `mpa1` is a product MPS
 
-    :param mpa1: MPArray with one physical leg per site and rank 1
-    :param mpa2: MPArray with same physical shape as mpa1
+    :param mpa1: MPArray with one leg per site and rank 1
+    :param mpa2: MPArray with same shape as mpa1 but arbitrary rank
     :returns: <mpa1|mpa2>
 
     """
