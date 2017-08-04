@@ -33,7 +33,8 @@ class LocalTensors(object):
             for i, (ten, nten) in enumerate(zip(self._ltens[:-1], self._ltens[1:])):
                 assert ten.shape[-1] == nten.shape[0]
 
-    def _update(self, index, tens, normalization=None):
+    # TODO Rename argument canonicalization -> canical?
+    def _update(self, index, tens, canonicalization=None):
         """ Actually updates
 
         For parameters see :func:`update`.
@@ -44,9 +45,9 @@ class LocalTensors(object):
         # (equality case; first argument to max/min). If a normalized
         # tensor is set inside a normalized slice, its size will
         # remain the same (inequality case; second argument).
-        if normalization == 'left' and self._lcanonical - index >= 0:
+        if canonicalization == 'left' and self._lcanonical - index >= 0:
             self._lcanonical = max(index + 1, self._lcanonical)
-        elif normalization == 'right' and index - self._rcanonical >= -1:
+        elif canonicalization == 'right' and index - self._rcanonical >= -1:
             self._rcanonical = min(index, self._rcanonical)
         else:
             # If a non-normalized tensor is provided, the sizes of the
@@ -54,13 +55,13 @@ class LocalTensors(object):
             self._lcanonical = min(index, self._lcanonical)
             self._rcanonical = max(index + 1, self._rcanonical)
 
-    def update(self, index, tens, normalization=None):
+    def update(self, index, tens, canonicalization=None):
         """Replaces the local tensor at position `index` with the tensor `tens`.
         by an in-place update
 
         :param index: Position of the tensor in the chain
         :param tens: New local tensor as numpy.ndarray
-        :param normalization: If `tens` is left-/right-normalized, pass `'left'`
+        :param canonicalization: If `tens` is left-/right-normalized, pass `'left'`
             /`'right'`, respectively. Otherwise, pass `None` (default `None`)
 
         """
@@ -76,18 +77,18 @@ class LocalTensors(object):
                 tens[:-1], tens[1:]))
             assert self[stop - 1].shape[-1] == tens[-1].shape[-1]
 
-            if not isinstance(normalization, collections.Sequence):
-                normalization = it.repeat(normalization)
+            if not isinstance(canonicalization, collections.Sequence):
+                canonicalization = it.repeat(canonicalization)
 
-            for ten, pos, norm in zip(tens, range(*indices), normalization):
-                self._update(pos, ten, normalization=norm)
+            for ten, pos, norm in zip(tens, range(*indices), canonicalization):
+                self._update(pos, ten, canonicalization=norm)
 
         else:
             current = self._ltens[index]
             assert tens.ndim >= 2
             assert current.shape[0] == tens.shape[0]
             assert current.shape[-1] == tens.shape[-1]
-            self._update(index, tens, normalization=normalization)
+            self._update(index, tens, canonicalization=canonicalization)
 
     def __len__(self):
         return len(self._ltens)

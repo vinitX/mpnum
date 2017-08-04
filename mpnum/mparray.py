@@ -691,7 +691,7 @@ class MPArray(object):
             newtens = (q.reshape(ltens.shape[:-1] + (-1,)),
                        matdot(r, self._lt[site + 1]))
             self._lt.update(slice(site, site + 2), newtens,
-                            normalization=('left', None))
+                            canonicalization=('left', None))
 
     def _lcanonicalize(self, to_site):
         """Right-canonicalizes all local tensors _ltens[to_site:] in place
@@ -711,7 +711,7 @@ class MPArray(object):
             newtens = (matdot(self._lt[site - 1], r.T),
                        q.T.reshape((-1,) + ltens.shape[1:]))
             self._lt.update(slice(site - 1, site + 1), newtens,
-                            normalization=(None, 'right'))
+                            canonicalization=(None, 'right'))
 
     def compress(self, method='svd', **kwargs):
         r"""Compress ``self``, modifying it in-place.
@@ -922,7 +922,7 @@ class MPArray(object):
             newtens = (matdot(self._lt[site - 1], u[:, :rank_t] * sv[None, :rank_t]),
                        v[:rank_t, :].reshape((rank_t, ) + ltens.shape[1:]))
             self._lt.update(slice(site - 1, site + 1), newtens,
-                            normalization=(None, 'right'))
+                            canonicalization=(None, 'right'))
 
         yield np.sum(np.abs(self._lt[0])**2)
 
@@ -953,7 +953,7 @@ class MPArray(object):
             newtens = (u[:, :rank_t].reshape(ltens.shape[:-1] + (rank_t, )),
                        matdot(sv[:rank_t, None] * v[:rank_t, :], self._lt[site + 1]))
             self._lt.update(slice(site, site + 2), newtens,
-                            normalization=('left', None))
+                            canonicalization=('left', None))
 
         yield np.sum(np.abs(self._lt[-1])**2)
 
