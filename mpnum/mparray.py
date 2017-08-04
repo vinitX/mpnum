@@ -1,19 +1,5 @@
 # encoding: utf-8
-"""Module containing the basic matrix product array structure and routines for
-dealing with them.
-
-References:
-
-* .. _Sch11:
-
-  [Sch11] Schollwöck, U. (2011). “The density-matrix renormalization
-  group in the age of matrix product states”. Ann. Phys. 326(1),
-  pp. 96–192. `DOI: 10.1016/j.aop.2010.09.012`_. `arXiv: 1008.3477`_.
-
-  .. _`DOI: 10.1016/j.aop.2010.09.012`:
-     http://dx.doi.org/10.1016/j.aop.2010.09.012
-
-  .. _`arXiv: 1008.3477`: http://arxiv.org/abs/1008.3477
+""" Core MPArray data structure & general purpose functions
 
   .. todo:: single site MPAs -- what is left?
   .. todo:: Local tensor ownership -- see MPArray class comment
