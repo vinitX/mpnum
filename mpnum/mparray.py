@@ -2046,7 +2046,8 @@ def full_rank(ldims):
         passed as one number per site (``[2, 5, 2]``) or if there are multiple
         legs per site as a list of tuples similar to :py:attr:`MPArray.shape`
         (e.g. ``[(2,), (3, 4), (5,)])``)
-    :returns: @todo
+    :returns: Tuple of ranks that are maximal for the local dimensions
+        ``ldims``.
 
     >>> full_rank([3] * 5)
     [3, 9, 9, 3]

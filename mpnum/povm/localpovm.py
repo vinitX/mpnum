@@ -23,7 +23,8 @@ class POVM(object):
         The caller must supply whether the POVM elements are
         informationally complete.
 
-        :param elements: @todo
+        :param elements: Sequence of POVM elements as :class:`numpy.ndarray`\ s
+            of square shape.
         :param info_complete: Is the POVM informationally complete (IC)
             (default False)
         :param pinv: Pseudo-inverse function to be used (default

@@ -265,16 +265,17 @@ def eye(sites, ldim):
 
 
 def diagonal_mpa(entries, sites):
-    """@todo: Docstring for diagonal_mpa.
+    """Returns an MPA with ``entries`` on the diagonal and zeros otherwise.
 
-    :param entries: @todo
-    :returns: @todo
+    :param numpy.ndarray entries: one-dimensional array
+    :returns: :class:`~mpnum.mparray.MPArray` with rank ``len(entries)``.
 
     """
     assert sites > 0
 
     if entries.ndim != 1:
-        raise NotImplementedError("Currently only supports 1-plegged diagonal")
+        raise NotImplementedError("Currently only supports diagonal MPA with "
+                                  "one leg per site.")
 
     if sites < 2:
         return mp.MPArray.from_array(entries)
