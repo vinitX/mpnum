@@ -357,7 +357,7 @@ def mineig(mpo,
 
     :param MPArray mpo: A matrix product operator (MPA with two physical legs)
     :param startvec: initial guess for eigenvector (default random MPS with
-        bond `startvec_rank`)
+        rank `startvec_rank`)
     :param startvec_rank: Rank of random start vector if
         no start vector is given. (default: Use the rank of `mpo`)
     :param randstate: numpy.random.RandomState instance or None
