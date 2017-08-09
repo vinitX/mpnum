@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Rename `MPArray.get_phys` -> `MPArray.get`
 - Rename `MPArray.paxis_iter` -> `MPArray.axis_iter`
 - Rename `MPArray.pleg2bleg` -> `MPArray.leg2vleg`
-- Rename `LocalTensors.pdims` -> `LocalTensors.shape`
+- Rename `MPArray.dims` -> `MPArray.lt.shape`
 - Rename `LocalTensors.normal_form` -> `LocalTensors.canonical_form`
 - Rename `mparray.full_bdim` -> `mparray.full_rank`
 - Rename `mparray.outer` -> `mparray.chain`
