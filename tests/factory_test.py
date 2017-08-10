@@ -33,14 +33,14 @@ def test_diagonal_mpa(nr_sites, local_dim, _, rgen, dtype):
 
     mpa_mp = factory.diagonal_mpa(entries, nr_sites)
     if nr_sites > 1:
-        mpa_np = np.zeros((local_dim,) * nr_sites)
+        mpa_np = np.zeros((local_dim,) * nr_sites, dtype=dtype)
         np.fill_diagonal(mpa_np, entries)
     else:
         mpa_np = entries
 
     assert len(mpa_mp) == nr_sites
-    assert_array_almost_equal(mpa_mp.to_array(), mpa_np)
     assert mpa_mp.dtype is dtype
+    assert_array_almost_equal(mpa_mp.to_array(), mpa_np)
     assert_correct_normalization(mpa_mp, nr_sites - 1, nr_sites)
 
     if nr_sites > 1:
