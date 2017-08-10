@@ -142,7 +142,7 @@ import numpy as np
 import mpnum.factory as factory
 import mpnum.mparray as mp
 import mpnum.mpsmpo as mpsmpo
-from mpnum._tools import check_pmf
+from ._testing import check_pmf
 
 
 class MPPovm(mp.MPArray):
@@ -524,7 +524,7 @@ class MPPovm(mp.MPArray):
 
         The resulting (real or complex) probabilities `pmf` are passed
         through :func:`check_pmf(pmf, eps, eps)
-        <mpnum._tools.check_pmf>` before being returned.
+        <mpnum.povm._testing.check_pmf>` before being returned.
 
         """
         assert len(self) == len(state)

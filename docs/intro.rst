@@ -138,8 +138,8 @@ the expression :math:`\langle i_1 i_2 i_3 \vert \rho \vert j_1 j_2 j_3
 :math:`\rho` must match the order in the MPO construction, which is
 :math:`i_1 j_1 i_2 j_2 i_3 j_3`.  We call this latter order *local
 order*. The functions :func:`global_to_local
-<mpnum._tools.global_to_local>` and :func:`local_to_global
-<mpnum._tools.local_to_global>` can convert tensors between the two
+<mpnum.tools.global_to_local>` and :func:`local_to_global
+<mpnum.tools.local_to_global>` can convert tensors between the two
 orders.
 
 In order to simplify the implementation, it is useful to introduce

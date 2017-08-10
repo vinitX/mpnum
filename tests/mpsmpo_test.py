@@ -2,16 +2,14 @@
 #
 from __future__ import absolute_import, division, print_function
 
+import mpnum.factory as factory
+import mpnum.mparray as mp
+import mpnum.mpsmpo as mm
 import numpy as np
 import pytest as pt
-
-from numpy.testing import assert_array_almost_equal
-
-import mpnum.mparray as mp
-import mpnum.factory as factory
-import mpnum.mpsmpo as mm
-import mpnum._tools as _tools
 from mparray_test import MP_TEST_PARAMETERS
+from mpnum import tools
+from numpy.testing import assert_array_almost_equal
 
 
 def _get_reductions(red_fun, mpa, max_red_width):
@@ -70,7 +68,7 @@ def test_pmps_reduction(nr_sites, local_dim, rank, keep, rgen):
                               randstate=rgen)
     rho = mm.pmps_to_mpo(pmps).to_array_global()
     traceout = [pos for pos in range(nr_sites) if pos not in keep]
-    red = _tools.partial_trace(rho, traceout)
+    red = tools.partial_trace(rho, traceout)
     pmps_red = mm.pmps_reduction(pmps, keep)
     red2 = mm.pmps_to_mpo(pmps_red).to_array_global()
     red2 = red2.reshape([local_dim] * (2 * len(keep)))
@@ -133,7 +131,7 @@ def test_pmps_reduction_dm_to_array(nr_sites, local_dim, rank, keep, rgen):
                               dtype=np.complex_, randstate=rgen)
     rho = mm.pmps_to_mpo(pmps).to_array_global()
     traceout = [pos for pos in range(nr_sites) if pos not in keep]
-    red = _tools.partial_trace(rho, traceout)
+    red = tools.partial_trace(rho, traceout)
     pmps_red = mm.pmps_reduction(pmps, keep)
     red2 = mm.pmps_dm_to_array(pmps_red, True)
     assert_array_almost_equal(red2, red)
@@ -153,7 +151,7 @@ def test_reductions_mpo(nr_sites, local_dim, rank, max_red_width, rgen):
         assert_array_almost_equal(reduced_mpo.to_array(),
                                   reduced_mpo2.to_array())
         traceout = tuple(range(start)) + tuple(range(stop, nr_sites))
-        red_from_op = _tools.partial_trace(op, traceout)
+        red_from_op = tools.partial_trace(op, traceout)
         assert_array_almost_equal(
             reduced_mpo.to_array_global(), red_from_op,
             err_msg="not equal at {}:{}".format(start, stop))
@@ -180,7 +178,7 @@ def test_reductions_pmps(nr_sites, local_dim, rank, max_red_width, rgen):
         red2 = mm.pmps_to_mpo(reduced_pmps2).to_array_global()
         assert_array_almost_equal(red, red2)
         traceout = tuple(range(start)) + tuple(range(stop, nr_sites))
-        red_from_op = _tools.partial_trace(op, traceout)
+        red_from_op = tools.partial_trace(op, traceout)
         assert_array_almost_equal(
             red, red_from_op,
             err_msg="not equal at {}:{}".format(start, stop))
@@ -219,7 +217,7 @@ def test_pmps_to_mpo(nr_sites, local_dim, rank, rgen):
     purification = purification.reshape((local_dim,) * (2 * 2 * nr_sites))
     # Trace out the ancilla sites
     traceout = tuple(range(1, 2 * nr_sites, 2))
-    rho_np = _tools.partial_trace(purification, traceout)
+    rho_np = tools.partial_trace(purification, traceout)
 
     # Here, we need global form
     assert_array_almost_equal(rho_mp, rho_np)

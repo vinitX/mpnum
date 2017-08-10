@@ -14,7 +14,7 @@ from six.moves import range
 
 from . import mparray as mp
 from . import mpsmpo
-from ._tools import global_to_local, matdot
+from .tools import global_to_local, matdot
 from .mpstruct import LocalTensors
 
 
@@ -96,7 +96,7 @@ def _random_state(sites, ldim, randstate=None):
     sites normalized to Tr rho = 1, i.e. a mixed state with local dimension
     `ldim` living on `sites` sites. Note that the returned state is positive
     semidefinite only when interpreted in global form (see
-    :func:`_tools.global_to_local`)
+    :func:`tools.global_to_local`)
 
     :param sites: Number of local sites
     :param ldim: Local ldimension

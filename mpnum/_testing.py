@@ -1,6 +1,4 @@
 # encoding: utf-8
-
-
 """Auxiliary functions useful for writing tests"""
 
 
@@ -81,3 +79,50 @@ def assert_correct_normalization(lt, lcanon_target=None, rcanon_target=None):
         assert_equal(lnormal, lcanon_target)
     if rcanon_target is not None:
         assert_equal(rnormal, rcanon_target)
+
+
+def compression_svd(array, rank, direction='right', retproj=False):
+    """Re-implement MPArray.compress('svd') but on the level of the dense
+    array representation, i.e. it truncates the Schmidt-decompostion
+    on each bipartition sequentially.
+
+    :param mpa: Array to compress
+    :param rank: Compress to this rank
+    :param direction: 'right' means sweep from left to right, 'left' vice versa
+    :param retproj: Besides the compressed array, also return the projectors
+        on the appropriate eigenspaces
+    :returns: Result as numpy.ndarray
+
+    """
+    def singlecut(array, nr_left, target_rank):
+        array_shape = array.shape
+        array = array.reshape((np.prod(array_shape[:nr_left]), -1))
+        u, s, vt = np.linalg.svd(array, full_matrices=False)
+        u = u[:, :target_rank]
+        s = s[:target_rank]
+        vt = vt[:target_rank, :]
+        opt_compr = np.dot(u * s, vt)
+        opt_compr = opt_compr.reshape(array_shape)
+
+        if retproj:
+            projector_l = np.dot(u, u.T.conj())
+            projector_r = np.dot(vt.T.conj(), vt)
+            return opt_compr, (projector_l, projector_r)
+        else:
+            return opt_compr, (None, None)
+
+    nr_sites = array.ndim
+    projectors = []
+    if direction == 'right':
+        nr_left_values = range(1, nr_sites)
+    else:
+        nr_left_values = range(nr_sites-1, 0, -1)
+
+    for nr_left in nr_left_values:
+        array, proj = singlecut(array, nr_left, rank)
+        projectors.append(proj)
+
+    if direction != 'right':
+        projectors = projectors.reverse()
+
+    return (array, projectors) if retproj else array

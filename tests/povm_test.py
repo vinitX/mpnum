@@ -6,19 +6,19 @@ from __future__ import division, print_function
 import itertools as it
 from inspect import isfunction
 
-import numpy as np
-import pytest as pt
-from numpy.testing import (
-    assert_almost_equal, assert_array_almost_equal, assert_array_equal)
-from six.moves import range, zip, zip_longest
-from _pytest.mark import matchmark
-
 import mpnum as mp
-import mpnum.povm as povm
-import mpnum.povm.mppovm as mppovm
 import mpnum.factory as factory
 import mpnum.mpsmpo as mpsmpo
-from mpnum import _tools
+import mpnum.povm as povm
+import mpnum.povm.mppovm as mppovm
+import numpy as np
+import pytest as pt
+from _pytest.mark import matchmark
+from mpnum import tools
+from mpnum.povm._testing import check_pmf
+from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
+                           assert_array_equal)
+from six.moves import range, zip, zip_longest
 
 ALL_POVMS = {name: constructor for name, constructor in povm.__dict__.items()
              if name.endswith('_povm') and isfunction(constructor)}
@@ -160,7 +160,7 @@ def test_mppovm_expectation(nr_sites, width, local_dim, rank, nopovm, rgen):
             (local_dim**width,) * 2)
         evals = []
         for factors in it.product(nopovm, repeat=width):
-            elem = _tools.mkron(*factors)
+            elem = tools.mkron(*factors)
             evals.append(np.trace(np.dot(elem, rho_red_matrix)))
         evals = np.array(evals).reshape((len(nopovm),) * width)
 
@@ -518,7 +518,7 @@ def test_mppovm_est(
             .embed(nr_sites, startsite, local_dim)
 
     p_exact = mpp.pmf_as_array(mps, 'mps', eps)
-    p_exact = _tools.check_pmf(p_exact, eps, eps)
+    p_exact = check_pmf(p_exact, eps, eps)
 
     cov_p_exact = np.diag(p_exact.flat) - np.outer(p_exact.flat, p_exact.flat)
     samples = mpp.sample(rgen, mps, n_samples, method, 4, 'mps', eps=eps)

@@ -57,10 +57,10 @@ mpnum Package
     :undoc-members:
     :show-inheritance:
 
-:mod:`_tools` Module
+:mod:`tools` Module
 --------------------
 
-.. automodule:: mpnum._tools
+.. automodule:: mpnum.tools
     :members:
     :undoc-members:
     :show-inheritance:

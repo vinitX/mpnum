@@ -19,18 +19,16 @@ from __future__ import absolute_import, division, print_function
 import collections
 import itertools as it
 
+import mpnum as mp
 import numpy as np
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
-
 from six.moves import range, zip, zip_longest
 
-import mpnum as mp
 from ._named_ndarray import named_ndarray
-from ._tools import block_diag, global_to_local, local_to_global, matdot, \
-    truncated_svd
 from .mpstruct import LocalTensors
-
+from .tools import (block_diag, global_to_local, local_to_global, matdot,
+                    truncated_svd)
 
 __all__ = ['MPArray', 'dot', 'inject', 'inner', 'local_sum', 'outer',
            'norm', 'normdist', 'chain', 'partialdot', 'partialtrace',
@@ -194,7 +192,7 @@ class MPArray(object):
     def from_array_global(cls, array, ndims=None, has_virtual=False):
         """Create MPA from array in global form.
 
-        See :func:`mpnum._tools.global_to_local()` for global vs. local form.
+        See :func:`mpnum.tools.global_to_local()` for global vs. local form.
 
         Parameters and return value: See ``from_array()``.
             ``has_virtual=True`` is not supported yet.
@@ -212,7 +210,7 @@ class MPArray(object):
     def from_array(cls, array, ndims=None, has_virtual=False):
         """Create MPA from array in local form.
 
-        See :func:`mpnum._tools.global_to_local()` for global
+        See :func:`mpnum.tools.global_to_local()` for global
         vs. local form.
 
         Computes the (exact up to numerical accuracy) representation of `array`
@@ -234,7 +232,7 @@ class MPArray(object):
         :param np.ndarray array: Dense array with global structure
             ``array[(i0), ..., (iN)]``, i.e. the legs which are factorized into
             the same factor are already adjacent. (For me details see
-            :func:`._tools.global_to_local`)
+            :func:`.tools.global_to_local`)
         :param ndims: Number of physical legs per site (default array.ndim)
             or iterable over number of physical legs
         :param bool has_virtual: ``True`` if array already has indices for
@@ -264,7 +262,7 @@ class MPArray(object):
     def to_array(self):
         """Return MPA as array in local form.
 
-        See :func:`mpnum._tools.global_to_local()` for global
+        See :func:`mpnum.tools.global_to_local()` for global
         vs. local form.
 
         :returns: ndarray of shape :code:`sum(self.shape, ())`
@@ -278,7 +276,7 @@ class MPArray(object):
     def to_array_global(self):
         """Return MPA as array in global form.
 
-        See :func:`mpnum._tools.global_to_local()` for global
+        See :func:`mpnum.tools.global_to_local()` for global
         vs. local form.
 
         :returns: ndarray of shape :code:`sum(zip(*self.shape, ()))`

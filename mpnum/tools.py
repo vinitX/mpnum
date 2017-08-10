@@ -1,8 +1,5 @@
 # encoding: utf-8
-"""General helper functions for dealing with arrays (esp. for quantum
-mechanics)
-
-"""
+"""General helper functions for dealing with (dense) arrays"""
 
 from __future__ import division, print_function
 
@@ -173,111 +170,6 @@ def block_diag(summands, axes=(0, 1)):
     old_axes_order = np.argsort(axes_order)
     res = res.transpose(old_axes_order)
     return res
-
-
-def check_nonneg_trunc(values, imag_eps=1e-10, real_eps=1e-10, real_trunc=0.0):
-    """Check that values are real and non-negative
-
-    :param np.ndarray values: An ndarray of complex or real values (or
-        a single value). `values` is modified in-place unless `values`
-        is complex. A single value is also accepted.
-
-    :param float imag_eps: Raise an error if imaginary parts with
-        modulus larger than `imag_eps` are present.
-
-    :param float real_eps: Raise an error if real parts smaller than
-        `-real_eps` are present. Replace all remaining negative values
-        by zero.
-
-    :param float real_trunc: Replace positive real values smaller than
-        or equal to `real_trunc` by zero.
-
-    :returns: An ndarray of real values (or a single real value).
-
-    If `values` is an array with complex type, a new array is
-    returned. If `values` is an array with real type, it is modified
-    in-place and returned.
-
-    """
-    if values.dtype.kind == 'c':
-        assert (abs(values.imag) <= imag_eps).all()
-        values = values.real.copy()
-    if getattr(values, 'ndim', 0) == 0:
-        assert values >= -real_eps
-        return 0.0 if values <= real_trunc else values
-    assert (values >= -real_eps).all()
-    values[values <= real_trunc] = 0.0
-    return values
-
-
-def check_pmf(values, imag_eps=1e-10, real_eps=1e-10, real_trunc=0.0):
-    """Check that values are real probabilities
-
-    See :func:`check_nonneg_trunc` for parameters and return value. In
-    addition, we check that `abs(values.sum() - 1.0)` is smaller than
-    or equal to `real_eps` and divide `values` by `values.sum()`
-    afterwards.
-
-    """
-    values = check_nonneg_trunc(values, imag_eps, real_eps, real_trunc)
-    s = values.sum()
-    assert abs(s - 1.0) <= real_eps
-    values /= s
-    return values
-
-
-def verify_real_nonnegative(values, zero_tol=1e-6, zero_cutoff=None):
-    """Deprecated; use :func:`check_nonneg_trunc` instead"""
-    if zero_cutoff is None:
-        zero_cutoff = zero_tol
-    return check_nonneg_trunc(values, zero_tol, zero_tol, zero_cutoff)
-
-
-def compression_svd(array, rank, direction='right', retproj=False):
-    """Re-implement MPArray.compress('svd') but on the level of the full
-    array representation, i.e. it truncates the Schmidt-decompostion
-    on each bipartition sequentially.
-
-    :param mpa: Array to compress
-    :param rank: Compress to this rank
-    :param direction: 'right' means sweep from left to right, 'left' vice versa
-    :param retproj: Besides the compressed array, also return the projectors
-        on the appropriate eigenspaces
-    :returns: Result as numpy.ndarray
-
-    """
-    def singlecut(array, nr_left, target_rank):
-        array_shape = array.shape
-        array = array.reshape((np.prod(array_shape[:nr_left]), -1))
-        u, s, vt = np.linalg.svd(array, full_matrices=False)
-        u = u[:, :target_rank]
-        s = s[:target_rank]
-        vt = vt[:target_rank, :]
-        opt_compr = np.dot(u * s, vt)
-        opt_compr = opt_compr.reshape(array_shape)
-
-        if retproj:
-            projector_l = np.dot(u, u.T.conj())
-            projector_r = np.dot(vt.T.conj(), vt)
-            return opt_compr, (projector_l, projector_r)
-        else:
-            return opt_compr, (None, None)
-
-    nr_sites = array.ndim
-    projectors = []
-    if direction == 'right':
-        nr_left_values = range(1, nr_sites)
-    else:
-        nr_left_values = range(nr_sites-1, 0, -1)
-
-    for nr_left in nr_left_values:
-        array, proj = singlecut(array, nr_left, rank)
-        projectors.append(proj)
-
-    if direction != 'right':
-        projectors = projectors.reverse()
-
-    return (array, projectors) if retproj else array
 
 
 def truncated_svd(A, k):

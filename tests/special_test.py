@@ -9,10 +9,9 @@ from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
 import mpnum.factory as factory
 import mpnum.mparray as mp
 import mpnum.special as mpsp
-from mpnum import _tools
 from mpnum._testing import (assert_correct_normalization,
                             assert_mpa_almost_equal, assert_mpa_identical)
-from mpnum._tools import global_to_local
+from mpnum.tools import global_to_local, truncated_svd
 from mparray_test import MP_TEST_DTYPES, MP_TEST_PARAMETERS
 
 MP_INNER_PARAMETERS = [(10, 10, 5), (20, 2, 10)]
@@ -40,7 +39,7 @@ def test_inner_prod_mps(nr_sites, local_dim, rank, dtype, rgen):
         pass
     else:
         if rank > 1:
-            raise AssertionError("inner_prod_mps should only accept rank=1 in first argument")
+            raise AssertionError("inner_prod_mps should only accept r=1 in first argument")
 
     mpa1 = factory.random_mpo(nr_sites, local_dim, 1)
     try:
@@ -84,8 +83,7 @@ def test_sumup(nr_sites, local_dim, rank, rgen):
     weights = rgen.randn(len(mpas))
 
     # parameters chosen such that only one round of compression occurs
-    summed_fast = mpsp.sumup(mpas, rank, weights=weights,
-                             svdfunc=_tools.truncated_svd)
+    summed_fast = mpsp.sumup(mpas, rank, weights=weights, svdfunc=truncated_svd)
     #  summed_slow = mp.sumup(mpa * w for mpa, w in zip(mpas, weights))
     summed_slow = mp.sumup(mpas, weights=weights)
     summed_slow.compress('svd', rank=rank, direction='right',
@@ -103,20 +101,20 @@ def test_sumup(nr_sites, local_dim, rank, rgen):
 
 #  @pt.mark.long
 #  @pt.mark.benchmark(group="sumup", max_time=10)
-#  @pt.mark.parametrize('nr_sites, local_dim, samples, target_rank, max_rank', MP_SUMUP_PARAMETERS)
-#  def test_sumup_fast(nr_sites, local_dim, samples, target_rank, max_rank, rgen, benchmark):
+#  @pt.mark.parametrize('nr_sites, local_dim, samples, target_r, max_r', MP_SUMUP_PARAMETERS)
+#  def test_sumup_fast(nr_sites, local_dim, samples, target_, max_, rgen, benchmark):
 #      mpas = [factory.random_mpa(nr_sites, local_dim, 1, dtype=np.float_, randstate=rgen)
 #              for _ in range(samples)]
 #      weights = rgen.randn(len(mpas))
 
-#      benchmark(mpsp.sumup, mpas, weights=weights, target_rank=target_rank,
-#                max_rank=max_rank)
+#      benchmark(mpsp.sumup, mpas, weights=weights, target_=target_,
+#                max_=max_)
 
 
 #  @pt.mark.long
 #  @pt.mark.benchmark(group="sumup", max_time=10)
-#  @pt.mark.parametrize('nr_sites, local_dim, samples, target_rank, _', MP_SUMUP_PARAMETERS)
-#  def test_sumup_slow(nr_, local_dim, samples, target_rank, _, rgen, benchmark):
+#  @pt.mark.parametrize('nr_sites, local_dim, samples, target_, _', MP_SUMUP_PARAMETERS)
+#  def test_sumup_slow(nr_, local_dim, samples, target_, _, rgen, benchmark):
 #      mpas = [factory.random_mpa(nr_sites, local_dim, 1, dtype=np.float_, randstate=rgen)
 #              for _ in range(samples)]
 #      weights = rgen.randn(len(mpas))
@@ -124,7 +122,7 @@ def test_sumup(nr_sites, local_dim, rank, rgen):
 #      @benchmark
 #      def sumup_slow():
 #          summed = mp.sumup(mpa * w for w, mpa in zip(weights, mpas))
-#          summed.compress('svd', rank=target_rank)
+#          summed.compress('svd', =target_)
 
 
 @pt.mark.parametrize('dtype', MP_TEST_DTYPES)

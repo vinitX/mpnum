@@ -16,10 +16,10 @@ from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
-from mpnum import _tools
+from mpnum import tools
 from mpnum._testing import (assert_correct_normalization,
-                            assert_mpa_almost_equal, assert_mpa_identical)
-from mpnum._tools import global_to_local
+                            assert_mpa_almost_equal, assert_mpa_identical,
+                            compression_svd)
 from six.moves import range, zip
 
 # nr_sites, local_dim, rank
@@ -70,7 +70,7 @@ def test_from_kron(nr_sites, local_dim, rank, dtype):
     ndims = 2
     randfun = factory._randfuncs[dtype]
     factors = tuple(randfun([nr_sites] + ([local_dim] * ndims)))
-    op = _tools.mkron(*factors)
+    op = tools.mkron(*factors)
     op.shape = [local_dim] * (ndims * nr_sites)
     mpo = mp.MPArray.from_kron(factors)
     assert_array_almost_equal(op, mpo.to_array_global())
@@ -94,7 +94,7 @@ def test_conjugations(nr_sites, local_dim, _, rgen, dtype):
 @pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
 def test_transpose(nr_sites, local_dim, _, rgen, dtype):
     op = factory._random_op(nr_sites, local_dim, randstate=rgen, dtype=dtype)
-    mpo = mp.MPArray.from_array(global_to_local(op, nr_sites), 2)
+    mpo = mp.MPArray.from_array(tools.global_to_local(op, nr_sites), 2)
 
     opT = op.reshape((local_dim**nr_sites,) * 2).T \
         .reshape((local_dim,) * 2 * nr_sites)
@@ -465,7 +465,7 @@ def test_partialtrace(nr_sites, local_dim, rank, keep_width, rgen, dtype):
             + tuple(range(site + keep_width, nr_sites))
         axes = [(0, 1) if site in traceout else None for site in range(nr_sites)]
         red_mpo = mp.partialtrace(mpo, axes=axes)
-        red_from_op = _tools.partial_trace(op, traceout)
+        red_from_op = tools.partial_trace(op, traceout)
         assert_array_almost_equal(red_mpo.to_array_global(), red_from_op,
                                   err_msg="not equal at site {}".format(site))
         assert red_mpo.dtype == dtype
@@ -632,13 +632,13 @@ def test_inject(local_dim, rank):
     # We don't use b[1, :]
     b = b[0, :]
     # Here, only global order (as given by np.kron()).
-    abbc0 = _tools.mkron(a[0, :], b, b, c[0, :])
-    abbc1 = _tools.mkron(a[1, :], b, b, c[1, :])
+    abbc0 = tools.mkron(a[0, :], b, b, c[0, :])
+    abbc1 = tools.mkron(a[1, :], b, b, c[1, :])
     abbc = (abbc0 + abbc1).reshape(4 * local_dim)
     ac0 = np.kron(a[0, :], c[0, :])
     ac1 = np.kron(a[1, :], c[1, :])
     ac = (ac0 + ac1).reshape(2 * local_dim)
-    ac_mpo = mp.MPArray.from_array(global_to_local(ac, sites=2), ndims)
+    ac_mpo = mp.MPArray.from_array(tools.global_to_local(ac, sites=2), ndims)
     abbc_mpo = mp.inject(ac_mpo, pos=1, num=2, inject_ten=b)
     abbc_mpo2 = mp.inject(ac_mpo, pos=[1], num=[2], inject_ten=[b])
     abbc_mpo3 = mp.inject(ac_mpo, pos=[1], num=None, inject_ten=[[b, b]])
@@ -666,13 +666,13 @@ def test_inject(local_dim, rank):
     a, c = factory._zrandn((2, 2) + local_dim)
     b = np.eye(local_dim[0])
     # Here, only global order (as given by np.kron()).
-    abbc0 = _tools.mkron(a[0, :], b, b, c[0, :])
-    abbc1 = _tools.mkron(a[1, :], b, b, c[1, :])
+    abbc0 = tools.mkron(a[0, :], b, b, c[0, :])
+    abbc1 = tools.mkron(a[1, :], b, b, c[1, :])
     abbc = (abbc0 + abbc1).reshape(4 * local_dim)
     ac0 = np.kron(a[0, :], c[0, :])
     ac1 = np.kron(a[1, :], c[1, :])
     ac = (ac0 + ac1).reshape(2 * local_dim)
-    ac_mpo = mp.MPArray.from_array(global_to_local(ac, sites=2), ndims)
+    ac_mpo = mp.MPArray.from_array(tools.global_to_local(ac, sites=2), ndims)
     abbc_mpo = mp.inject(ac_mpo, pos=1, num=2, inject_ten=None)
     abbc_mpo2 = mp.inject(ac_mpo, pos=[1], num=[2])
     abbc_mpo3 = mp.inject(ac_mpo, pos=[1], inject_ten=[[None, None]])
@@ -1316,8 +1316,7 @@ def test_compression_result_properties(nr_sites, local_dims, rank,
 
     # SVD: compare with alternative implementation
     if comparg['method'] == 'svd' and 'relerr' not in comparg:
-        alt_compr = _tools.compression_svd(mpa.to_array(), rank,
-                                           comparg['direction'])
+        alt_compr = compression_svd(mpa.to_array(), rank, comparg['direction'])
         compr = compr.to_array()
         assert_array_almost_equal(alt_compr, compr)
 
