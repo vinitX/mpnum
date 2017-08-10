@@ -7,7 +7,6 @@ import mpnum.mparray as mp
 import mpnum.mpsmpo as mm
 import numpy as np
 import pytest as pt
-from mparray_test import MP_TEST_PARAMETERS
 from mpnum import tools
 from numpy.testing import assert_array_almost_equal
 
@@ -201,7 +200,7 @@ def test_reductions_mps(nr_sites, local_dim, rank, width, rgen):
         assert_array_almost_equal(red1.to_array(), red2.to_array())
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_pmps_to_mpo(nr_sites, local_dim, rank, rgen):
     if (nr_sites % 2) != 0:
         return
@@ -223,7 +222,7 @@ def test_pmps_to_mpo(nr_sites, local_dim, rank, rgen):
     assert_array_almost_equal(rho_mp, rho_np)
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_mps_to_mpo(nr_sites, local_dim, rank, rgen):
     mps = factory.random_mps(nr_sites, local_dim, rank, randstate=rgen)
     # Instead of calling the two functions, we call mps_to_mpo(),

@@ -9,7 +9,6 @@ import pytest as pt
 import mpnum.factory as factory
 from numpy.testing import assert_array_almost_equal
 
-from mparray_test import MP_TEST_PARAMETERS, MP_TEST_DTYPES
 from mpnum._testing import assert_correct_normalization
 
 
@@ -26,8 +25,9 @@ def test_mpdo_positivity(nr_sites, local_dim, rank, rgen):
 
 
 #  @pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
-def test_diagonal_mpa(nr_sites, local_dim, _, rgen, dtype=np.float_):
+@pt.mark.parametrize('nr_sites, local_dim, _', pt.MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+def test_diagonal_mpa(nr_sites, local_dim, _, rgen, dtype):
     randfunc = factory._randfuncs[dtype]
     entries = randfunc((local_dim,), randstate=rgen)
 

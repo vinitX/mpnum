@@ -22,16 +22,6 @@ from mpnum._testing import (assert_correct_normalization,
                             compression_svd)
 from six.moves import range, zip
 
-# nr_sites, local_dim, rank
-MP_TEST_PARAMETERS = [(1, 7, np.nan), (2, 3, 3), (3, 2, 4), (6, 2, 4),
-                      (4, 3, 5), (5, 2, 1)]
-# local_dim, rank
-MP_TEST_PARAMETERS_INJECT = [(2, 4), (3, 3), (2, 5), (2, 1), (1, 2)]
-# nr_sites, local_dim, rank, sites_per_group
-MP_TEST_PARAMETERS_GROUPS = [(6, 2, 4, 3), (6, 2, 4, 2), (4, 3, 5, 2)]
-
-MP_TEST_DTYPES = [np.float_, np.complex_]
-
 
 def update_copy_of(target, newvals):
     new = target.copy()
@@ -42,8 +32,8 @@ def update_copy_of(target, newvals):
 ###############################################################################
 #                         Basic creation & operations                         #
 ###############################################################################
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, _', pt.MP_TEST_PARAMETERS)
 def test_from_full(nr_sites, local_dim, _, rgen, dtype):
     psi = factory._random_vec(nr_sites, local_dim, randstate=rgen, dtype=dtype)
     mps = mp.MPArray.from_array(psi, 1)
@@ -64,8 +54,8 @@ def test_from_inhomogenous(rgen):
     assert mpa.shape == ((4, 3), (3,), (3,))
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_from_kron(nr_sites, local_dim, rank, dtype):
     ndims = 2
     randfun = factory._randfuncs[dtype]
@@ -77,8 +67,8 @@ def test_from_kron(nr_sites, local_dim, rank, dtype):
     assert mpo.dtype == dtype
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, _', pt.MP_TEST_PARAMETERS)
 def test_conjugations(nr_sites, local_dim, _, rgen, dtype):
     op = factory._random_op(nr_sites, local_dim, randstate=rgen, dtype=dtype)
     mpo = mp.MPArray.from_array(op, 2)
@@ -90,8 +80,8 @@ def test_conjugations(nr_sites, local_dim, _, rgen, dtype):
     assert_correct_normalization(mpo_c)
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, _', pt.MP_TEST_PARAMETERS)
 def test_transpose(nr_sites, local_dim, _, rgen, dtype):
     op = factory._random_op(nr_sites, local_dim, randstate=rgen, dtype=dtype)
     mpo = mp.MPArray.from_array(tools.global_to_local(op, nr_sites), 2)
@@ -140,7 +130,7 @@ def test_transpose_axes(rgen):
     assert_correct_normalization(mpa_t)
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
 def test_dump_and_load(tmpdir, dtype):
     mpa = factory.random_mpa(5, [(4,), (2, 3), (1,), (4,), (4, 3)],
                              (4, 7, 1, 3), dtype=dtype)
@@ -163,8 +153,8 @@ def test_dump_and_load(tmpdir, dtype):
 ###############################################################################
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_sum(nr_sites, local_dim, rank, rgen, dtype):
     """Compare mpa.sum() with full array computation"""
     mpa = factory.random_mpa(nr_sites, local_dim, rank, rgen, dtype)
@@ -192,8 +182,8 @@ def test_sum(nr_sites, local_dim, rank, rgen, dtype):
     assert_array_almost_equal(mpa_sum, array_sum)
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_dot(nr_sites, local_dim, rank, rgen, dtype):
     mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), rank,
                               randstate=rgen, dtype=dtype)
@@ -277,8 +267,8 @@ def test_dot_multiaxes(rgen):
     assert_array_almost_equal(mpa_prod, vec_prod)
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_partialdot(nr_sites, local_dim, rank, rgen, dtype):
     # Only for at least two sites, we can apply an operator to a part
     # of a chain.
@@ -370,8 +360,8 @@ def test_partialdot_multiaxes(rgen):
     assert_array_almost_equal(mpa_prod, vec_prod)
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_inner_vec(nr_sites, local_dim, rank, rgen, dtype):
     mp_psi1 = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen,
                                  dtype=dtype)
@@ -386,8 +376,8 @@ def test_inner_vec(nr_sites, local_dim, rank, rgen, dtype):
     assert inner_mp.dtype == dtype
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_inner_mat(nr_sites, local_dim, rank, rgen, dtype):
     mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), rank,
                               randstate=rgen, dtype=dtype)
@@ -402,8 +392,8 @@ def test_inner_mat(nr_sites, local_dim, rank, rgen, dtype):
     assert inner_mp.dtype == dtype
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_sandwich(nr_sites, local_dim, rank, rgen, dtype):
     mps = factory.random_mpa(nr_sites, local_dim, rank,
                              randstate=rgen, dtype=dtype, normalized=True)
@@ -430,8 +420,8 @@ def test_sandwich(nr_sites, local_dim, rank, rgen, dtype):
     assert_almost_equal(res_sandwich, res_arr)
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_norm(nr_sites, local_dim, rank, dtype, rgen):
     mp_psi = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen,
                                 dtype=dtype)
@@ -441,8 +431,8 @@ def test_norm(nr_sites, local_dim, rank, dtype, rgen):
     assert_almost_equal(np.sum(psi.conj() * psi), mp.norm(mp_psi)**2)
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_normdist(nr_sites, local_dim, rank, dtype, rgen):
     psi1 = factory.random_mpa(nr_sites, local_dim, rank, dtype=dtype,
                               randstate=rgen)
@@ -452,7 +442,7 @@ def test_normdist(nr_sites, local_dim, rank, dtype, rgen):
     assert_almost_equal(mp.normdist(psi1, psi2), mp.norm(psi1 - psi2))
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, rank, keep_width',
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_partialtrace(nr_sites, local_dim, rank, keep_width, rgen, dtype):
@@ -471,8 +461,8 @@ def test_partialtrace(nr_sites, local_dim, rank, keep_width, rgen, dtype):
         assert red_mpo.dtype == dtype
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_trace(nr_sites, local_dim, rank, rgen, dtype):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), rank,
                              randstate=rgen, dtype=dtype)
@@ -483,8 +473,8 @@ def test_trace(nr_sites, local_dim, rank, rgen, dtype):
     assert np.array(mpo_trace).dtype == dtype
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_add_and_subtr(nr_sites, local_dim, rank, rgen, dtype):
     mpo1 = factory.random_mpa(nr_sites, (local_dim, local_dim), rank,
                               randstate=rgen, dtype=dtype)
@@ -530,8 +520,8 @@ def test_operations_typesafety(nr_sites, local_dim, rank, rgen):
     assert mpo1.dtype == np.complex_
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_sumup(nr_sites, local_dim, rank, rgen, dtype):
     mpas = [factory.random_mpa(nr_sites, local_dim, 3, dtype=dtype, randstate=rgen)
             for _ in range(rank if rank is not np.nan else 1)]
@@ -551,8 +541,8 @@ def test_sumup(nr_sites, local_dim, rank, rgen, dtype):
     assert(sum_mp.dtype is dtype)
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_mult_mpo_scalar(nr_sites, local_dim, rank, rgen, dtype):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), rank,
                              randstate=rgen, dtype=dtype)
@@ -570,7 +560,7 @@ def test_mult_mpo_scalar(nr_sites, local_dim, rank, rgen, dtype):
     assert (1.j * mpo).dtype == np.complex_
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_div_mpo_scalar(nr_sites, local_dim, rank, rgen):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), rank,
                              dtype=np.complex_, randstate=rgen)
@@ -586,8 +576,8 @@ def test_div_mpo_scalar(nr_sites, local_dim, rank, rgen):
     assert_array_almost_equal(op / scalar, mpo.to_array_global())
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_chain(nr_sites, local_dim, rank, rgen, dtype):
     # This test produces at most `nr_sites` by tensoring two
     # MPOs. This doesn't work for :code:`nr_sites = 1`.
@@ -612,6 +602,10 @@ def test_chain(nr_sites, local_dim, rank, rgen, dtype):
     diff.canonicalize()
     assert len(diff) == 3 * len(mpo)
     assert mp.norm(diff) < 1e-6
+
+
+# local_dim, rank
+MP_TEST_PARAMETERS_INJECT = [(2, 4), (3, 3), (2, 5), (2, 1), (1, 2)]
 
 
 @pt.mark.parametrize('local_dim, rank', MP_TEST_PARAMETERS_INJECT)
@@ -724,7 +718,7 @@ def test_inject_shapes(rgen):
     assert mpa_inj.shape == ((1,), (2, 2), (2,), (3,), (3, 3))
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_inject_vs_chain(nr_sites, local_dim, rank, rgen):
     """Compare mp.inject() with mp.chain()"""
     if nr_sites == 1:
@@ -743,7 +737,7 @@ def test_inject_vs_chain(nr_sites, local_dim, rank, rgen):
     assert_mpa_almost_equal(outer1, outer2, True)
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_outer(nr_sites, local_dim, rank, rgen):
     mpa1 = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen)
     mpa2 = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen)
@@ -761,7 +755,7 @@ def test_outer(nr_sites, local_dim, rank, rgen):
     assert_array_almost_equal(tensor_np, tensor_mp.to_array_global())
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, rank, local_width',
                      [(5, 2, 3, 1), (6, 2, 4, 3), (4, 3, 5, 2)])
 def test_local_sum(nr_sites, local_dim, rank, local_width, dtype, rgen):
@@ -795,7 +789,7 @@ def test_local_sum(nr_sites, local_dim, rank, local_width, dtype, rgen):
     assert_array_almost_equal(mpa_local_sum.to_array(), mpa_sum.to_array())
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_diag_1pleg(nr_sites, local_dim, rank, rgen):
     mpa = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen)
     mpa_np = mpa.to_array()
@@ -805,7 +799,7 @@ def test_diag_1pleg(nr_sites, local_dim, rank, rgen):
     assert_array_almost_equal(diag_mp, diag_np)
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_diag_2plegs(nr_sites, local_dim, rank, rgen):
     mpa = factory.random_mpa(nr_sites, 2 * (local_dim,), rank, randstate=rgen)
     mpa_np = mpa.to_array()
@@ -821,6 +815,10 @@ def test_diag_2plegs(nr_sites, local_dim, rank, rgen):
 ###############################################################################
 #                         Shape changes, conversions                          #
 ###############################################################################
+# nr_sites, local_dim, rank, sites_per_group
+MP_TEST_PARAMETERS_GROUPS = [(6, 2, 4, 3), (6, 2, 4, 2), (4, 3, 5, 2)]
+
+
 @pt.mark.parametrize('nr_sites, local_dim, rank, sites_per_group',
                      MP_TEST_PARAMETERS_GROUPS)
 def test_group_sites(nr_sites, local_dim, rank, sites_per_group, rgen):
@@ -847,7 +845,7 @@ def test_split_sites(nr_sites, local_dim, rank, sites_per_group, rgen):
 
 
 @pt.mark.parametrize('ndims', [1, 2, 3])
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_reverse(nr_sites, local_dim, rank, ndims, rgen):
     mpa = factory.random_mpa(nr_sites, (local_dim,) * ndims, rank, rgen,
                              normalized=True)
@@ -859,7 +857,7 @@ def test_reverse(nr_sites, local_dim, rank, ndims, rgen):
     assert_almost_equal(rev_arr, rev_arr2)
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, rank, rgen):
     mpa = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen)
     # +2 so we cover all possibilities
@@ -889,7 +887,7 @@ def test_bleg2pleg_pleg2bleg(nr_sites, local_dim, rank, rgen):
         assert_correct_normalization(mpa_t)
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_split(nr_sites, local_dim, rank, rgen):
     if nr_sites < 2:
         return
@@ -920,7 +918,7 @@ def test_reshape(rgen):
 ###############################################################################
 #                         Normalization & Compression                         #
 ###############################################################################
-@pt.mark.parametrize('nr_sites, local_dim, _', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, _', pt.MP_TEST_PARAMETERS)
 def test_canonicalization_from_full(nr_sites, local_dim, _, rgen):
     op = factory._random_op(nr_sites, local_dim, randstate=rgen)
     mpo = mp.MPArray.from_array(op, 2)
@@ -928,8 +926,8 @@ def test_canonicalization_from_full(nr_sites, local_dim, _, rgen):
 
 
 # FIXME Add counter to normalization functions
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_canonicalization_incremental(nr_sites, local_dim, rank, rgen, dtype):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), rank,
                              randstate=rgen, dtype=dtype)
@@ -951,8 +949,8 @@ def test_canonicalization_incremental(nr_sites, local_dim, rank, rgen, dtype):
 
 
 # FIXME Add counter to normalization functions
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_canonicalization_jump(nr_sites, local_dim, rank, rgen, dtype):
     # This test assumes at least two sites.
     if nr_sites == 1:
@@ -971,8 +969,8 @@ def test_canonicalization_jump(nr_sites, local_dim, rank, rgen, dtype):
     assert mpo.dtype == dtype
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_canonicalization_full(nr_sites, local_dim, rank, rgen, dtype):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), rank,
                              randstate=rgen, dtype=dtype)
@@ -998,7 +996,7 @@ def test_canonicalization_full(nr_sites, local_dim, rank, rgen, dtype):
     assert mpo.dtype == dtype
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_canonicalization_default_args(nr_sites, local_dim, rank, rgen):
     # The following normalizations assume at least two sites.
     if nr_sites == 1:
@@ -1038,7 +1036,7 @@ def test_canonicalization_compression(rgen):
     assert mpo.ranks[0] == 2
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_mult_mpo_scalar_normalization(nr_sites, local_dim, rank, rgen):
     if nr_sites < 2:
         # Re-normalization has no effect for nr_sites == 1. There is
@@ -1062,8 +1060,8 @@ def test_mult_mpo_scalar_normalization(nr_sites, local_dim, rank, rgen):
     assert_correct_normalization(mpo, center - 1, center)
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_singularvals(nr_sites, local_dim, rank, dtype, rgen):
     mps = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen,
                              dtype=dtype, normalized=True, force_rank=True)
@@ -1089,7 +1087,7 @@ def test_singularvals(nr_sites, local_dim, rank, dtype, rgen):
         assert_array_almost_equal(sv[:n_sv], sv2[:n_sv])
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_pad_ranks(nr_sites, local_dim, rank, rgen):
     mps = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen,
                              normalized=True)
@@ -1231,7 +1229,7 @@ def call_compression(mpa, comparg, target_rank, rgen, call_compress=False):
 # the fixme at the module start.
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
 @compr_test_params
 def test_compression_and_compress(nr_sites, local_dims, rank, canonicalize,
                                   comparg, dtype, rgen):
@@ -1261,7 +1259,7 @@ def test_compression_and_compress(nr_sites, local_dims, rank, canonicalize,
     assert_mpa_identical(compr, compr2, decimal=12)
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
 @compr_test_params
 def test_compression_result_properties(nr_sites, local_dims, rank,
                                         canonicalize, comparg, rgen, dtype):
@@ -1321,8 +1319,8 @@ def test_compression_result_properties(nr_sites, local_dims, rank,
         assert_array_almost_equal(alt_compr, compr)
 
 
-@pt.mark.parametrize('dtype', MP_TEST_DTYPES)
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_var_no_worse_than_svd(nr_sites, local_dim, rank, rgen, dtype):
     """Variational compresssion should always improve the overlap of the
     compressed mpa with the original one -- we test this by running a single

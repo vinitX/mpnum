@@ -1,4 +1,5 @@
 # encoding: utf-8
+# TODO Needs dtype dependent tests
 
 
 from __future__ import absolute_import, division, print_function
@@ -11,10 +12,8 @@ import mpnum as mp
 import mpnum.linalg
 import mpnum.factory as factory
 
-from mparray_test import MP_TEST_PARAMETERS
 
-
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_mineig(nr_sites, local_dim, rank, rgen):
     # Need at least two sites
     if nr_sites < 2:
@@ -42,7 +41,7 @@ def test_mineig(nr_sites, local_dim, rank, rgen):
     assert_almost_equal(1, abs(overlap))
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_mineig_minimize_sites(nr_sites, local_dim, rank, rgen):
     # Need at least three sites for minimize_sites = 2
     if nr_sites < 3:
@@ -71,7 +70,7 @@ def test_mineig_minimize_sites(nr_sites, local_dim, rank, rgen):
     assert_almost_equal(abs(overlap), 1)
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_mineig_sum_minimize_sites(nr_sites, local_dim, rank, rgen):
     # Need at least three sites for minimize_sites = 2
     if nr_sites < 3:
@@ -142,7 +141,7 @@ def test_mineig_sum_benchmark(
     )
 
 
-@pt.mark.parametrize('nr_sites, local_dim, rank', MP_TEST_PARAMETERS)
+@pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_mineig_eigs_opts(nr_sites, local_dim, rank, rgen):
     """Verify correct operation if eigs_opts() is specified
 
