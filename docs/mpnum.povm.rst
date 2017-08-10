@@ -1,27 +1,6 @@
-povm Package
-============
+:orphan:
 
-:mod:`povm` Package
--------------------
+Matrix product POVMs (mpnum.povm)
+=================================
 
-.. automodule:: mpnum.povm
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`localpovm` Module
------------------------
-
-.. automodule:: mpnum.povm.localpovm
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`mppovm` Module
---------------------
-
-.. automodule:: mpnum.povm.mppovm
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
+Moved to :mod:`mpnum.povm.localpovm` and :mod:`mpnum.povm.mppovm`.

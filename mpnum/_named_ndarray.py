@@ -91,7 +91,8 @@ class named_ndarray(object):
         axespos_other = [other.axispos(name) for name in axes_other]
         new_names = [name for name in self._axisnames if name not in axes_self]
         new_names += (name for name in other._axisnames if name not in axes_other)
-        array = np.tensordot(self._array, other._array, (axespos_self, axespos_other))
+        array = np.tensordot(self._array, other._array,
+                             (axespos_self, axespos_other))
         return named_ndarray(array, new_names)
 
     @property

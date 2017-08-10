@@ -3,14 +3,12 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import pytest as pt
-from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
-                           assert_array_equal, assert_equal)
+from numpy.testing import (assert_almost_equal, assert_array_almost_equal)
 
 import mpnum.factory as factory
 import mpnum.mparray as mp
 import mpnum.special as mpsp
-from mpnum._testing import (assert_correct_normalization,
-                            assert_mpa_almost_equal, assert_mpa_identical)
+from mpnum._testing import assert_mpa_identical
 from mpnum.tools import global_to_local, truncated_svd
 
 MP_INNER_PARAMETERS = [(10, 10, 5), (20, 2, 10)]
@@ -38,7 +36,8 @@ def test_inner_prod_mps(nr_sites, local_dim, rank, dtype, rgen):
         pass
     else:
         if rank > 1:
-            raise AssertionError("inner_prod_mps should only accept r=1 in first argument")
+            raise AssertionError(
+                "inner_prod_mps should only accept r=1 in first argument")
 
     mpa1 = factory.random_mpo(nr_sites, local_dim, 1)
     try:
@@ -117,7 +116,21 @@ def test_sumup(nr_sites, local_dim, rank, rgen):
 #      mpas = [factory.random_mpa(nr_sites, local_dim, 1, dtype=np.float_, randstate=rgen)
 #              for _ in range(samples)]
 #      weights = rgen.randn(len(mpas))
-
+#
+#      benchmark(mpsp.sumup, mpas, weights=weights, target_bdim=target_bdim,
+#                max_bdim=max_bdim)
+#
+#
+#  @pt.mark.long
+#  @pt.mark.benchmark(group="sumup", max_time=10)
+#  @pt.mark.parametrize('nr_sites, local_dim, samples, target_bdim, _',
+#                       MP_SUMUP_PARAMETERS)
+#  def test_sumup_slow(nr_, local_dim, samples, target_bdim, _, rgen, benchmark):
+#      mpas = [factory.random_mpa(nr_sites, local_dim, 1, dtype=np.float_,
+#                                 randstate=rgen)
+#              for _ in range(samples)]
+#      weights = rgen.randn(len(mpas))
+#
 #      @benchmark
 #      def sumup_slow():
 #          summed = mp.sumup(mpa * w for w, mpa in zip(weights, mpas))
@@ -133,7 +146,8 @@ def test_local_add_sparse(nr_sites, local_dim, rank, dtype, rgen):
     summands = [factory.random_mpa(1, local_dim, 1, dtype=dtype,
                                    randstate=rgen).lt[0]
                 for _ in range(nr_summands)]
-    sum_slow = mp._local_add(summands).reshape((nr_summands, nr_summands * local_dim))
+    sum_slow = mp._local_add(summands).reshape((nr_summands,
+                                                nr_summands * local_dim))
     sum_fast = mpsp._local_add_sparse([s.ravel() for s in summands]).toarray() \
 
     assert_array_almost_equal(sum_slow, sum_fast)

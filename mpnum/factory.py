@@ -44,6 +44,7 @@ def _randn(shape, randstate=None):
     randstate = randstate if randstate is not None else np.random
     return randstate.randn(*shape)
 
+
 _randfuncs = {np.float_: _randn, np.complex_: _zrandn}
 
 
@@ -69,7 +70,7 @@ def _random_vec(sites, ldim, randstate=None, dtype=np.complex_):
 
 
 def _random_op(sites, ldim, hermitian=False, normalized=False, randstate=None,
-              dtype=np.complex_):
+               dtype=np.complex_):
     """Returns a random operator  of shape (ldim,ldim) * sites with local
     dimension `ldim` living on `sites` sites in global form.
 
@@ -401,7 +402,7 @@ def random_local_ham(sites, ldim=2, intlen=2, randstate=None):
     def get_local_ham():
         op = _random_op(intlen, ldim, hermitian=True, normalized=True)
         op = global_to_local(op, sites=intlen)
-        return mp.MPArray.from_array(op, plegs=2)
+        return mp.MPArray.from_array(op, ndims=2)
 
     assert sites >= intlen
     local_hams = [get_local_ham() for _ in range(sites + 1 - intlen)]

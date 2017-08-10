@@ -1,7 +1,6 @@
-Project Modules
+:orphan:
+
+mpnum reference
 ===============
 
-.. toctree::
-   :maxdepth: 4
-
-   mpnum
+Moved to :doc:`mpnum`.

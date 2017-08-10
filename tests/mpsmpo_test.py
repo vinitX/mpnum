@@ -2,13 +2,14 @@
 #
 from __future__ import absolute_import, division, print_function
 
+import numpy as np
+import pytest as pt
+from numpy.testing import assert_array_almost_equal
+
 import mpnum.factory as factory
 import mpnum.mparray as mp
 import mpnum.mpsmpo as mm
-import numpy as np
-import pytest as pt
 from mpnum import tools
-from numpy.testing import assert_array_almost_equal
 
 
 def _get_reductions(red_fun, mpa, max_red_width):
@@ -93,8 +94,8 @@ def test_pmps_reduction_array_fast(nr_sites, local_dim, rank, keep, rgen,
     'nr_sites, local_dim, rank, keep',
     [(20, 2, 16, [4, 5, 17, 18]), (20, 2, 32, [4, 5, 17, 18])]
 )
-def test_pmps_reduction_array_slow_noprune(nr_sites, local_dim, rank, keep, rgen,
-                                   benchmark):
+def test_pmps_reduction_array_slow_noprune(
+        nr_sites, local_dim, rank, keep, rgen, benchmark):
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), rank,
                               dtype=np.complex_, normalized=True,
                               randstate=rgen)
@@ -109,8 +110,8 @@ def test_pmps_reduction_array_slow_noprune(nr_sites, local_dim, rank, keep, rgen
     'nr_sites, local_dim, rank, keep',
     [(32, 2, 16, [1, 2, 17, 18])]
 )
-def test_pmps_reduction_array_slow_prune(nr_sites, local_dim, rank, keep, rgen,
-                                   benchmark):
+def test_pmps_reduction_array_slow_prune(
+        nr_sites, local_dim, rank, keep, rgen, benchmark):
     pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), rank,
                               dtype=np.complex_, normalized=True,
                               randstate=rgen)

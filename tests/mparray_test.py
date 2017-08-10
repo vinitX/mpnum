@@ -342,7 +342,8 @@ def test_partialdot_multiaxes(rgen):
     # match the order of the indices in mpa_prod. We need to change
     # that order:
     nldim1, nldim2 = (len(ldim1) - len(ax1), len(ldim2) - len(ax2))
-    assert vec_prod.ndim == start_at * len(ldim1) + nr_sites_shorter * (nldim1 + nldim2)
+    assert vec_prod.ndim == (start_at * len(ldim1)
+                             + nr_sites_shorter * (nldim1 + nldim2))
     # For sites before start_at, the axes of `vec1` remain unchanged.
     perm = tuple(range(len(ldim1) * start_at))
     # For site start_at and following sites, we need to fix the order
@@ -462,6 +463,24 @@ def test_partialtrace(nr_sites, local_dim, rank, keep_width, rgen, dtype):
 
 
 @pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('nr_sites, local_dim', [(4, 3)])
+def test_partialtrace_axes(nr_sites, local_dim, rgen, dtype):
+    mpa = factory.random_mpa(nr_sites, (local_dim,) * 3, 1,
+                             randstate=rgen, dtype=dtype)
+
+    # Verify that an exception is raised if `axes` does not refer to a
+    # physical leg.
+    valid = [(0, 2), (-3, -2)]
+    invalid = [(0, 3), (-4, 2), (-4, 3)]
+    for axes in valid:
+        mp.partialtrace(mpa, axes=axes)
+    for axes in invalid:
+        with pt.raises(AssertionError) as exc:
+            mp.partialtrace(mpa, axes=(0, 3))
+        assert exc.value.args == ('Too few legs',), "Wrong assertion"
+
+
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
 @pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_trace(nr_sites, local_dim, rank, rgen, dtype):
     mpo = factory.random_mpa(nr_sites, (local_dim, local_dim), rank,
@@ -535,7 +554,7 @@ def test_sumup(nr_sites, local_dim, rank, rgen, dtype):
     weights = rgen.randn(len(mpas))
     summands = [w * mpa for w, mpa in zip(weights, mpas)]
     sum_naive = ft.reduce(mp.MPArray.__add__, summands)
-    sum_mp = mp.sumup(mpas, weights = weights)
+    sum_mp = mp.sumup(mpas, weights=weights)
     assert_array_almost_equal(sum_naive.to_array(), sum_mp.to_array())
     assert all(r <= 3 * rank for r in sum_mp.ranks)
     assert(sum_mp.dtype is dtype)
@@ -1162,6 +1181,7 @@ def _chain_decorators(*args):
         return f
     return chain_decorator
 
+
 compr_test_params = _chain_decorators(compr_sizes, compr_settings,
                                       compr_normalization)
 
@@ -1262,7 +1282,7 @@ def test_compression_and_compress(nr_sites, local_dims, rank, canonicalize,
 @pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
 @compr_test_params
 def test_compression_result_properties(nr_sites, local_dims, rank,
-                                        canonicalize, comparg, rgen, dtype):
+                                       canonicalize, comparg, rgen, dtype):
     """Test general properties of the MPA coming from a compression.
 
     * Compare SVD compression against simpler implementation
@@ -1340,7 +1360,7 @@ def test_var_no_worse_than_svd(nr_sites, local_dim, rank, rgen, dtype):
 
 @compr_test_params
 def test_compression_rank_noincrease(nr_sites, local_dims, rank,
-                                         canonicalize, comparg, rgen):
+                                     canonicalize, comparg, rgen):
     """Check that rank does not increase if the target rank
     is larger than the MPA rank
 

@@ -341,7 +341,8 @@ def reductions_mps_as_mpo(mps, width=None, startsites=None, stopsites=None):
     :returns: Iterator over reduced states as MPO
 
     """
-    return map(pmps_to_mpo, reductions_mps_as_pmps(mps, width, startsites, stopsites))
+    return map(pmps_to_mpo, reductions_mps_as_pmps(mps, width, startsites,
+                                                   stopsites))
 
 
 def reductions(state, mode, **kwargs):

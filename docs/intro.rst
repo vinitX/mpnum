@@ -5,22 +5,41 @@
 Introduction
 ============
 
+mpnum is a Python library providing flexible tools to implement new
+numerical schemes based on matrix product states (MPS). It is
+available under the BSD license at `mpnum on Github
+<https://github.com/dseuss/mpnum>`_. So far, mpnum provides:
+
+- basic tools for various matrix product based representations, such
+  as:
+
+  - matrix product states (:ref:`MPS <intro-mps>`), also known as
+    tensor trains (TT)
+  - matrix product operators (:ref:`MPO <intro-mpo>`)
+  - local purification matrix product states (:ref:`PMPS <intro-pmps>`)
+  - arbitrary matrix product arrays (:ref:`MPA <intro-mpa>`)
+
+- basic MPA operations: add, multiply, etc; compression (see
+  :func:`compress() <mpnum.mparray.MPArray.compress>`, SVD and
+  variational)
+- computing ground states of MPOs (see :func:`mineig()
+  <mpnum.linalg.mineig>`, which computes smallest eigenvalues and
+  eigenvectors of MPOs)
+- flexible tools to implement new schemes based on matrix product
+  representations
+
+.. contents::
+
+
 Contributing
-----
+------------
 
-Contributions to the code are very welcome.  Regarding code style,
-please try to fix all warnings reported by flake8::
-
-  python -m flake8 .
-
-Regarding line length, we try to have not more than 80 characters per
-line, with some exceptions if the excess is small and reformatting
-would not be nice.
-
+Contributions and pull requests for mpnum are very welcome. More
+information on modifying mpnum is at :ref:`mpnum-development`.
 
 
 Graphical notation for tensors
-----
+------------------------------
 
 
 Our graphical notation for tensors is very similar to the graphical
@@ -39,7 +58,7 @@ simple case of of a tensor contraction is the product of two matrices:
 
 We represent this tensor contraction with the following figure:
 
-.. image:: tensors_matrixproduct.svg
+.. image:: tensors_matrixproduct.png
    :align: center
 
 Each of the tensors :math:`A`, :math:`B` and :math:`C` is represented
@@ -69,9 +88,11 @@ matrix:
 
 This formula is represented by the following figure:
 
-.. image:: tensors_matrixelement.svg
+.. image:: tensors_matrixelement.png
    :align: center
 
+
+.. _intro-mps:
 
 Matrix product states (MPS)
 """""""""""""""""""""""""""
@@ -89,7 +110,7 @@ where :math:`A_i \in \mathbb C^{1 \times D}`, :math:`B_j, C_k \in
 <mpsmpo-definitions>`).  This construction is also known as *tensor
 train* and it is given by the following simple figure:
 
-.. image:: tensors_mps.svg
+.. image:: tensors_mps.png
    :align: center
 
 We call :math:`\psi` a *global tensor* and we call the MPS matrices
@@ -99,15 +120,17 @@ subsystem *local tensors*.
 Very often, we can omit the labels of all the legs.  The figure then
 becomes very simple:
 
-.. image:: tensors_mps_no_names.svg
+.. image:: tensors_mps_no_names.png
    :align: center
 
 As explained in the next paragraph on MPOs, we usually add *dummy
 bonds* of size 1 to our tensors:
 
-.. image:: tensors_mps_no_names_with_dummies.svg
+.. image:: tensors_mps_no_names_with_dummies.png
    :align: center
 
+
+.. _intro-mpo:
 
 Matrix product operators (MPO)
 """"""""""""""""""""""""""""""
@@ -127,7 +150,7 @@ are matrices and the :math:`C_{i_3j_3}` are column vectors (reference:
 e.g. [:ref:`Sch11 <Sch11>`]; :ref:`exact definition
 <mpsmpo-definitions>`). This is represented by the following figure:
 
-.. image:: tensors_mpo.svg
+.. image:: tensors_mpo.png
    :align: center
 
 Be aware that the legs of :math:`\rho` are not in the order :math:`i_1
@@ -146,7 +169,7 @@ In order to simplify the implementation, it is useful to introduce
 *dummy bonds* with index size 1 on the left and the right of the MPS
 or MPO chain:
 
-.. image:: tensors_mpo_with_dummies.svg
+.. image:: tensors_mpo_with_dummies.png
    :align: center
 
 With these dummy bonds, all the tensors in the representation have
@@ -156,12 +179,12 @@ It is useful to draw the physical column indices upward from the
 global and local tensors while leaving the physical row indices
 downward:
 
-.. image:: tensors_mpo_updown.svg
+.. image:: tensors_mpo_updown.png
    :align: center
 
 With this arrangement, we can nicely express a product of two MPOs:
 
-.. image:: tensors_mpo_product.svg
+.. image:: tensors_mpo_product.png
    :align: center
 
 This figure tells us how to obtain the local tensors which represent
@@ -171,13 +194,15 @@ is the product of the bond dimensions of the two individual MPO
 representations.
 
 
+.. _intro-pmps:
+
 Local purification form MPS (PMPS)
-"""""
+""""""""""""""""""""""""""""""""""
 
 The local purification from matrix product state representation (PMPS
 or LPMPS) is defined as follows:
 
-.. image:: tensors_pmps.svg
+.. image:: tensors_pmps.png
    :align: center
 
 Here, all the :math:`i` indices are actual sites and all the :math:`j`
@@ -192,7 +217,7 @@ representation is given by
 
 The following figure describes the relation:
 
-.. image:: tensors_pmps_to_mpo.svg
+.. image:: tensors_pmps_to_mpo.png
    :align: center
 
 It also tells us how to convert a PMPS representation into an MPO
@@ -200,8 +225,10 @@ representation and how the bond dimension changes: The MPO bond
 dimension is the square of the PMPS bond dimension.
 
 
+.. _intro-mpa:
+
 Matrix product arrays
-"""""
+"""""""""""""""""""""
 
 The library mpnum implements the class :class:`mpnum.mparray.MPArray`
 which can be used for MPS, MPO, PMPS and other MPS-like
@@ -210,12 +237,12 @@ representations.  :code:`MPArray` is short for *matrix product array*
 physical legs at each site.  Each physical leg can also have an
 arbitrary dimension.  A corresponding figure could look like this:
 
-.. image:: tensors_mpa.svg
+.. image:: tensors_mpa.png
    :align: center
 
 
 Next steps
------
+----------
 
 The ipython notebook :code:`mpnum_intro.ipynb` in the folder
 :code:`Notebooks` provides an introduction on how to use :code:`mpnum`

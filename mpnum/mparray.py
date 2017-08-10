@@ -357,7 +357,8 @@ class MPArray(object):
             return MPArray((self._lt[0] + summand.lt[0],))
 
         ltens = [np.concatenate((self._lt[0], summand.lt[0]), axis=-1)]
-        ltens += [_local_add((l, r)) for l, r in zip(self._lt[1:-1], summand.lt[1:-1])]
+        ltens += [_local_add((l, r))
+                  for l, r in zip(self._lt[1:-1], summand.lt[1:-1])]
         ltens += [np.concatenate((self._lt[-1], summand.lt[-1]), axis=0)]
         return MPArray(ltens)
 
@@ -958,9 +959,9 @@ class MPArray(object):
     def singularvals(self):
         """Return singular values of ``self`` for all bipartitions
 
-        :returns: Iterator over ``numpy.ndarray`` with singular values for
-            1, 2, ... len(self) - 1 sites on left hand side of
-            bipartition
+        :returns: Iterate over bipartitions with 1, 2, ... len(self) -
+            1 sites on the left hand side. Yields a ``np.ndarray`` containing
+            singular values for each bipartition.
 
         .. note:: May decrease the rank (without changing the represented
             tensor).
@@ -975,7 +976,7 @@ class MPArray(object):
             # We could verify that `rank` did not decrease but it may
             # decrease because of zero singular values -- let's trust
             # that relerr=0.0 behaves as intended.
-            #assert old_rank == rank
+            # assert old_rank == rank
             yield sv
 
     def pad_ranks(self, rank=None, force_rank=False):
@@ -1174,7 +1175,8 @@ def sumup(mpas, weights=None):
     if weights is None:
         ltens = [np.concatenate([next(lt) for lt in ltensiter], axis=-1)]
     else:
-        ltens = [np.concatenate([w * next(lt) for w, lt in zip(weights, ltensiter)], axis=-1)]
+        ltens = [np.concatenate([w * next(lt)
+                                 for w, lt in zip(weights, ltensiter)], axis=-1)]
     ltens += [_local_add([next(lt) for lt in ltensiter])
               for _ in range(length - 2)]
     ltens += [np.concatenate([next(lt) for lt in ltensiter], axis=0)]
@@ -1282,7 +1284,10 @@ def chain(mpas, astype=None):
 
     """
     mpas = iter(mpas)
-    first = next(mpas)
+    try:
+        first = next(mpas)
+    except StopIteration:
+        raise ValueError('Argument `mpas` is an empty list')
     rest = (lt for mpa in mpas for lt in mpa.lt)
     if astype is None:
         astype = type(first)
@@ -1296,9 +1301,10 @@ def diag(mpa, axis=0):
 
     :param mpa: :class:`MPArray` with shape > :code:`axis`
     :param axis: The physical index to take diagonals over
-    :returns: Array containing the diagonal elements (multiple `MPArray` with
-        the physical dimension reduced by one, note that an `MPArray` with
-        physical dimension 0 is a simple number)
+    :returns: Array containing the diagonal elements (each diagonal
+        element is an :class:`MPArray` with the physical dimension
+        reduced by one, note that an :class:`MPArray` with
+        dimension 0 is a simple number)
 
     """
     dim = mpa.shape[0][axis]
@@ -1318,6 +1324,7 @@ def diag(mpa, axis=0):
         return np.array([mpa.to_array() for mpa in mpas])
     else:
         return np.array(mpas, dtype=object)
+
 
 def inject(mpa, pos, num=None, inject_ten=None):
     """Interleaved chain product of an MPA and a rank 1 MPA
@@ -1352,7 +1359,8 @@ def inject(mpa, pos, num=None, inject_ten=None):
     if isinstance(pos, collections.Iterable):
         pos = tuple(pos)
         num = (None,) * len(pos) if num is None else tuple(num)
-        inject_ten = (None,) * len(pos) if inject_ten is None else tuple(inject_ten)
+        inject_ten = ((None,) * len(pos)
+                      if inject_ten is None else tuple(inject_ten))
     else:
         pos, num, inject_ten = (pos,), (num,), (inject_ten,)
     assert len(pos) == len(num) == len(inject_ten)
@@ -1428,7 +1436,8 @@ def normdist(mpa1, mpa2):
     return norm(mpa1 - mpa2)
     # This implementation doesn't produce an MPA with double rank:
     #
-    # return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2 - 2 * np.real(inner(mpa1, mpa2)))
+    # return np.sqrt(norm(mpa1)**2 + norm(mpa2)**2
+    #                - 2 * np.real(inner(mpa1, mpa2)))
     #
     # However, there are precision issues which show up e.g. in
     # test_project_fused_clusters(). Due to rounding errors, the term
@@ -1442,7 +1451,7 @@ def normdist(mpa1, mpa2):
     # this is too strict.
 
 
-#TODO Convert to iterator
+# TODO Convert to iterator
 def _prune_ltens(mpa):
     """Contract local tensors with no physical legs.
 
@@ -1490,6 +1499,10 @@ def prune(mpa, singletons=False):
 def partialtrace(mpa, axes=(0, 1), mptype=None):
     """Computes the trace or partial trace of an MPA.
 
+    This function is most useful for computing traces of an MPO or MPA over
+    given physical legs. For obtaining partial traces (i.e., reduced states)
+    of an MPO, :func:`mpnum.mpsmpo.reductions_mpo()` will be more convenient.
+
     By default ``(axes=(0, 1))`` compute the trace and return the value as
     length-one MPA with zero physical legs.
 
@@ -1502,10 +1515,6 @@ def partialtrace(mpa, axes=(0, 1), mptype=None):
     ``axesN=None`` leaving the site invariant. Afterwards, :func:`prune()` is
     called to remove sites with zero physical legs from the result.
 
-    If you need the reduced state of an MPO on all blocks of `k`
-    consecutive sites, see :func:`mpnum.mpsmpa.reductions()` for a more
-    convenient and faster function.
-
     :param mpa: MPArray
     :param axes: Axes for trace, (axis1, axis2) or (axes1, axes2, ...)
         with axesN=(axisN_1, axisN_2) or axesN=None.
@@ -1515,7 +1524,10 @@ def partialtrace(mpa, axes=(0, 1), mptype=None):
 
     """
     if axes[0] is not None and not isinstance(axes[0], collections.Iterable):
-        axes = it.repeat(axes)
+        axes = (axes,) * len(mpa)
+    # Prevent the user from accidentally tracing out bond legs
+    assert all(ax is None or all(-n <= a < n for a in ax)
+               for n, ax in zip(mpa.ndims, axes)), "Too few legs"
     axes = (None if axesitem is None else tuple(ax + 1 if ax >= 0 else ax - 1
                                                 for ax in axesitem)
             for axesitem in axes)
@@ -2055,6 +2067,10 @@ def full_rank(ldims):
     [6, 36, 6]
 
     """
-    ldims_raveled = [np.prod(ldim) for ldim in ldims]
+    # Use arbitrary-size Python integers for dimension
+    # computation. Fixed-size numpy integers will overflow quickly
+    # (e.g. 2**63 = -9223372036854775808 on 64-bit systems).
+    ldims_raveled = np.array([int(np.prod(ldim)) for ldim in ldims],
+                             dtype=object)
     return [min(np.prod(ldims_raveled[:cut]), np.prod(ldims_raveled[cut:]))
             for cut in range(1, len(ldims))]

@@ -7,13 +7,11 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import pytest as pt
-from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
-                           assert_array_equal)
+from numpy.testing import assert_array_equal
 
 from mpnum import factory
-from mpnum.mpstruct import LocalTensors
 from mpnum._testing import assert_correct_normalization
-from six.moves import range, zip
+from six.moves import range
 
 
 def test_iter_readonly():
@@ -29,6 +27,8 @@ def test_iter_readonly():
 
 
 UPDATE_N_SITES = 4
+
+
 @pt.mark.parametrize(
     'mpa_norm',
     [(lnorm, rnorm)

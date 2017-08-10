@@ -5,12 +5,10 @@ from __future__ import division, print_function
 
 import numpy as np
 import pytest as pt
-
-import mpnum.factory as factory
 from numpy.testing import assert_array_almost_equal
 
+import mpnum.factory as factory
 from mpnum._testing import assert_correct_normalization
-
 
 @pt.mark.parametrize('nr_sites, local_dim, rank', [(2, 3, 3), (3, 2, 4),
                                                        (6, 2, 4), (4, 3, 5),
