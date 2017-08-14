@@ -95,12 +95,12 @@ def test_approximate_range_finder(rows, cols, rank, dtype, piter_normalizer, rge
                                             (20, mptest.random_fullrank)])
 def test_randomized_svd(rows, cols, rank, dtype, transpose, n_iter, target_gen,
                         rgen):
-    # -2 due to the limiations of scipy.sparse.linalg.svds
     rank = min(rows, cols) - 2 if rank is 'fullrank' else rank
     A = target_gen(rows, cols, rank=rank, rgen=rgen, dtype=dtype)
 
     U_ref, s_ref, V_ref = utils.truncated_svd(A, k=rank)
-    U, s, V = em.svds(A, rank, transpose=transpose, rgen=rgen, n_iter=n_iter)
+    U, s, V = em.randomized_svd(A, rank, transpose=transpose, rgen=rgen,
+                                n_iter=n_iter)
 
     error_U = np.abs(U.conj().T.dot(U_ref)) - np.eye(rank)
     assert_allclose(np.linalg.norm(error_U), 0, atol=1e-3)
