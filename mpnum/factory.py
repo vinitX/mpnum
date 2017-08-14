@@ -14,7 +14,7 @@ from six.moves import range
 
 from . import mparray as mp
 from . import mpsmpo
-from .tools import global_to_local, matdot
+from .utils import global_to_local, matdot
 from .mpstruct import LocalTensors
 
 

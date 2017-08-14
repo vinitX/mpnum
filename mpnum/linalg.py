@@ -16,7 +16,7 @@ from scipy.sparse.linalg import eigs
 from six.moves import range
 
 from . import mparray as mp
-from . import tools
+from . import utils
 from ._named_ndarray import named_ndarray
 from .factory import random_mpa
 
@@ -207,9 +207,9 @@ def _mineig_local_op(leftvec, mpo_ltens, rightvec):
     nr_sites = len(mpo_ltens)
     mpo_lten = mpo_ltens[0]
     for lten in mpo_ltens[1:]:
-        mpo_lten = tools.matdot(mpo_lten, lten)
-    mpo_lten = tools.local_to_global(mpo_lten, nr_sites,
-                                      left_skip=1, right_skip=1)
+        mpo_lten = utils.matdot(mpo_lten, lten)
+    mpo_lten = utils.local_to_global(mpo_lten, nr_sites,
+                                     left_skip=1, right_skip=1)
     s = mpo_lten.shape
     mpo_lten = mpo_lten.reshape(
         (s[0], np.prod(s[1:1 + nr_sites]), np.prod(s[1 + nr_sites:-1]), s[-1]))
@@ -308,7 +308,7 @@ def _mineig_minimize_locally2(local_op, eigvec_ltens, user_eigs_opts):
     eigvec_rank = max(lten.shape[0] for lten in eigvec_ltens)
     eigvec_lten = eigvec_ltens[0]
     for lten in eigvec_ltens[1:]:
-        eigvec_lten = tools.matdot(eigvec_lten, lten)
+        eigvec_lten = utils.matdot(eigvec_lten, lten)
     eigvals, eigvecs = eigs(local_op, v0=eigvec_lten.flatten(), **eigs_opts)
     eigval_pos = eigvals.real.argmin()
     eigval = eigvals[eigval_pos]

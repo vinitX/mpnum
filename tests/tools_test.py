@@ -4,7 +4,7 @@ from __future__ import division, print_function
 
 import numpy as np
 from numpy.testing import assert_array_almost_equal
-from mpnum import factory, tools
+from mpnum import factory, utils
 from scipy.linalg import block_diag
 from six.moves import range
 
@@ -14,7 +14,7 @@ def test_block_diag_simple(rgen):
     cols = (3, 6)
     summands = [factory._zrandn((rows[i], cols[i]), randstate=rgen)
                 for i in range(len(rows))]
-    blockdiag_sum = tools.block_diag(summands)
+    blockdiag_sum = utils.block_diag(summands)
     blockdiag_sum_scipy = block_diag(*summands)
     assert_array_almost_equal(blockdiag_sum, blockdiag_sum_scipy)
 
@@ -39,7 +39,7 @@ def test_block_diag(rgen):
             summand += np.outer(np.outer(leftvecs[i, j, :], middlematrices[i][j, :, :]),
                                 rightvecs[i, j, :]).reshape(summand.shape)
         blockdiag_summands.append(summand)
-    blockdiag_sum = tools.block_diag(blockdiag_summands, axes=(1, 2))
+    blockdiag_sum = utils.block_diag(blockdiag_summands, axes=(1, 2))
     blockdiag_sum_explicit = np.zeros((leftmargin, sum(rows), sum(cols), rightmargin),
                                       dtype=complex)
 

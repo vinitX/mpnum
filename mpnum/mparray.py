@@ -27,7 +27,7 @@ from six.moves import range, zip, zip_longest
 
 from ._named_ndarray import named_ndarray
 from .mpstruct import LocalTensors
-from .tools import (block_diag, global_to_local, local_to_global, matdot,
+from .utils import (block_diag, global_to_local, local_to_global, matdot,
                     truncated_svd)
 
 __all__ = ['MPArray', 'dot', 'inject', 'inner', 'local_sum', 'outer',

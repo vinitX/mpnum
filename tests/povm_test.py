@@ -14,7 +14,7 @@ import mpnum.povm.mppovm as mppovm
 import numpy as np
 import pytest as pt
 from _pytest.mark import matchmark
-from mpnum import tools
+from mpnum import utils
 from mpnum.povm._testing import check_pmf
 from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
                            assert_array_equal)
@@ -160,7 +160,7 @@ def test_mppovm_expectation(nr_sites, width, local_dim, rank, nopovm, rgen):
             (local_dim**width,) * 2)
         evals = []
         for factors in it.product(nopovm, repeat=width):
-            elem = tools.mkron(*factors)
+            elem = utils.mkron(*factors)
             evals.append(np.trace(np.dot(elem, rho_red_matrix)))
         evals = np.array(evals).reshape((len(nopovm),) * width)
 

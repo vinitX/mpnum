@@ -10,7 +10,7 @@ import numpy as np
 import scipy.sparse as ssp
 
 from . import mparray as mp
-from .tools import truncated_svd
+from .utils import truncated_svd
 from .mpstruct import LocalTensors
 
 __all__ = ['inner_prod_mps', 'sumup']

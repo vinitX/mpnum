@@ -130,7 +130,7 @@ from numpy.testing import assert_array_equal
 from six.moves import range
 
 from . import mparray as mp
-from .tools import local_to_global, matdot
+from .utils import local_to_global, matdot
 
 
 __all__ = ['mps_to_mpo', 'mps_to_pmps', 'pmps_dm_to_array',

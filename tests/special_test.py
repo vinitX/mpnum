@@ -9,7 +9,7 @@ import mpnum.factory as factory
 import mpnum.mparray as mp
 import mpnum.special as mpsp
 from mpnum._testing import assert_mpa_identical
-from mpnum.tools import global_to_local, truncated_svd
+from mpnum.utils import global_to_local, truncated_svd
 
 MP_INNER_PARAMETERS = [(10, 10, 5), (20, 2, 10)]
 MP_SUMUP_PARAMETERS = [(6, 2, 5000, 10, 200), (10, 2, 5000, 5, 20)]
