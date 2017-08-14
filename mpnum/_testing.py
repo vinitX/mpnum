@@ -7,6 +7,7 @@ import itertools as it
 import numpy as np
 from numpy.testing import (assert_array_almost_equal, assert_array_equal,
                            assert_equal)
+from scipy import sparse
 
 
 def assert_mpa_almost_equal(mpa1, mpa2, full=False, **kwargs):
@@ -126,3 +127,26 @@ def compression_svd(array, rank, direction='right', retproj=False):
         projectors = projectors.reverse()
 
     return (array, projectors) if retproj else array
+
+
+
+def random_lowrank(rows, cols, rank, rgen=np.random, dtype=np.float_):
+    """Returns a random lowrank matrix of given shape and dtype"""
+    if dtype == np.float_:
+        A = rgen.randn(rows, rank)
+        B = rgen.randn(cols, rank)
+    elif dtype == np.complex_:
+        A = rgen.randn(rows, rank) + 1.j * rgen.randn(rows, rank)
+        B = rgen.randn(cols, rank) + 1.j * rgen.randn(cols, rank)
+    else:
+        raise ValueError("{} is not a valid dtype".format(dtype))
+
+    C = A.dot(B.conj().T)
+    return C / np.linalg.norm(C)
+
+
+def random_fullrank(rows, cols, **kwargs):
+    """Returns a random matrix of given shape and dtype. Should provide
+    same interface as random_lowrank"""
+    kwargs.pop('rank', None)
+    return random_lowrank(rows, cols, min(rows, cols), **kwargs)
