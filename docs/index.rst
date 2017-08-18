@@ -13,27 +13,28 @@
 
 A matrix product representation library for Python
 ==================================================
-	   
+
 mpnum is a Python library providing flexible tools to implement new
 numerical schemes based on matrix product states (MPS). It is
 available under the BSD license at
 
-* `mpnum source on Github <https://github.com/dseuss/mpnum>`_
 
 .. toctree::
    :maxdepth: -1
    :caption: Documentation
 
    intro
-   devel
    mpnum
+   devel
+   Example Notebook <https://nbviewer.jupyter.org/github/dseuss/mpnum/blob/master/examples/mpnum_intro.ipynb>
+   Fork mpnum on Github <https://github.com/dseuss/mpnum>
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
 * :ref:`modindex`
-    
+
 .. Commented:
    * :ref:`search`
 
