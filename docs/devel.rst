@@ -22,8 +22,8 @@ Slightly more than 80 characters can sometimes be tolerated if
 increased line width increases readability.
 
 
-Automated unit tests
---------------------
+Unit tests
+----------
 
 After any change to mpnum, it should be verified that the test suite
 runs without any errors.
