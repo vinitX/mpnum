@@ -25,20 +25,6 @@
  * :mod:`mpnum.povm.mppovm`: Matrix product POVM based on the
    Pauli-like POVM
 
-References
-----------
-* .. _Sch11:
-
-  [Sch11] Schollwöck, U. (2011). “The density-matrix renormalization
-  group in the age of matrix product states”. Ann. Phys. 326(1),
-  pp. 96–192. `DOI: 10.1016/j.aop.2010.09.012`_. `arXiv: 1008.3477`_.
-
-  .. _`DOI: 10.1016/j.aop.2010.09.012`:
-     http://dx.doi.org/10.1016/j.aop.2010.09.012
-
-  .. _`arXiv: 1008.3477`: http://arxiv.org/abs/1008.3477
-
-
 """
 
 
