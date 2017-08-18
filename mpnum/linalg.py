@@ -501,8 +501,8 @@ def mineig_sum(mpas,
     """Iterative search for smallest eigenvalue+vector of a sum of MPAs
 
     Try to compute the ground state of the sum of the objects in
-    `mpas`. MPOs are taken as-is. An MPS :math:`\vert\psi\rangle`
-    is interpreted as :math:`\vert\psi\rangle \langle\psi\vert`
+    ``mpas``. MPOs are taken as-is. An MPS :math:`\\vert\\psi\\rangle`
+    is interpreted as :math:`\\vert\\psi\\rangle \\langle\\psi\\vert`
     in the sum.
 
     This function executes exactly the same algorithm as

@@ -66,8 +66,8 @@ Dense POVMs
     :show-inheritance:
 
 
- Specialized ``MPArray`` routines
----------------------------------
+Specialized ``MPArray`` routines
+--------------------------------
 
 .. automodule:: mpnum.special
     :members:
@@ -78,10 +78,18 @@ Dense POVMs
 Utility functions
 -----------------
 
-Utility functions for dense arrays
-""""""""""""""""""""""""""""""""""
+Utility functions for reshaping dense arrays
+""""""""""""""""""""""""""""""""""""""""""""
 
-.. automodule:: mpnum.tools
+.. automodule:: mpnum.utils.array_transforms
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Utility math functions
+""""""""""""""""""""""
+
+.. automodule:: mpnum.utils.extmath
     :members:
     :undoc-members:
     :show-inheritance:
