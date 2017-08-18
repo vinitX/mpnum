@@ -1,8 +1,11 @@
 # encoding: utf-8
-"""mpnum: A matrix-product-representation library for Python
+"""
 
 * :mod:`mpnum.mparray`: Basic matrix product array (MPA) routines and
   compression
+
+* :mod:`mppnum.mpstruct`: Underlying structure of MPAs to manage the local
+  tensors
 
 * :mod:`mpnum.mpsmpo`: Convert matrix product state (MPS), matrix
   product operator (MPO) and locally purifying MPS (PMPS)
@@ -13,9 +16,6 @@
 * :mod:`mpnum.linalg`: Compute the smallest eigenvalues & vectors of MPOs
 
 * :mod:`mpnum.special`: Optimized versions of some routines for special cases
-
-* :mod:`mppnum.mpstruct`: Underlying structure of MPAs to manage the local
-  tensors
 
 * :mod:`mpnum.povm`: Matrix product representation of Positive operator valued
   measures (POVM)
