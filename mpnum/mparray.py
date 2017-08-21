@@ -1924,8 +1924,8 @@ def _adapt_to_add_l(leftvec, compr_lten, tgt_lten):
     :param tgt_lten: Local tensor of the target MPS
 
     Construct L from [:ref:`Sch11 <Sch11>`, Fig. 27, p. 48]. We have
-    `compr_lten` in the top row of the figure without complex conjugation
-    and `tgt_lten` in the bottom row with complex conjugation.
+    ``compr_lten`` in the top row of the figure without complex conjugation
+    and ``tgt_lten`` in the bottom row with complex conjugation.
 
     .. todo:: Adapt tensor leg names.
 
@@ -2003,8 +2003,8 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_rank):
     :param int max_rank: Maximal rank of the result
 
     Compute the right-hand side of [:ref:`Sch11 <Sch11>`, Fig. 27, p. 48]. We
-    have `compr_lten` in the top row of the figure without complex
-    conjugation and `tgt_lten` in the bottom row with complex
+    have ``compr_lten`` in the top row of the figure without complex
+    conjugation and ``tgt_lten`` in the bottom row with complex
     conjugation.
 
     For len(tgt_ltens) > 1, compute the right-hand side of

@@ -185,8 +185,8 @@ def _mineig_local_op(leftvec, mpo_ltens, rightvec):
         Three indices: mps bond, mpo bond, complex conjugate mps bond
 
     See [:ref:`Sch11 <Sch11>`, arXiv version, Fig. 38 on p. 62].
-    If len(mpo_ltens) == 1, this method implements the contractions
-    across the dashed lines in the figure. For let(mpo_ltens) > 1, we
+    If ``len(mpo_ltens) == 1``\ , this method implements the contractions
+    across the dashed lines in the figure. For ``let(mpo_ltens) > 1``, we
     return the operator for what is probably called "multi-site DMRG".
 
     Indices and axis names map as follows:
@@ -375,7 +375,7 @@ def mineig(mpo,
     search" or "single-site DMRG" [:ref:`Sch11 <Sch11>`, Sec. 6.3, p. 69]. For
     minimize_sites>1, this is called "multi-site DMRG".
 
-    Comments on the implementation, for minimize_sites=1:
+    Comments on the implementation, for ``minimize_sites=1``:
 
     References are to the arXiv version of [Sch11]_ assuming we replace
     zero-based with one-based indices there.
