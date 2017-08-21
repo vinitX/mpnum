@@ -20,7 +20,7 @@ mpnum is a Python library providing flexible tools to implement new numerical sc
   * local purification matrix product states ([PMPS](http://mpnum.readthedocs.org/en/latest/intro.html#local-purification-form-mps-pmps))
   * arbitrary matrix product arrays ([MPA](http://mpnum.readthedocs.org/en/latest/intro.html#matrix-product-arrays))
 * basic MPA operations: add, multiply, etc; [compression](http://mpnum.readthedocs.org/en/latest/mpnum.html#mpnum.mparray.MPArray.compress) (SVD and variational)
-* computing [ground states](http://mpnum.readthedocs.org/en/latest/mpnum.html#mpnum.linalg.mineig) (the smallest eigenvalue and eigenvector) of MPOs
+* computing [ground states](http://mpnum.readthedocs.org/en/latest/mpnum.html#mpnum.linalg.eig) (the smallest eigenvalue and eigenvector) of MPOs
 * flexible tools to implement new schemes based on matrix product representations
 
 For more information, see:

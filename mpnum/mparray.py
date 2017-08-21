@@ -1265,7 +1265,7 @@ def sandwich(mpo, mps, mps2=None):
     # Fortunately, the contraction has been implemented already:
     arr = np.ones((1, 1, 1))
     for mpo_lt, mps_lt, mps2_lt in zip(mpo.lt, mps.lt, (mps2 or mps).lt):
-        arr = mp.linalg._mineig_leftvec_add(arr, mpo_lt, mps_lt, mps2_lt)
+        arr = mp.linalg._eig_leftvec_add(arr, mpo_lt, mps_lt, mps2_lt)
     assert arr.size == 1
     return arr.flat[0]
 

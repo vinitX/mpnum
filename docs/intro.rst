@@ -22,8 +22,8 @@ available under the BSD license at `mpnum on Github
 - basic MPA operations: add, multiply, etc; compression (see
   :func:`compress() <mpnum.mparray.MPArray.compress>`, SVD and
   variational)
-- computing ground states of MPOs (see :func:`mineig()
-  <mpnum.linalg.mineig>`, which computes smallest eigenvalues and
+- computing ground states of MPOs (see :func:`eig()
+  <mpnum.linalg.eig>`, which computes smallest eigenvalues and
   eigenvectors of MPOs)
 - flexible tools to implement new schemes based on matrix product
   representations
