@@ -389,6 +389,8 @@ def eig(mpo,
     normalization. (See Fig. 42 on p. 67 and the text; see also
     Figs. 14 and 15 and pages 28 and 29.)
 
+    .. todo:: Documentation is not really appropriate, as of #11
+
     """
     # Possible TODOs:
     #  - Can we refactor this function into several shorter functions?
