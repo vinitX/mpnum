@@ -47,7 +47,7 @@ The :math:`k`-th local tensor is :math:`T_{l,i,r} =
 
 The vector :math:`\lvert \psi \rangle` can be a quantum state, with
 the density matrix given by :math:`\rho = \lvert \psi \rangle \langle
-\psi \rvert \in \mathcal B`.  Reference: E.g. [Sch11_].
+\psi \rvert \in \mathcal B`.  Reference: E.g. [Sch11]_.
 
 Matrix product operator (MPO)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ j})_{l,r}`.
 
 This representation can be used to represent a mixed quantum state
 :math:`\rho = M`, but it is not limited to positive semidefinite
-:math:`M`.  Reference: E.g. [Sch11_].
+:math:`M`.  Reference: E.g. [Sch11]_.
 
 Locally purified matrix product state (PMPS)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

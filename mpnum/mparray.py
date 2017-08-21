@@ -218,7 +218,7 @@ class MPArray(object):
         is done by factoring off the left and the "physical" legs from the
         rest of the tensor via QR decomposition and working its way through
         the tensor from the left. This yields a left-canonical representation
-        of `array`. [Sch11_, Sec. 4.3.1]
+        of `array`. [:ref:`Sch11 <Sch11>`, Sec. 4.3.1]
 
         The result is a chain of local tensors with ``ndims`` physical legs at
         each location and has ``array.ndim // ndims`` number of sites (assuming
@@ -593,7 +593,8 @@ class MPArray(object):
     #  Normalizaton & Compression  #
     ################################
     def canonicalize(self, left=None, right=None):
-        """Brings the MPA to canonical form in place [Sch11_, Sec. 4.4]
+        """Brings the MPA to canonical form in place
+        [:ref:`Sch11 <Sch11>`, Sec. 4.4]
 
         Note that we do not support full left- or right-canonicalization. In
         general, the right- (left- resp.)most local tensor cannot be in a
@@ -717,7 +718,7 @@ class MPArray(object):
 
         Let :math:`\vert u \rangle` the original vector and let
         :math:`\vert c \rangle` the compressed vector. The
-        compressions we return have the property (cf. [Sch11_,
+        compressions we return have the property (cf. [:ref:`Sch11 <Sch11>,
         Sec. 4.5.2])
 
         .. math::
@@ -791,8 +792,8 @@ class MPArray(object):
 
         References:
 
-        * ``'svd'``: Swingular value truncation, [Sch11_, Sec. 4.5.1]
-        * ``'var'``: Variational compression, [Sch11_, Sec. 4.5.2]
+        * ``'svd'``: Swingular value truncation, [:ref:`Sch11 <Sch11>`, Sec. 4.5.1]
+        * ``'var'``: Variational compression, [:ref:`Sch11 <Sch11>`, Sec. 4.5.2]
 
         """
         if method == 'svd':
@@ -824,7 +825,7 @@ class MPArray(object):
 
     def _compress_svd(self, rank=None, relerr=None, direction=None,
                       canonicalize=True, svdfunc=truncated_svd):
-        """Compress `self` using SVD [Sch11_, Sec. 4.5.1]
+        """Compress `self` using SVD [:ref:`Sch11 <Sch11>`, Sec. 4.5.1]
 
         Parameters: See :func:`~compress()`.
 
@@ -856,7 +857,7 @@ class MPArray(object):
     def _compression_var(self, startmpa=None, rank=None, randstate=np.random,
                          num_sweeps=5, var_sites=1):
         """Return a compression of ``self`` using variational compression
-        [Sch11_, Sec. 4.5.2]
+        [:ref:`Sch11 <Sch11>`, Sec. 4.5.2]
 
         Parameters and return value: See :func:`~compression()`.
 
@@ -1024,7 +1025,7 @@ class MPArray(object):
             is small
             - maybe increase rank of given error cannot be reached
             - Shall we track the error in the SVD truncation for multi-site
-            updates? [Sch11_] says it turns out to be useful in actual DMRG.
+            updates? [Sch11]_ says it turns out to be useful in actual DMRG.
             - return these details for tracking errors in larger computations
 
         """
@@ -1101,8 +1102,8 @@ class MPArray(object):
 
         # Let u the uncompressed vector and c the compression which we
         # return. c satisfies <c|c> = <u|c> (mentioned more or less in
-        # [Sch11_]). We compute <c|c> to get <u|c> and use the
-        # canonicalization of the state to compute <c|c> (e.g. [Sch11_,
+        # [Sch11]). We compute <c|c> to get <u|c> and use the
+        # canonicalization of the state to compute <c|c> (e.g. [Sch11,
         # Fig. 24]).
         return norm(self)**2
 
@@ -1112,7 +1113,7 @@ class MPArray(object):
 #############################################
 def dot(mpa1, mpa2, axes=(-1, 0), astype=None):
     """Compute the matrix product representation of the contraction of ``a``
-        and ``b`` over the given axes. [Sch11_, Sec. 4.2]
+        and ``b`` over the given axes. [:ref:`Sch11 <Sch11>`, Sec. 4.2]
 
     :param mpa1, mpa2: Factors as MPArrays
 
@@ -1665,7 +1666,7 @@ def _local_sum_identity(mpas, embed_tensor=None):
     has rank `width * D + 1` instead of `width * D + len(mpas)`.
 
     The basic idea behind the construction we use is similar to
-    [Sch11_, Sec. 6.1].
+    [:ref:`Sch11 <Sch11>`, Sec. 6.1].
 
     :param mpas: A list of MPArrays with the same length.
     :param embed_tensor: Defaults to square identity matrix (see
@@ -1922,9 +1923,9 @@ def _adapt_to_add_l(leftvec, compr_lten, tgt_lten):
     :param compr_lten: Local tensor of the compressed MPS
     :param tgt_lten: Local tensor of the target MPS
 
-    Construct L from [Sch11_, Fig. 27, p. 48]. We have `compr_lten` in
-    the top row of the figure without complex conjugation and `tgt_lten`
-    in the bottom row with complex conjugation.
+    Construct L from [:ref:`Sch11 <Sch11>`, Fig. 27, p. 48]. We have
+    `compr_lten` in the top row of the figure without complex conjugation
+    and `tgt_lten` in the bottom row with complex conjugation.
 
     .. todo:: Adapt tensor leg names.
 
@@ -1962,7 +1963,7 @@ def _adapt_to_add_r(rightvec, compr_lten, tgt_lten):
     :param tgt_lten: Local tensor of the target MPS
 
 
-    Construct R from [Sch11_, Fig. 27, p. 48]. See comments in
+    Construct R from [:ref:`Sch11 <Sch11>`, Fig. 27, p. 48]. See comments in
     :func:`_adapt_to_add_l()` for further details.
 
     .. todo:: Adapt tensor leg names.
@@ -2001,13 +2002,13 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_rank):
         It has two indices: `compr_mps_bond` and `tgt_mps_bond`
     :param int max_rank: Maximal rank of the result
 
-    Compute the right-hand side of [Sch11_, Fig. 27, p. 48]. We have
-    `compr_lten` in the top row of the figure without complex
+    Compute the right-hand side of [:ref:`Sch11 <Sch11>`, Fig. 27, p. 48]. We
+    have `compr_lten` in the top row of the figure without complex
     conjugation and `tgt_lten` in the bottom row with complex
     conjugation.
 
-    For len(tgt_ltens) > 1, compute the right-hand side of [Sch11_,
-    Fig. 29, p. 49].
+    For len(tgt_ltens) > 1, compute the right-hand side of
+    [:ref:`Sch11 <Sch11>`, Fig. 29, p. 49].
 
     .. todo:: Adapt tensor leg names.
 
@@ -2041,7 +2042,7 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_rank):
     if len(tgt_ltens) == 1:
         return (compr_lten,)
     else:
-        # [Sch11_, p. 49] says that we can go with QR instead of SVD
+        # [Sch11, p. 49] says that we can go with QR instead of SVD
         # here. However, this will generally increase the rank of
         # our compressed MPS, which we do not want.
         compr_ltens = MPArray.from_array(compr_lten, ndims=1, has_virtual=True)

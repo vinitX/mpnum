@@ -43,7 +43,7 @@ Graphical notation for tensors
 
 
 Our graphical notation for tensors is very similar to the graphical
-notation used by Schollwoeck [:ref:`Sch11 <Sch11>`, e.g. Figure 38].
+notation used by Schollwoeck [:ref:`Sch11 <Sch11>`, Figure 38].
 
 
 Basics
@@ -106,7 +106,7 @@ The matrix product state representation of a state :math:`\vert \psi
 
 where :math:`A_i \in \mathbb C^{1 \times D}`, :math:`B_j, C_k \in
 \mathbb C^{D \times D}` and :math:`D_l \in \mathbb C^{D \times 1}`
-(reference: e.g. [:ref:`Sch11 <Sch11>`]; :ref:`exact definition
+(reference: e.g. [Sch11]_; :ref:`exact definition
 <mpsmpo-definitions>`).  This construction is also known as *tensor
 train* and it is given by the following simple figure:
 
@@ -147,7 +147,7 @@ on three subsystems is given by
 
 where the :math:`A_{i_1j_1}` are row vectors, the :math:`B_{i_2j_2}`
 are matrices and the :math:`C_{i_3j_3}` are column vectors (reference:
-e.g. [:ref:`Sch11 <Sch11>`]; :ref:`exact definition
+e.g. [Sch11]_; :ref:`exact definition
 <mpsmpo-definitions>`). This is represented by the following figure:
 
 .. image:: tensors_mpo.png
@@ -255,11 +255,7 @@ mpnum_intro.ipynb on Github`_.
 References
 ----------
 
-* .. _Sch11:
-
-  [Sch11] Schollwöck, U. (2011). “The density-matrix renormalization
-  group in the age of matrix product states”. Ann. Phys. 326(1),
-  pp. 96–192. `DOI: 10.1016/j.aop.2010.09.012`_. `arXiv: 1008.3477`_.
+  .. [Sch11] Schollwöck, U. (2011). “The density-matrix renormalization group in the age of matrix product states”. Ann. Phys. 326(1), pp. 96–192. `DOI: 10.1016/j.aop.2010.09.012`_. `arXiv: 1008.3477`_.
 
   .. _`DOI: 10.1016/j.aop.2010.09.012`:
      http://dx.doi.org/10.1016/j.aop.2010.09.012
