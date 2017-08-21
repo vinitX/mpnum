@@ -2,7 +2,7 @@
 """Auxiliary functions useful for writing tests"""
 
 
-def check_nonneg_trunc(values, imag_eps=1e-10, real_eps=1e-10, real_trunc=0.0):
+def project_nonneg(values, imag_eps=1e-10, real_eps=1e-10, real_trunc=0.0):
     """Check that values are real and non-negative
 
     :param np.ndarray values: An ndarray of complex or real values (or
@@ -37,7 +37,7 @@ def check_nonneg_trunc(values, imag_eps=1e-10, real_eps=1e-10, real_trunc=0.0):
     return values
 
 
-def check_pmf(values, imag_eps=1e-10, real_eps=1e-10, real_trunc=0.0):
+def project_pmf(values, imag_eps=1e-10, real_eps=1e-10, real_trunc=0.0):
     """Check that values are real probabilities
 
     See :func:`check_nonneg_trunc` for parameters and return value. In
@@ -46,15 +46,8 @@ def check_pmf(values, imag_eps=1e-10, real_eps=1e-10, real_trunc=0.0):
     afterwards.
 
     """
-    values = check_nonneg_trunc(values, imag_eps, real_eps, real_trunc)
+    values = project_nonneg(values, imag_eps, real_eps, real_trunc)
     s = values.sum()
     assert abs(s - 1.0) <= real_eps
     values /= s
     return values
-
-
-def verify_real_nonnegative(values, zero_tol=1e-6, zero_cutoff=None):
-    """Deprecated; use :func:`check_nonneg_trunc` instead"""
-    if zero_cutoff is None:
-        zero_cutoff = zero_tol
-    return check_nonneg_trunc(values, zero_tol, zero_tol, zero_cutoff)
