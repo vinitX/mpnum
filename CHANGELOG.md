@@ -21,7 +21,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Rename `mparray.full_bdim` -> `mparray.full_rank`
 - Rename `mparray.outer` -> `mparray.chain`
 - Rename `mparray.louter` -> `mparray.outer`
+- Rename `mparray.linalg.mineig` -> `mparray.linalg.eig`
+- Rename `mparray.linalg.mineig_sum` -> `mparray.linalg.eig_sum`
+- Rename `mparray.tools` -> `mparray.utils`
+- Rename `mparray.tools.check_nonneg_trunc` -> `mparray.utils.pmf.project_nonneg`
+- Rename `mparray.tools.check_pmf` -> `mparray.utils.pmf.project_pmf`
 
 ### Removed
 - Remove `MPArray.bdim`, use `max(mpa.bdims)` instead
 - Remove `mpo_to_global`, use `to_array_global` instead
+- Remove `mpo_to_global`, use `to_array_global` instead
+- Remove `mpnum.tools.verify_real_nonnegative`, use `mpnum.utils.pmf.project_nonneg` instead
