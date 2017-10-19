@@ -37,7 +37,7 @@ A short set of tests takes less than 30 seconds and is invoked with one of
 
 An intermediate set of tests, which takes about 2 minutes to run, is
 executed automatically for every commit on GitHub via `Travis
-<https://travis-ci.org/dseuss/mpnum>` continuous integration.
+<https://travis-ci.org/dseuss/mpnum>`_ continuous integration.
 It can be run locally via
 
 .. code::
