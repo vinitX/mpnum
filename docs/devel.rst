@@ -37,7 +37,7 @@ A short set of tests takes less than 30 seconds and is invoked with one of
 
 An intermediate set of tests, which takes about 2 minutes to run, is
 executed automatically for every commit on GitHub via `Travis
-<https://travis-ci.org/dseuss/mpnum>` continuous integration.
+<https://travis-ci.org/dseuss/mpnum>`_ continuous integration.
 It can be run locally via
 
 .. code::
@@ -77,8 +77,16 @@ Afterwards, the HTML coverage report is available in
 Building the documentation
 --------------------------
 
-The HTML documentation uses `Sphinx <http://www.sphinx-doc.org/>`_. On
-Linux/macOS, it can be built with a simple
+The HTML documentation uses `Sphinx <http://www.sphinx-doc.org/>`_.
+Building the documentation requires the
+`RTD theme <https://github.com/rtfd/sphinx_rtd_theme>`_:
+
+.. code::
+
+   conda install sphinx_rtd_theme  # or
+   pip install sphinx_rtd_theme
+
+On Linux/MacOS, the documentation can be built with a simple
 
 .. code::
 
