@@ -19,14 +19,12 @@ available under the BSD license at `mpnum on Github
   - local purification matrix product states (:ref:`PMPS <intro-pmps>`)
   - arbitrary matrix product arrays (:ref:`MPA <intro-mpa>`)
 
-- basic MPA operations: add, multiply, etc; compression (see
-  :func:`compress() <mpnum.mparray.MPArray.compress>`, SVD and
-  variational)
+- basic arithmetic operations: addition, multiplication, contraction etc
+- canonicalization, compression (see :func:`compress() <mpnum.mparray.MPArray.compress>`, SVD and
+  variational), etc
 - computing ground states of MPOs (see :func:`eig()
   <mpnum.linalg.eig>`, which computes smallest eigenvalues and
   eigenvectors of MPOs)
-- flexible tools to implement new schemes based on matrix product
-  representations
 
 .. contents::
 
@@ -34,23 +32,18 @@ available under the BSD license at `mpnum on Github
 Contributing
 ------------
 
-Contributions and pull requests for mpnum are very welcome. More
-information on modifying mpnum is at :ref:`mpnum-development`.
+Contributions and pull requests for mpnum are very welcome. For more
+information on contributing to  mpnum please see :ref:`mpnum-development`.
 
 
 Graphical notation for tensors
 ------------------------------
 
-
-Our graphical notation for tensors is very similar to the graphical
-notation used by Schollwoeck [:ref:`Sch11 <Sch11>`, Figure 38].
-
-
 Basics
 """"""
 
-Tensor contractions are much easier to write down using figures.  A
-simple case of of a tensor contraction is the product of two matrices:
+Tensor contractions are much easier to write down using graphical notation [:ref:`Sch11 <Sch11>`, Figure 38].
+A simple case of of a tensor contraction is the product of two matrices:
 
 .. math::
 
@@ -104,10 +97,10 @@ The matrix product state representation of a state :math:`\vert \psi
 
    \langle i j k l \vert \psi \rangle = \psi_{ijkl} = A_i B_j C_k D_l
 
-where :math:`A_i \in \mathbb C^{1 \times D}`, :math:`B_j, C_k \in
+where each :math:`A_i \in \mathbb C^{1 \times D}`; :math:`B_j, C_k \in
 \mathbb C^{D \times D}` and :math:`D_l \in \mathbb C^{D \times 1}`
 (reference: e.g. [Sch11]_; :ref:`exact definition
-<mpsmpo-definitions>`).  This construction is also known as *tensor
+<mpsmpo-definitions>`). This construction is also known as *tensor
 train* and it is given by the following simple figure:
 
 .. image:: tensors_mps.png

@@ -15,8 +15,7 @@ A matrix product representation library for Python
 ==================================================
 
 mpnum is a Python library providing flexible tools to implement new
-numerical schemes based on matrix product states (MPS). It is
-available under the BSD license at
+numerical schemes based on matrix product states (MPS).
 
 
 .. toctree::
