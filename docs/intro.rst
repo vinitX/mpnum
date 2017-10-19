@@ -28,21 +28,20 @@ available under the BSD license at `mpnum on Github
 
 .. contents::
 
+Matrix Product Arrays
+---------------------
 
-Contributing
-------------
+The basic data structure of mpnum is the :class:`mpnum.mparray.MPArray` (MPA).
+It represents tensors in matrix-product form in an opaque manner while
+providing the user with a high-level interface similar to numpy's `ndarray`.
+Special cases of MPAs include matrix-product states (MPS) and operators (MPOs)
+used in quantum physics.
 
-Contributions and pull requests for mpnum are very welcome. For more
-information on contributing to  mpnum please see :ref:`mpnum-development`.
+Graphical Notation
+""""""""""""""""""
 
-
-Graphical notation for tensors
-------------------------------
-
-Basics
-""""""
-
-Tensor contractions are much easier to write down using graphical notation [:ref:`Sch11 <Sch11>`, Figure 38].
+Operations on tensors such as contractions are much easier to write down using
+graphical notation [:ref:`Sch11 <Sch11>`, Figure 38].
 A simple case of of a tensor contraction is the product of two matrices:
 
 .. math::
@@ -220,15 +219,13 @@ dimension is the square of the PMPS bond dimension.
 
 .. _intro-mpa:
 
-Matrix product arrays
-"""""""""""""""""""""
+General Matrix product arrays
+"""""""""""""""""""""""""""""
 
-The library mpnum implements the class :class:`mpnum.mparray.MPArray`
-which can be used for MPS, MPO, PMPS and other MPS-like
-representations.  :code:`MPArray` is short for *matrix product array*
-(MPA) and this class provides an MPS with an arbitrary number of
-physical legs at each site.  Each physical leg can also have an
-arbitrary dimension.  A corresponding figure could look like this:
+Up to now, all examples had the same number of legs on each site. However,
+the :class:`mpnum.mparray.MPArray` is not restricted to these cases, but can
+be used to express any local structure. An example of a inhomogenous tensor
+is hown in the image below.
 
 .. image:: tensors_mpa.png
    :align: center

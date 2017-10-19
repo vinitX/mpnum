@@ -24,8 +24,8 @@ numerical schemes based on matrix product states (MPS).
 
    intro
    mpnum
-   devel
    Example Notebook <https://nbviewer.jupyter.org/github/dseuss/mpnum/blob/master/examples/mpnum_intro.ipynb>
+   devel
    Fork mpnum on Github <https://github.com/dseuss/mpnum>
 
 Indices and tables
