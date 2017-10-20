@@ -1,8 +1,11 @@
 # encoding: utf-8
-"""mpnum: A matrix-product-representation library for Python
+"""
 
 * :mod:`mpnum.mparray`: Basic matrix product array (MPA) routines and
   compression
+
+* :mod:`mppnum.mpstruct`: Underlying structure of MPAs to manage the local
+  tensors
 
 * :mod:`mpnum.mpsmpo`: Convert matrix product state (MPS), matrix
   product operator (MPO) and locally purifying MPS (PMPS)
@@ -14,9 +17,6 @@
 
 * :mod:`mpnum.special`: Optimized versions of some routines for special cases
 
-* :mod:`mppnum.mpstruct`: Underlying structure of MPAs to manage the local
-  tensors
-
 * :mod:`mpnum.povm`: Matrix product representation of Positive operator valued
   measures (POVM)
 
@@ -24,20 +24,6 @@
 
  * :mod:`mpnum.povm.mppovm`: Matrix product POVM based on the
    Pauli-like POVM
-
-References
-----------
-* .. _Sch11:
-
-  [Sch11] Schollwöck, U. (2011). “The density-matrix renormalization
-  group in the age of matrix product states”. Ann. Phys. 326(1),
-  pp. 96–192. `DOI: 10.1016/j.aop.2010.09.012`_. `arXiv: 1008.3477`_.
-
-  .. _`DOI: 10.1016/j.aop.2010.09.012`:
-     http://dx.doi.org/10.1016/j.aop.2010.09.012
-
-  .. _`arXiv: 1008.3477`: http://arxiv.org/abs/1008.3477
-
 
 """
 

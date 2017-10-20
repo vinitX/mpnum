@@ -15,7 +15,7 @@ import numpy as np
 import pytest as pt
 from _pytest.mark import matchmark
 from mpnum import utils
-from mpnum.povm._testing import check_pmf
+from mpnum.utils.pmf import project_pmf
 from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
                            assert_array_equal)
 from six.moves import range, zip, zip_longest
@@ -517,7 +517,7 @@ def test_mppovm_est(
             .embed(nr_sites, startsite, local_dim)
 
     p_exact = mpp.pmf_as_array(mps, 'mps', eps)
-    p_exact = check_pmf(p_exact, eps, eps)
+    p_exact = project_pmf(p_exact, eps, eps)
 
     cov_p_exact = np.diag(p_exact.flat) - np.outer(p_exact.flat, p_exact.flat)
     samples = mpp.sample(rgen, mps, n_samples, method, 4, 'mps', eps=eps)

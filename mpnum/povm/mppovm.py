@@ -142,7 +142,7 @@ import numpy as np
 import mpnum.factory as factory
 import mpnum.mparray as mp
 import mpnum.mpsmpo as mpsmpo
-from ._testing import check_pmf
+from ..utils.pmf import project_pmf
 
 
 class MPPovm(mp.MPArray):
@@ -523,8 +523,8 @@ class MPPovm(mp.MPArray):
         :returns: PMF as shape `self.nsoutdims` ndarray
 
         The resulting (real or complex) probabilities `pmf` are passed
-        through :func:`check_pmf(pmf, eps, eps)
-        <mpnum.povm._testing.check_pmf>` before being returned.
+        through :func:`project_pmf(pmf, eps, eps)
+        <mpnum.povm._testing.project_pmf>` before being returned.
 
         """
         assert len(self) == len(state)
@@ -544,7 +544,7 @@ class MPPovm(mp.MPArray):
             pmf = mp.prune(next(self.expectations(state, mode)), True).to_array()
         else:
             raise ValueError('Implementation {!r} unknown'.format(impl))
-        return check_pmf(pmf, eps, eps)
+        return project_pmf(pmf, eps, eps)
 
     def pmfs_as_array(self, states, mode, asarray=False, eps=1e-10):
         """.. todo:: Add docstring"""
@@ -670,7 +670,7 @@ class MPPovm(mp.MPArray):
             p = marginal_pmf[min(n_sites, n_out + n_group)]
             # Obtain conditional probab. from joint `p` and marginal `out_p`
             p = p.get(tuple(out[:n_out]) + (slice(None),) * (len(p) - n_out))
-            p = check_pmf(mp.prune(p).to_array() / out_p, eps, eps)
+            p = project_pmf(mp.prune(p).to_array() / out_p, eps, eps)
             # Sample from conditional probab. for next `n_group` sites
             choice = rng.choice(p.size, p=p.flat)
             out[n_out:n_out + n_group] = np.unravel_index(choice, p.shape)

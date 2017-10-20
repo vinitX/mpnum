@@ -19,38 +19,30 @@ available under the BSD license at `mpnum on Github
   - local purification matrix product states (:ref:`PMPS <intro-pmps>`)
   - arbitrary matrix product arrays (:ref:`MPA <intro-mpa>`)
 
-- basic MPA operations: add, multiply, etc; compression (see
-  :func:`compress() <mpnum.mparray.MPArray.compress>`, SVD and
-  variational)
-- computing ground states of MPOs (see :func:`mineig()
-  <mpnum.linalg.mineig>`, which computes smallest eigenvalues and
+- basic arithmetic operations: addition, multiplication, contraction etc
+- canonicalization, compression (see :func:`compress() <mpnum.mparray.MPArray.compress>`, SVD and
+  variational), etc
+- computing ground states of MPOs (see :func:`eig()
+  <mpnum.linalg.eig>`, which computes smallest eigenvalues and
   eigenvectors of MPOs)
-- flexible tools to implement new schemes based on matrix product
-  representations
 
 .. contents::
 
+Matrix Product Arrays
+---------------------
 
-Contributing
-------------
+The basic data structure of mpnum is the :class:`mpnum.mparray.MPArray` (MPA).
+It represents tensors in matrix-product form in an opaque manner while
+providing the user with a high-level interface similar to numpy's `ndarray`.
+Special cases of MPAs include matrix-product states (MPS) and operators (MPOs)
+used in quantum physics.
 
-Contributions and pull requests for mpnum are very welcome. More
-information on modifying mpnum is at :ref:`mpnum-development`.
+Graphical Notation
+""""""""""""""""""
 
-
-Graphical notation for tensors
-------------------------------
-
-
-Our graphical notation for tensors is very similar to the graphical
-notation used by Schollwoeck [:ref:`Sch11 <Sch11>`, e.g. Figure 38].
-
-
-Basics
-""""""
-
-Tensor contractions are much easier to write down using figures.  A
-simple case of of a tensor contraction is the product of two matrices:
+Operations on tensors such as contractions are much easier to write down using
+graphical notation [:ref:`Sch11 <Sch11>`, Figure 38].
+A simple case of of a tensor contraction is the product of two matrices:
 
 .. math::
 
@@ -104,10 +96,10 @@ The matrix product state representation of a state :math:`\vert \psi
 
    \langle i j k l \vert \psi \rangle = \psi_{ijkl} = A_i B_j C_k D_l
 
-where :math:`A_i \in \mathbb C^{1 \times D}`, :math:`B_j, C_k \in
+where each :math:`A_i \in \mathbb C^{1 \times D}`; :math:`B_j, C_k \in
 \mathbb C^{D \times D}` and :math:`D_l \in \mathbb C^{D \times 1}`
-(reference: e.g. [:ref:`Sch11 <Sch11>`]; :ref:`exact definition
-<mpsmpo-definitions>`).  This construction is also known as *tensor
+(reference: e.g. [Sch11]_; :ref:`exact definition
+<mpsmpo-definitions>`). This construction is also known as *tensor
 train* and it is given by the following simple figure:
 
 .. image:: tensors_mps.png
@@ -147,7 +139,7 @@ on three subsystems is given by
 
 where the :math:`A_{i_1j_1}` are row vectors, the :math:`B_{i_2j_2}`
 are matrices and the :math:`C_{i_3j_3}` are column vectors (reference:
-e.g. [:ref:`Sch11 <Sch11>`]; :ref:`exact definition
+e.g. [Sch11]_; :ref:`exact definition
 <mpsmpo-definitions>`). This is represented by the following figure:
 
 .. image:: tensors_mpo.png
@@ -227,15 +219,13 @@ dimension is the square of the PMPS bond dimension.
 
 .. _intro-mpa:
 
-Matrix product arrays
-"""""""""""""""""""""
+General Matrix product arrays
+"""""""""""""""""""""""""""""
 
-The library mpnum implements the class :class:`mpnum.mparray.MPArray`
-which can be used for MPS, MPO, PMPS and other MPS-like
-representations.  :code:`MPArray` is short for *matrix product array*
-(MPA) and this class provides an MPS with an arbitrary number of
-physical legs at each site.  Each physical leg can also have an
-arbitrary dimension.  A corresponding figure could look like this:
+Up to now, all examples had the same number of legs on each site. However,
+the :class:`mpnum.mparray.MPArray` is not restricted to these cases, but can
+be used to express any local structure. An example of a inhomogenous tensor
+is hown in the image below.
 
 .. image:: tensors_mpa.png
    :align: center
@@ -251,3 +241,13 @@ mpnum_intro.ipynb on Github`_.
 
 .. _`view mpnum_intro.ipynb on Github`:
    https://github.com/dseuss/mpnum/blob/master/examples/mpnum_intro.ipynb
+
+References
+----------
+
+  .. [Sch11] Schollwöck, U. (2011). “The density-matrix renormalization group in the age of matrix product states”. Ann. Phys. 326(1), pp. 96–192. `DOI: 10.1016/j.aop.2010.09.012`_. `arXiv: 1008.3477`_.
+
+  .. _`DOI: 10.1016/j.aop.2010.09.012`:
+     http://dx.doi.org/10.1016/j.aop.2010.09.012
+
+  .. _`arXiv: 1008.3477`: http://arxiv.org/abs/1008.3477
