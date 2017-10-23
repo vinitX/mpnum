@@ -14,7 +14,7 @@
    height="116.0625"
    id="svg73625"
    version="1.1"
-   inkscape:version="0.48.5 r10040"
+   inkscape:version="0.92.1 r15371"
    sodipodi:docname="tensors_mpo.svg">
   <defs
      id="defs73627" />
@@ -35,8 +35,8 @@
      fit-margin-left="4"
      fit-margin-right="4"
      fit-margin-bottom="4"
-     inkscape:window-width="1920"
-     inkscape:window-height="1144"
+     inkscape:window-width="2560"
+     inkscape:window-height="1393"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1" />
@@ -413,13 +413,13 @@
          inkscape:connector-curvature="0"
          style="fill:#000000;stroke-width:0" /></g>    <path
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="m 248.62674,672.19091 51.78481,0"
+       d="m 248.62674,672.19091 h 51.78481"
        id="path68866"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0" />
     <path
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="m 364.62674,672.19091 51.78481,0"
+       d="m 364.62674,672.19091 h 51.78481"
        id="path68868"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0" />
@@ -620,7 +620,7 @@
        height="26.374731"
        width="98.307838"
        id="rect68976"
-       style="fill:#ffeeaa;fill-opacity:1;stroke:#000000;stroke-width:0.5;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+       style="fill:#ffeeaa;fill-opacity:1;stroke:#000000;stroke-width:0.5;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
     <g
        id="g68978"
        transform="matrix(1.25,0,0,-1.25,47.819306,1493.6107)"

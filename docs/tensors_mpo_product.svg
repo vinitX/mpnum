@@ -14,7 +14,7 @@
    height="163.11035"
    id="svg73625"
    version="1.1"
-   inkscape:version="0.48.5 r10040"
+   inkscape:version="0.92.1 r15371"
    sodipodi:docname="tensors_mpo_product.svg">
   <defs
      id="defs73627" />
@@ -35,8 +35,8 @@
      fit-margin-left="4"
      fit-margin-right="4"
      fit-margin-bottom="4"
-     inkscape:window-width="1920"
-     inkscape:window-height="1144"
+     inkscape:window-width="2560"
+     inkscape:window-height="1393"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1" />
@@ -48,7 +48,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -117,7 +117,7 @@
        id="path90281"
        inkscape:connector-curvature="0" />
     <rect
-       style="fill:#ffeeaa;fill-opacity:1;stroke:#000000;stroke-width:0.5;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       style="fill:#ffeeaa;fill-opacity:1;stroke:#000000;stroke-width:0.5;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="rect90279"
        width="53.86113"
        height="26.374731"
@@ -212,60 +212,63 @@
          d="m 230.28,708.45 0.01,0 0.01,0 0.03,0 0.03,0 0.01,0 0.02,0 0.01,0 0.01,0 0.02,0 0.01,0.01 0.02,0 0.01,0 0.01,0.01 0.01,0 0.02,0.01 0.01,0 0.01,0.01 0.01,0 0.01,0.01 0.01,0.01 0.01,0.01 0,0 0,0.01 0.01,0.01 0,0 0,0.01 0.01,0 0,0.01 0,0.01 0,0 0.01,0.01 0,0.01 0,0 0,0.01 0,0.01 0,0.01 0,0.01 0,0.01 0,0.01 c 0,0.19 -0.18,0.19 -0.33,0.19 h -5.94 c -0.15,0 -0.34,0 -0.34,-0.19 0,-0.2 0.19,-0.2 0.33,-0.2 z"
          id="path69122-4-3" /></g>    <text
        xml:space="preserve"
-       style="font-size:9px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none"
        x="373.314"
        y="693.00928"
-       id="text90377"
-       sodipodi:linespacing="125%"><tspan
+       id="text90377"><tspan
          sodipodi:role="line"
          id="tspan90379"
          x="374.74661"
-         y="693.00928">physical </tspan><tspan
+         y="693.00928"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">physical </tspan><tspan
          sodipodi:role="line"
          x="373.314"
          y="704.25928"
-         id="tspan90387">row legs</tspan></text>
+         id="tspan90387"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">row legs</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:9px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none"
        x="364.0441"
        y="557.85889"
-       id="text90381"
-       sodipodi:linespacing="125%"><tspan
+       id="text90381"><tspan
          sodipodi:role="line"
          id="tspan90383"
          x="364.0441"
-         y="557.85889">physical</tspan><tspan
+         y="557.85889"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">physical</tspan><tspan
          sodipodi:role="line"
          x="364.0441"
          y="569.10889"
-         id="tspan90385">column legs</tspan></text>
+         id="tspan90385"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">column legs</tspan></text>
     <text
-       sodipodi:linespacing="125%"
        id="text90389"
        y="557.85889"
        x="276.0441"
-       style="font-size:9px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
          id="tspan90393"
          y="557.85889"
          x="276.0441"
-         sodipodi:role="line">dummy</tspan><tspan
+         sodipodi:role="line"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">dummy</tspan><tspan
          y="569.10889"
          x="276.0441"
          sodipodi:role="line"
-         id="tspan90397">bond legs</tspan></text>
+         id="tspan90397"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">bond legs</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:9px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none"
        x="428.0441"
        y="569.85889"
-       id="text90399"
-       sodipodi:linespacing="125%"><tspan
+       id="text90399"><tspan
          id="tspan90403"
          sodipodi:role="line"
          x="428.0441"
-         y="569.85889">bond leg</tspan></text>
+         y="569.85889"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">bond leg</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:0.5, 0.5;stroke-dashoffset:0"
        d="m 300.78076,607.45961 -5.55584,-35.1028 63.38707,35.35534"
@@ -290,19 +293,20 @@
        inkscape:connector-curvature="0" />
     <text
        xml:space="preserve"
-       style="font-size:9px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="459.54611"
        y="688.8175"
-       id="text90417"
-       sodipodi:linespacing="125%"><tspan
+       id="text90417"><tspan
          sodipodi:role="line"
          id="tspan90419"
          x="459.54611"
-         y="688.8175">local tensor</tspan><tspan
+         y="688.8175"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">local tensor</tspan><tspan
          sodipodi:role="line"
          x="459.54611"
          y="700.0675"
-         id="tspan90421">of the product</tspan></text>
+         id="tspan90421"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">of the product</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:0.5, 0.5;stroke-dashoffset:0"
        d="m 456.59679,685.5345 -4.94616,-17.62691"

@@ -14,7 +14,7 @@
    height="99.709229"
    id="svg73625"
    version="1.1"
-   inkscape:version="0.48.5 r10040"
+   inkscape:version="0.92.1 r15371"
    sodipodi:docname="tensors_mps_no_names_with_dummies.svg">
   <defs
      id="defs73627" />
@@ -35,8 +35,8 @@
      fit-margin-left="4"
      fit-margin-right="4"
      fit-margin-bottom="4"
-     inkscape:window-width="1920"
-     inkscape:window-height="1144"
+     inkscape:window-width="2560"
+     inkscape:window-height="1393"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1" />
@@ -48,7 +48,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -95,19 +95,19 @@
        inkscape:connector-curvature="0"
        inkscape:connector-type="polyline"
        id="path93410"
-       d="m 253.86179,634.90912 51.78481,0"
+       d="M 253.86179,634.90912 H 305.6466"
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <path
        inkscape:connector-curvature="0"
        inkscape:connector-type="polyline"
        id="path93412"
-       d="m 335.86179,634.90912 51.78481,0"
+       d="M 335.86179,634.90912 H 387.6466"
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <path
        inkscape:connector-curvature="0"
        inkscape:connector-type="polyline"
        id="path93414"
-       d="m 419.86179,634.90912 51.78481,0"
+       d="M 419.86179,634.90912 H 471.6466"
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <path
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -161,7 +161,7 @@
          d="m 230.28,708.45 0.01,0 0.01,0 0.03,0 0.03,0 0.01,0 0.02,0 0.01,0 0.01,0 0.02,0 0.01,0.01 0.02,0 0.01,0 0.01,0.01 0.01,0 0.02,0.01 0.01,0 0.01,0.01 0.01,0 0.01,0.01 0.01,0.01 0.01,0.01 0,0 0,0.01 0.01,0.01 0,0 0,0.01 0.01,0 0,0.01 0,0.01 0,0 0.01,0.01 0,0.01 0,0 0,0.01 0,0.01 0,0.01 0,0.01 0,0.01 0,0.01 c 0,0.19 -0.18,0.19 -0.33,0.19 h -5.94 c -0.15,0 -0.34,0 -0.34,-0.19 0,-0.2 0.19,-0.2 0.33,-0.2 z"
          inkscape:connector-curvature="0"
          style="fill:#000000;stroke-width:0" /></g>    <rect
-       style="fill:#ffeeaa;fill-opacity:1;stroke:#000000;stroke-width:0.5;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       style="fill:#ffeeaa;fill-opacity:1;stroke:#000000;stroke-width:0.5;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="rect93432"
        width="64.215195"
        height="26.374731"
@@ -188,8 +188,8 @@
        rx="2.9999998"
        ry="3.0000007" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;display:inline"
-       d="m 189.64661,634.96302 -9.35229,0.0157"
+       style="display:inline;fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 189.64661,634.96304 -9.35229,0.0157"
        id="path93438"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0"
@@ -203,41 +203,42 @@
        inkscape:connector-curvature="0" />
     <text
        xml:space="preserve"
-       style="font-size:9px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="178.21423"
        y="600.34491"
-       id="text90345-2"
-       sodipodi:linespacing="125%"><tspan
+       id="text90345-2"><tspan
          sodipodi:role="line"
          id="tspan90347-0"
          x="178.21423"
-         y="600.34491">dummy </tspan><tspan
+         y="600.34491"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">dummy </tspan><tspan
          sodipodi:role="line"
          x="178.21423"
          y="611.59491"
-         id="tspan90351-9">bond legs</tspan></text>
+         id="tspan90351-9"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">bond legs</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:9px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="257.67981"
        y="610.27271"
-       id="text93670"
-       sodipodi:linespacing="125%"><tspan
+       id="text93670"><tspan
          sodipodi:role="line"
          id="tspan93672"
          x="257.67981"
-         y="610.27271">bond leg</tspan></text>
+         y="610.27271"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">bond leg</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:9px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="129.53694"
        y="683.34418"
-       id="text93674"
-       sodipodi:linespacing="125%"><tspan
+       id="text93674"><tspan
          sodipodi:role="line"
          x="129.53694"
          y="683.34418"
-         id="tspan93678">physical legs</tspan></text>
+         id="tspan93678"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">physical legs</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:0.5, 0.5;stroke-dashoffset:0"
        d="m 256.67979,633.12983 5.35714,-20"

@@ -14,8 +14,8 @@
    height="117.7467"
    id="svg73625"
    version="1.1"
-   inkscape:version="0.48.5 r10040"
-   sodipodi:docname="tensors_mpo_product.svg">
+   inkscape:version="0.92.1 r15371"
+   sodipodi:docname="tensors_mps.svg">
   <defs
      id="defs73627" />
   <sodipodi:namedview
@@ -35,8 +35,8 @@
      fit-margin-left="4"
      fit-margin-right="4"
      fit-margin-bottom="4"
-     inkscape:window-width="1920"
-     inkscape:window-height="1144"
+     inkscape:window-width="2560"
+     inkscape:window-height="1393"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1" />
@@ -48,7 +48,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -196,7 +196,7 @@
        height="26.374731"
        width="64.215195"
        id="rect39647"
-       style="fill:#ffeeaa;fill-opacity:1;stroke:#000000;stroke-width:0.5;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+       style="fill:#ffeeaa;fill-opacity:1;stroke:#000000;stroke-width:0.5;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
     <g
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;letter-spacing:normal;word-spacing:normal;text-anchor:start;fill:none;stroke:#000000;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10.43299961;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
        ns0:preamble="/home/milan/phd/Dokumente/tex/graphics/svg_mathbbm.tex"
@@ -313,19 +313,19 @@
        inkscape:connector-curvature="0"
        inkscape:connector-type="polyline"
        id="path39691"
-       d="m -632.65747,617.77002 51.78481,0"
+       d="m -632.65747,617.77002 h 51.78481"
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <path
        inkscape:connector-curvature="0"
        inkscape:connector-type="polyline"
        id="path39693"
-       d="m -516.65747,617.77002 51.78481,0"
+       d="m -516.65747,617.77002 h 51.78481"
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <path
        inkscape:connector-curvature="0"
        inkscape:connector-type="polyline"
        id="path39695"
-       d="m -400.65747,617.77002 51.78481,0"
+       d="m -400.65747,617.77002 h 51.78481"
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <g
        id="g39697"
@@ -686,26 +686,26 @@
          d="m 242.81,710.25 0,0 0,0 0,0 0,0 0,0 0,0 0,0.01 0,0 0,0 0,0 0,0.01 0.01,0 0,0 0,0.01 0,0 0,0.01 0,0 0,0.01 0,0.01 0.01,0 0,0.01 0,0 0,0 0,0.01 0,0 0,0.01 0,0 0,0 0,0.01 0,0 0,0 0,0 0.01,0 0,0 0,0.01 0,0 0,0 0,0 0,0 0,0 0,0 c 0,0.03 -0.03,0.1 -0.11,0.1 -0.14,0 -0.72,-0.06 -0.9,-0.07 -0.04,-0.01 -0.14,-0.02 -0.14,-0.16 0,-0.1 0.1,-0.1 0.17,-0.1 0.34,0 0.34,-0.05 0.34,-0.1 0,-0.05 -0.02,-0.1 -0.03,-0.16 l -0.87,-3.43 c -0.02,-0.07 -0.02,-0.15 -0.02,-0.22 0,-0.44 0.39,-0.66 0.73,-0.66 0.17,0 0.37,0.06 0.56,0.37 0.14,0.26 0.24,0.67 0.24,0.69 0,0.1 -0.09,0.1 -0.11,0.1 -0.1,0 -0.11,-0.05 -0.14,-0.17 -0.09,-0.35 -0.22,-0.79 -0.52,-0.79 -0.19,0 -0.24,0.17 -0.24,0.34 0,0.07 0.02,0.2 0.04,0.28 z"
          id="path50622" /></g>    <text
        xml:space="preserve"
-       style="font-size:9px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="-509.26804"
        y="646.06213"
-       id="text89470"
-       sodipodi:linespacing="125%"><tspan
+       id="text89470"><tspan
          sodipodi:role="line"
          id="tspan89472"
          x="-509.26804"
-         y="646.06213">physical leg</tspan></text>
+         y="646.06213"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">physical leg</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:9px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="-476.26804"
        y="589.63361"
-       id="text89474"
-       sodipodi:linespacing="125%"><tspan
+       id="text89474"><tspan
          sodipodi:role="line"
          id="tspan89476"
          x="-476.26804"
-         y="589.63361">bond leg</tspan></text>
+         y="589.63361"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">bond leg</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:0.5, 0.5;stroke-dashoffset:0"
        d="m -495.55376,615.70502 17.14286,-29.28571"
@@ -718,35 +718,37 @@
        id="path89480"
        inkscape:connector-curvature="0" />
     <text
-       sodipodi:linespacing="125%"
        id="text92909"
        y="575.95587"
        x="-542.75513"
-       style="font-size:9px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
          y="575.95587"
          x="-541.32251"
          id="tspan92911"
-         sodipodi:role="line">local </tspan><tspan
+         sodipodi:role="line"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">local </tspan><tspan
          y="587.20587"
          x="-542.75513"
          sodipodi:role="line"
-         id="tspan92919">tensor</tspan></text>
+         id="tspan92919"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">tensor</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:9px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="-614.75281"
        y="576.13867"
-       id="text92913"
-       sodipodi:linespacing="125%"><tspan
+       id="text92913"><tspan
          sodipodi:role="line"
          id="tspan92915"
          x="-614.75281"
-         y="576.13867">global </tspan><tspan
+         y="576.13867"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">global </tspan><tspan
          sodipodi:role="line"
          x="-614.75281"
          y="587.38867"
-         id="tspan92917">tensor</tspan></text>
+         id="tspan92917"
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">tensor</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:0.5, 0.5;stroke-dashoffset:0"
        d="m -633.55554,557.48327 15.65737,16.16244"
