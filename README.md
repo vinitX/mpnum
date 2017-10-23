@@ -1,4 +1,4 @@
-![mpnum](docs/tensors_logo_144.png)
+![mpnum](docs/mpnum_logo_144.png)
 =====
 
 
