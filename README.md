@@ -10,18 +10,19 @@
 [![Code Climate](https://codeclimate.com/github/dseuss/mpnum/badges/gpa.svg)](https://codeclimate.com/github/dseuss/mpnum)
 [![PyPI](https://img.shields.io/pypi/v/mpnum.svg)](https://pypi.python.org/pypi/mpnum/)
 
-This code is work in progress.
+mpnum is a flexible, user-friendly, and expandable toolbox for the matrix product state/tensor train tensor format. mpnum provides:
 
-mpnum is a Python library providing flexible tools to implement new numerical schemes based on matrix product states (MPS). So far, we provide:
-
-* basic tools for various matrix product based representations, such as:
+* support for well-known matrix product representations, such as:
   * matrix product states ([MPS](http://mpnum.readthedocs.org/en/latest/intro.html#matrix-product-states-mps)), also known as tensor trains (TT)
   * matrix product operators ([MPO](http://mpnum.readthedocs.org/en/latest/intro.html#matrix-product-operators-mpo))
   * local purification matrix product states ([PMPS](http://mpnum.readthedocs.org/en/latest/intro.html#local-purification-form-mps-pmps))
   * arbitrary matrix product arrays ([MPA](http://mpnum.readthedocs.org/en/latest/intro.html#matrix-product-arrays))
-* basic MPA operations: add, multiply, etc; [compression](http://mpnum.readthedocs.org/en/latest/mpnum.html#mpnum.mparray.MPArray.compress) (SVD and variational)
-* computing [ground states](http://mpnum.readthedocs.org/en/latest/mpnum.html#mpnum.linalg.eig) (the smallest eigenvalue and eigenvector) of MPOs
-* flexible tools to implement new schemes based on matrix product representations
+* arithmetic operations: addition, multiplication, contraction etc.
+* [compression](http://mpnum.readthedocs.org/en/latest/mpnum.html#mpnum.mparray.MPArray.compress), [canonical forms](http://mpnum.readthedocs.org/en/latest/mpnum.html#mpnum.mparray.MPArray.canonicalize), etc.
+* finding [extremal eigenvalues](http://mpnum.readthedocs.org/en/latest/mpnum.html#mpnum.linalg.eig) and eigenvectors of MPOs (DMRG)
+* flexible tools for new matrix product algorithms
+
+
 
 For more information, see:
 
@@ -41,9 +42,19 @@ Supported Python versions:
 ## Contributors
 
 * Daniel Suess, <daniel@dsuess.me>, [University of Cologne](http://www.thp.uni-koeln.de/gross/)
-* Milan Holzaepfel, <mail@mjh.name>, [Ulm University](http://qubit-ulm.com/)
+* Milan Holzaepfel, <mail@mholzaepfel.de>, [Ulm University](http://qubit-ulm.com/)
 
 
 ## License
 
 Distributed under the terms of the BSD 3-Clause License (see [LICENSE](LICENSE)).
+
+
+## Citations
+
+mpnum has been used and cited in the following publications:
+
+* I. Dhand et al. (2017), [arXiv 1710.06103](https://arxiv.org/abs/1710.06103)
+* I. Schwartz, J. Scheuer et al. (2017), [arXiv 1710.01508](https://arxiv.org/abs/1710.01508)
+* J. Scheuer et al. (2017), [arXiv 1706.01315](https://arxiv.org/abs/1706.01315)
+* B. P. Lanyon, Ch. Maier et al, [Nat. Phys. (2017)](https://doi.org/10.1038/nphys4244), [arXiv 1612.08000](https://arxiv.org/abs/1612.08000)
