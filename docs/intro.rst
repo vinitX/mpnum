@@ -116,7 +116,13 @@ train* and it is given by the following simple figure:
 
 We call :math:`\psi` a *global tensor* and we call the MPS matrices
 :math:`A_i`, :math:`B_j` etc. which are associated to a certain
-subsystem *local tensors*.
+subsystem *local tensors*.  The legs/indices :math:`i`, :math:`j`,
+... of the original tensor :math:`\vert \psi \rangle` are called
+*physical legs*.  The additional legs in the matrix product
+representation are called *virtual legs*. The dimension (size) of the
+virtual legs are called the *representation ranks* or *compression
+ranks*. In the physics literature, the virtual legs are often called
+*bonds* and the representation ranks are called *bond dimensions*.
 
 Very often, we can omit the labels of all the legs.  The figure then
 becomes very simple:
@@ -167,14 +173,14 @@ order*. The functions :func:`global_to_local
 can convert tensors between the two orders.
 
 In order to simplify the implementation, it is useful to introduce
-*dummy bonds* with index size 1 on the left and the right of the MPS
-or MPO chain:
+*dummy virtual legs* with index size 1 on the left and the right of
+the MPS or MPO chain:
 
 .. image:: tensors_mpo_with_dummies.png
    :align: center
 
-With these dummy bonds, all the tensors in the representation have
-exactly two bond indices.
+With these dummy virtual legs, all the tensors in the representation
+have exactly two virtual legs.
 
 It is useful to draw the physical column indices upward from the
 global and local tensors while leaving the physical row indices
@@ -190,9 +196,9 @@ With this arrangement, we can nicely express a product of two MPOs:
 
 This figure tells us how to obtain the local tensors which represent
 the product: We have to compute new tensors as indicated by the shaded
-area.  The figure also tells us that the bond dimension of the result
-is the product of the bond dimensions of the two individual MPO
-representations.
+area.  The figure also tells us that the representation rank of the
+result is the product of the representation rank of the two individual
+MPO representations.
 
 
 .. _intro-pmps:
@@ -222,8 +228,8 @@ The following figure describes the relation:
    :align: center
 
 It also tells us how to convert a PMPS representation into an MPO
-representation and how the bond dimension changes: The MPO bond
-dimension is the square of the PMPS bond dimension.
+representation and how the representation rank changes: The MPO
+representation rank is the square of the PMPS representation rank.
 
 
 .. _intro-mpa:
