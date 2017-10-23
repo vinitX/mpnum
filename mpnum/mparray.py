@@ -3,11 +3,12 @@
 
   .. todo:: single site MPAs -- what is left?
   .. todo:: Local tensor ownership -- see MPArray class comment
-  .. todo:: Possible Optimization:
-     - replace integer-for loops with iterataor (not obviously possible
-    everwhere)
+  .. todo:: Possible optimization:
+
+     - replace integer-for loops with iterator (not obviously possible
+       everwhere)
      - replace internal structure as list of arrays with lazy generator of
-    arrays (might not be possible, since we often iterate both ways!)
+       arrays (might not be possible, since we often iterate both ways!)
      - more in place operations for addition, subtraction, multiplication
   .. todo:: Replace all occurences of self._ltens with self[...] or similar &
       benchmark. This will allow easier transition to lazy evaluation of
@@ -62,12 +63,8 @@ class MPArray(object):
               including each new `MPArray` instance, must take
               copies. Is this correct?
 
-    .. todo:: If we enable all special members (e.g. ``__len__``) to be
-              shown, we get things like ``__dict__`` with very long
-              contents. Therefore, special members are hidden at the
-              moment, but we should show the interesting one.
-
     .. automethod:: __init__
+    .. automethod:: __len__
 
     """
 
