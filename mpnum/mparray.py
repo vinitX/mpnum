@@ -770,26 +770,26 @@ class MPArray(object):
 
         .. rubric:: Parameters for ``'var'``:
 
-        :param startmpa: Start vector, also fixes the rank
-            of the result. Default: Random, with same norm as self.
-
         :param rank: Maximal rank for the result. Either
             ``startmpa`` or ``rank`` is required.
+
+        :param num_sweeps: Number of variational sweeps (required).
+
+        :param startmpa: Start vector, also fixes the rank
+            of the result. Default: Random, with same norm as self.
 
         :param randstate: ``numpy.random.RandomState`` instance used for
             random start vector. (default: ``numpy.random``).
 
-        :param num_sweeps: Maximum number of sweeps to do. (default 5)
-
-        :param var_sites: Number of sites to modify
-            simultaneausly. (default 1)
+        :param var_sites: Number of connected sites to be varied
+            simultaneously (default 1)
 
         Increasing ``var_sites`` makes it less likely to get stuck in a
         local minimum but is generally slower.
 
         References:
 
-        * ``'svd'``: Swingular value truncation, [:ref:`Sch11 <Sch11>`, Sec. 4.5.1]
+        * ``'svd'``: Singular value truncation, [:ref:`Sch11 <Sch11>`, Sec. 4.5.1]
         * ``'var'``: Variational compression, [:ref:`Sch11 <Sch11>`, Sec. 4.5.2]
 
         """
@@ -851,8 +851,8 @@ class MPArray(object):
 
         raise ValueError('{} is not a valid direction'.format(direction))
 
-    def _compression_var(self, startmpa=None, rank=None, randstate=np.random,
-                         num_sweeps=5, var_sites=1):
+    def _compression_var(self, num_sweeps, startmpa=None, rank=None,
+                         randstate=np.random, var_sites=2):
         """Return a compression of ``self`` using variational compression
         [:ref:`Sch11 <Sch11>`, Sec. 4.5.2]
 

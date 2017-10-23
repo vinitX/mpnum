@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [1.0.0] candidate
 
 ### Changed
+- `MPArray.compress`: `method='var'` requires `num_sweeps`
 - Rename `MPArray.bdims` -> `MPArray.ranks`
 - Rename `MPArray.pdims` -> `MPArray.shape`
 - Rename `MPArray.plegs` -> `MPArray.ndims`
@@ -28,7 +29,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Rename `mparray.tools.check_pmf` -> `mparray.utils.pmf.project_pmf`
 
 ### Removed
-- Remove `MPArray.bdim`, use `max(mpa.bdims)` instead
-- Remove `mpo_to_global`, use `to_array_global` instead
+- Remove `MPArray.bdim`, use `max(mpa.ranks)` instead
 - Remove `mpo_to_global`, use `to_array_global` instead
 - Remove `mpnum.tools.verify_real_nonnegative`, use `mpnum.utils.pmf.project_nonneg` instead
