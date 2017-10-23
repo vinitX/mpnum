@@ -562,8 +562,8 @@ def test_mppovm_est(
     sum_ept, sum_var = mpp.est_lfun(coeff, funs, samples, None, eps)
     ex_sum = np.inner(coeff, p_exact.flat)
     ex_var = np.inner(coeff, np.dot(cov_ex, coeff))
-    assert abs(sum_ept - ex_sum) <= 3 / n_samples**0.5
-    assert abs(sum_var - ex_var) * n_samples <= 3 / n_samples**0.5
+    assert abs(sum_ept - ex_sum) <= 5 / n_samples**0.5
+    assert abs(sum_var - ex_var) * n_samples <= 5 / n_samples**0.5
 
     # Convert samples to counts and test again
     counts = mpp.est_pmf(samples, normalize=False, eps=eps)
