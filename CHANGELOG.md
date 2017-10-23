@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - `MPArray.compress`: `method='var'` requires `num_sweeps`
+- `mparray.linalg.eig`:
+  - Change order of parameters
+  - Require `num_sweeps` and one of `startvec` and `startvec_rank`
 - Rename `MPArray.bdims` -> `MPArray.ranks`
 - Rename `MPArray.pdims` -> `MPArray.shape`
 - Rename `MPArray.plegs` -> `MPArray.ndims`
@@ -27,6 +30,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Rename `mparray.tools` -> `mparray.utils`
 - Rename `mparray.tools.check_nonneg_trunc` -> `mparray.utils.pmf.project_nonneg`
 - Rename `mparray.tools.check_pmf` -> `mparray.utils.pmf.project_pmf`
+- Rename `mparray.linalg.mineig` -> `mparray.linalg.eig`
+- `mparray.linalg.eig`:
+  - Rename parameter `max_num_sweeps` -> `num_sweeps` (now required)
+  - Rename parameter `minimize_sites` -> `var_sites`
 
 ### Removed
 - Remove `MPArray.bdim`, use `max(mpa.ranks)` instead

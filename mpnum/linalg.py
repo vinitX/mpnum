@@ -2,16 +2,20 @@
 
 """Linear algebra with matrix product arrays
 
-Currently, we support computing ground states (i.e. minimal eigenvalue
-and eigenvector).
+Currently, we support computing extremal eigenvalues and eigenvectors
+of MPOs.
+
+.. [KGE14] Kliesch, Gross and Eisert (2014). Matrix-product operators and
+   states: NP-hardness and undecidability
 
 """
 
 from __future__ import absolute_import, division, print_function
 
+import functools as ft
 import itertools as it
 import numpy as np
-from scipy.sparse.linalg import eigs
+from scipy import sparse as sp
 
 from six.moves import range
 
@@ -262,7 +266,7 @@ def _eig_local_op_mps(lv, ltens, rv):
 
 
 def _eig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
-                          user_eigs_opts=None):
+                          eigs):
     """Perform the local eigenvalue minimization on few sites
 
     Return a new (expectedly smaller) eigenvalue and a new local
@@ -290,29 +294,31 @@ def _eig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
 
     """
     op = _eig_local_op(leftvec, list(mpo_ltens), rightvec)
-    return _eig_minimize_locally2(op, list(eigvec_ltens), user_eigs_opts)
+    return _eig_minimize_locally2(op, list(eigvec_ltens), eigs)
 
 
-def _eig_minimize_locally2(local_op, eigvec_ltens, user_eigs_opts):
+def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
     """Implement the main part of :func:`_eig_minimize_locally`
 
     See :func:`_eig_minimize_locally` for a description.
 
     """
-    eigs_opts = {'k': 1, 'which': 'SR', 'tol': 1e-6}
-    if user_eigs_opts is not None:
-        eigs_opts.update(user_eigs_opts)
-    if eigs_opts['k'] != 1:
-        raise ValueError('Supplying k != 1 in requires changes in the code, '
-                         'k={} was requested'.format(user_eigs_opts['k']))
     eigvec_rank = max(lten.shape[0] for lten in eigvec_ltens)
     eigvec_lten = eigvec_ltens[0]
     for lten in eigvec_ltens[1:]:
         eigvec_lten = utils.matdot(eigvec_lten, lten)
-    eigvals, eigvecs = eigs(local_op, v0=eigvec_lten.flatten(), **eigs_opts)
-    eigval_pos = eigvals.real.argmin()
-    eigval = eigvals[eigval_pos]
-    eigvec_lten = eigvecs[:, eigval_pos].reshape(eigvec_lten.shape)
+    eigval, eigvec = eigs(local_op, v0=eigvec_lten.flatten())
+    if eigvec.ndim == 1:
+        if len(eigval.flat) != 1:
+            raise ValueError('eigvals from eigs() must be length one')
+    elif eigvec.ndim == 2:
+        if eigval.shape != (1,) or eigvec.shape[1] != 1:
+            raise ValueError('eigs() must return exactly one eigenvalue')
+        eigvec = eigvec[:, 0]
+    else:
+        raise ValueError('eigs() returned array of wrong dimension')
+    eigval = eigval.flat[0]
+    eigvec_lten = eigvec.reshape(eigvec_lten.shape)
     if len(eigvec_ltens) == 1:
         eigvec_lten = (eigvec_lten,)
     else:
@@ -331,8 +337,7 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, user_eigs_opts):
 
 
 def _eig_sum_minimize_locally(
-        mpas, mpas_ndims, leftvec, pos, rightvec, eigvec_ltens,
-        user_eigs_opts=None):
+        mpas, mpas_ndims, leftvec, pos, rightvec, eigvec_ltens, eigs):
     """Local minimization (MPA list dispatching)"""
     # Our task is quite simple: Compute the local operator for each
     # contribution in the sum and sum the results, then minimize.
@@ -343,53 +348,89 @@ def _eig_sum_minimize_locally(
         elif ndims == 1:
             op += _eig_local_op_mps(lv, list(mpa.lt[pos]), rv)
         else:
-            raise ValueError('ndims = {!r} not supported'.format(pdims))
+            raise ValueError('ndims = {!r} not supported'.format(ndims))
 
-    return _eig_minimize_locally2(op, list(eigvec_ltens), user_eigs_opts)
+    return _eig_minimize_locally2(op, list(eigvec_ltens), eigs)
 
 
-def eig(mpo,
-        startvec=None, startvec_rank=None, randstate=None,
-        max_num_sweeps=5, eigs_opts=None, minimize_sites=1):
-    """Iterative search for smallest eigenvalue and eigenvector of an MPO.
+def eig(mpo, num_sweeps, var_sites=2,
+        startvec=None, startvec_rank=None, randstate=None, eigs=None):
+    r"""Iterative search for MPO eigenvalues
 
-    Algorithm: [:ref:`Sch11 <Sch11>`, Sec. 6.3]
+    .. note::
+
+       This function can return completely inaccurate values. You are
+       responsible for supplying a large enough :code:`startvec_rank`
+       (or ``startvec`` with large enough rank) and
+       :code:`num_sweeps`.
+
+    This function attempts to find eigenvalues by iteratively
+    optimizing :math:`\lambda = \langle \psi \vert H \vert \psi
+    \rangle` where :math:`H` is the operator supplied in the argument
+    :code:`mpo`.  Specifically, we attempt to de- or increase
+    :math:`\lambda` by optimizing over several neighbouring local
+    tensors of the MPS :math:`\vert \psi \rangle` simultaneously (the
+    number given by :code:`var_sites`).
+
+    The algorithm used here is described e.g. in
+    [:ref:`Sch11 <Sch11>`, Sec. 6.3].
+    For :code:`var_sites = 1`, it is called "variational MPS ground state
+    search" or "single-site DMRG" [:ref:`Sch11 <Sch11>`, Sec. 6.3, p. 69]. For
+    :code:`var_sites > 1`, it is called "multi-site DMRG".
 
     :param MPArray mpo: A matrix product operator (MPA with two physical legs)
-    :param startvec: initial guess for eigenvector (default random MPS with
+    :param int num_sweeps: Number of sweeps to do (required)
+    :param int var_sites: Number of neighbouring sites to be varied 
+        simultaneously
+    :param startvec: Initial guess for eigenvector (default: random MPS with
         rank `startvec_rank`)
-    :param startvec_rank: Rank of random start vector if
-        no start vector is given. (default: Use the rank of `mpo`)
-    :param randstate: numpy.random.RandomState instance or None
-    :param max_num_sweeps: Maximum number of sweeps to do (default 5)
-    :param eigs_opts: kwargs for `scipy.sparse.linalg.eigs()`. If you
-        supply `which`, you will probably not obtain the minimal
-        eigenvalue. `k` different from one is not supported at the moment.
-    :param int minimize_sites: Number of connected sites minimization should
-        be performed on (default 1)
-    :returns: mineigval, mineigval_eigvec_mpa
+    :param startvec_rank: Rank of random start vector (required and
+        used only if no start vector is given)
+    :param randstate: ``numpy.random.RandomState`` instance or ``None``
+    :param eigs: Function which computes one eigenvector of the local
+        eigenvalue problem on :code:`var_sites` sites
 
-    We minimize the eigenvalue by obtaining the minimal eigenvalue of
-    an operator supported on 'minimize_sites' many sites. For
-    minimize_sites=1, this is called "variational MPS ground state
-    search" or "single-site DMRG" [:ref:`Sch11 <Sch11>`, Sec. 6.3, p. 69]. For
-    minimize_sites>1, this is called "multi-site DMRG".
+    :returns: eigval, eigvec_mpa
 
-    Comments on the implementation, for ``minimize_sites=1``:
+    The :code:`eigs` parameter defaults to
+
+    .. code-block:: python
+
+       eigs = functools.partial(scipy.sparse.linalg.eigsh, k=1, tol=1e-6)
+
+    By default, :func:`eig` computes the eigenvalue with largest
+    magnitude. To compute e.g. the smallest eigenvalue (sign
+    included), supply :code:`which='SA'` to ``eigsh``. For other
+    possible values, refer to the SciPy documentation.
+
+    It is recommendable to supply a value for the :code:`tol`
+    parameter of :code:`eigsh()`. Otherwise, :code:`eigsh()` will work
+    at machine precision which is rarely necessary.
+
+    .. note::
+
+       One should keep in mind that a variational method (such as the
+       one implemented in this function) can only provide e.g. an
+       upper bound on the lowest eigenvalue of an MPO. Deciding
+       whether a given MPO has an eigenvalue which is smaller than a
+       given threshold has been shown to be NP-hard (in the number of
+       parameters of the MPO representation) [:any:`KGE14 <KGE14>`].
+
+    Comments on the implementation, for :code:`var_sites = 1`:
 
     References are to the arXiv version of [Sch11]_ assuming we replace
     zero-based with one-based indices there.
 
-    leftvecs[i] is L_{i-1}  \
-    rightvecs[i] is R_{i}   |  See Fig. 38 and Eq. (191) on p. 62.
-    mpo[i] is W_{i}         /
-    eigvec[i] is M_{i}         This is just the MPS matrix.
+    .. code::
 
-    Psi^A_{i-1} and Psi^B_{i} are identity matrices because of
+       leftvecs[i] is L_{i-1}  \
+       rightvecs[i] is R_{i}   |  See Fig. 38 and Eq. (191) on p. 62.
+       mpo[i] is W_{i}         /
+       eigvec[i] is M_{i}         This is just the MPS matrix.
+
+    :code:`Psi^A_{i-1}` and :code:`Psi^B_{i}` are identity matrices because of
     normalization. (See Fig. 42 on p. 67 and the text; see also
     Figs. 14 and 15 and pages 28 and 29.)
-
-    .. todo:: Documentation is not really appropriate, as of #11
 
     """
     # Possible TODOs:
@@ -405,20 +446,24 @@ def eig(mpo,
     #    (see comment there why)
     #  - return these details for tracking errors in larger computations
 
+    if eigs is None:
+        eigs = ft.partial(sp.linalg.eigsh, k=1, tol=1e-6, which='LM')
+
     nr_sites = len(mpo)
-    assert nr_sites - minimize_sites > 0, (
-        'Require ({} =) nr_sites > minimize_sites (= {})'
-        .format(nr_sites, minimize_sites))
+    assert nr_sites - var_sites > 0, (
+        'Require ({} =) nr_sites > var_sites (= {})'
+        .format(nr_sites, var_sites))
 
     if startvec is None:
-        pdims = max(dim[0] for dim in mpo.shape)
         if startvec_rank is None:
-            startvec_rank = max(mpo.ranks)
+            raise ValueError('`startvec_rank` required if `startvec` is None')
         if startvec_rank == 1:
             raise ValueError('startvec_rank must be at least 2')
-
-        # FIXME Can we choose dtype as mpo.dtype? If so, also adapt eig_sum
-        startvec = random_mpa(nr_sites, pdims, startvec_rank,
+        # Choose `startvec` with complex entries because real matrices
+        # can have non-real eigenvalues (conjugate pairs), implying
+        # non-real eigenvectors. This matches numpy.linalg.eig's behaviour.
+        shape = [(dim[0],) for dim in mpo.shape]
+        startvec = random_mpa(nr_sites, shape, startvec_rank,
                               randstate=randstate, dtype=np.complex_)
         startvec.canonicalize(right=1)
         startvec /= mp.norm(startvec)
@@ -430,16 +475,16 @@ def eig(mpo,
     # conditions because of too small matrices.
     assert not any(rank12 == (1, 1) for rank12 in
                    zip((1,) + startvec.ranks, startvec.ranks + (1,))), \
-        'startvec must not contain two consecutive ranks 1, ' \
-        'ranks including dummy values = (1,) + {!r} + (1,)' \
-            .format(startvec.ranks)
+        ('startvec must not contain two consecutive ranks 1, '
+         'ranks including dummy values = (1,) + {!r} + (1,)'
+         .format(startvec.ranks))
     # For
     #
-    #   pos in range(nr_sites - minimize_sites),
+    #   pos in range(nr_sites - var_sites),
     #
     # we find the ground state of an operator supported on
     #
-    #   range(pos, pos_end),  pos_end = pos + minimize_sites
+    #   range(pos, pos_end),  pos_end = pos + var_sites
     #
     # leftvecs[pos] and rightvecs[pos] contain the vectors needed to
     # construct that operator for that. Therefore, leftvecs[pos] is
@@ -449,22 +494,22 @@ def eig(mpo,
     #
     # and rightvecs[pos] is constructed from matrices on
     #
-    #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
+    #   range(pos_end, nr_sites),  pos_end = pos + var_sites
     eigvec = startvec
     eigvec.canonicalize(right=1)
-    leftvecs = [np.array(1, ndmin=3)] + [None] * (nr_sites - minimize_sites)
-    rightvecs = [None] * (nr_sites - minimize_sites) + [np.array(1, ndmin=3)]
-    for pos in reversed(range(nr_sites - minimize_sites)):
+    leftvecs = [np.array(1, ndmin=3)] + [None] * (nr_sites - var_sites)
+    rightvecs = [None] * (nr_sites - var_sites) + [np.array(1, ndmin=3)]
+    for pos in reversed(range(nr_sites - var_sites)):
         rightvecs[pos] = _eig_rightvec_add(rightvecs[pos + 1],
-                                           mpo.lt[pos + minimize_sites],
-                                           eigvec.lt[pos + minimize_sites])
+                                           mpo.lt[pos + var_sites],
+                                           eigvec.lt[pos + var_sites])
 
     # The iteration pattern is very similar to
     # :func:`mpnum.mparray.MPArray._adapt_to()`. See there for more
     # comments.
-    for num_sweep in range(max_num_sweeps):
+    for num_sweep in range(num_sweeps):
         # Sweep from left to right
-        for pos in range(nr_sites - minimize_sites + 1):
+        for pos in range(nr_sites - var_sites + 1):
             if pos == 0 and num_sweep > 0:
                 # Don't do first site again if we are not in the first sweep.
                 continue
@@ -474,16 +519,16 @@ def eig(mpo,
                 rightvecs[pos - 1] = None
                 leftvecs[pos] = _eig_leftvec_add(
                     leftvecs[pos - 1], mpo.lt[pos - 1], eigvec.lt[pos - 1])
-            pos_end = pos + minimize_sites
+            pos_end = pos + var_sites
             eigval, eigvec_lten = _eig_minimize_locally(
                 leftvecs[pos], mpo.lt[pos:pos_end], rightvecs[pos],
-                eigvec.lt[pos:pos_end], eigs_opts)
+                eigvec.lt[pos:pos_end], eigs)
             eigvec.lt[pos:pos_end] = eigvec_lten
 
         # Sweep from right to left (don't do last site again)
-        for pos in reversed(range(nr_sites - minimize_sites)):
-            pos_end = pos + minimize_sites
-            if pos < nr_sites - minimize_sites:
+        for pos in reversed(range(nr_sites - var_sites)):
+            pos_end = pos + var_sites
+            if pos < nr_sites - var_sites:
                 # We always do this, because we don't do the last site again.
                 eigvec.canonicalize(right=pos_end)
                 leftvecs[pos + 1] = None
@@ -491,31 +536,29 @@ def eig(mpo,
                     rightvecs[pos + 1], mpo.lt[pos_end], eigvec.lt[pos_end])
             eigval, eigvec_lten = _eig_minimize_locally(
                 leftvecs[pos], mpo.lt[pos:pos_end], rightvecs[pos],
-                eigvec.lt[pos:pos_end], eigs_opts)
+                eigvec.lt[pos:pos_end], eigs)
             eigvec.lt[pos:pos_end] = eigvec_lten
 
     return eigval, eigvec
 
 
-def eig_sum(mpas,
-            startvec=None, startvec_rank=None, randstate=None,
-            max_num_sweeps=5, eigs_opts=None, minimize_sites=1):
-    """Iterative search for smallest eigenvalue+vector of a sum of MPAs
+def eig_sum(mpas, num_sweeps, var_sites=2,
+            startvec=None, startvec_rank=None, randstate=None, eigs=None):
+    r"""Iterative search for eigenvalues of a sum of MPOs/MPSs
 
     Try to compute the ground state of the sum of the objects in
-    ``mpas``. MPOs are taken as-is. An MPS :math:`\\vert\\psi\\rangle`
-    is interpreted as :math:`\\vert\\psi\\rangle \\langle\\psi\\vert`
-    in the sum.
+    ``mpas``. MPOs are taken as-is. An MPS :math:`\vert\psi\rangle`
+    adds :math:`\vert\psi\rangle \langle\psi\vert` to the sum.
 
-    This function executes exactly the same algorithm as
-    :func:`eig` applied to an uncompressed MPO sum of the elements
-    in `mpas`, but it obtains the ingredients for the local
-    optimization steps using less memory and execution time. In
-    particular, this function does not have to convert an MPS in
-    `mpas` to an MPO.
+    This function executes the same algorithm as :func:`eig` applied
+    to an uncompressed MPO sum of the elements in ``mpas``, but it
+    obtains the ingredients for the local optimization steps using
+    less memory and execution time. In particular, this function does
+    not have to convert an MPS in ``mpas`` to an MPO.
 
     .. todo:: Add information on how the runtime of :func:`eig` and
-        :func:`eig_sum` with the the different ranks.
+              :func:`eig_sum` scale with the the different ranks. For
+              the time being, refer to the benchmark test.
 
     :param mpas: A sequence of MPOs or MPSs
 
@@ -525,24 +568,25 @@ def eig_sum(mpas,
 
     """
     # Possible TODOs: See :func:`eig`
+    if eigs is None:
+        eigs = ft.partial(sp.linalg.eigsh, k=1, tol=1e-6)
+
     mpas = list(mpas)
     nr_mpas = len(mpas)
     nr_sites = len(mpas[0])
     assert all(len(m) == nr_sites for m in mpas)
     ndims = [m.ndims[0] for m in mpas]
-    assert nr_sites - minimize_sites > 0, (
-        'Require ({} =) nr_sites > minimize_sites (= {})'
-        .format(nr_sites, minimize_sites))
+    assert nr_sites - var_sites > 0, (
+        'Require ({} =) nr_sites > var_sites (= {})'
+        .format(nr_sites, var_sites))
 
     if startvec is None:
-        pdims = max(dim[0] for dim in mpas[0].shape)  # FIXME (also in eig())
         if startvec_rank is None:
-            raise ValueError(
-                'At least one of startvec and startvec_rank is required')
+            raise ValueError('`startvec_rank` required if `startvec` is None')
         if startvec_rank == 1:
             raise ValueError('startvec_rank must be at least 2')
-
-        startvec = random_mpa(nr_sites, pdims, startvec_rank,
+        shape = [(dim[0],) for dim in mpas[0].shape]
+        startvec = random_mpa(nr_sites, shape, startvec_rank,
                               randstate=randstate, dtype=np.complex_)
         startvec.canonicalize(right=1)
         startvec /= mp.norm(startvec)
@@ -554,16 +598,16 @@ def eig_sum(mpas,
     # conditions because of too small matrices.
     assert not any(rank12 == (1, 1) for rank12 in
                    zip((1,) + startvec.ranks, startvec.ranks + (1,))), \
-        'startvec must not contain two consecutive ranks 1, ' \
-        'ranks including dummy values = (1,) + {!r} + (1,)' \
-        .format(startvec.ranks)
+        ('startvec must not contain two consecutive ranks 1, '
+         'ranks including dummy values = (1,) + {!r} + (1,)'
+         .format(startvec.ranks))
     # For
     #
-    #   pos in range(nr_sites - minimize_sites),
+    #   pos in range(nr_sites - var_sites),
     #
     # we find the ground state of an operator supported on
     #
-    #   range(pos, pos_end),  pos_end = pos + minimize_sites
+    #   range(pos, pos_end),  pos_end = pos + var_sites
     #
     # leftvecs[pos] and rightvecs[pos] contain the vectors needed to
     # construct that operator for that. Therefore, leftvecs[pos] is
@@ -573,24 +617,24 @@ def eig_sum(mpas,
     #
     # and rightvecs[pos] is constructed from matrices on
     #
-    #   range(pos_end, nr_sites),  pos_end = pos + minimize_sites
+    #   range(pos_end, nr_sites),  pos_end = pos + var_sites
     eigvec = startvec
     eigvec.canonicalize(right=1)
     leftvecs = [[np.array(1, ndmin=1 + pl) for pl in ndims]]
-    leftvecs.extend([None] * nr_mpas for _ in range(nr_sites - minimize_sites))
-    rightvecs = [[None] * nr_mpas for _ in range(nr_sites - minimize_sites)]
+    leftvecs.extend([None] * nr_mpas for _ in range(nr_sites - var_sites))
+    rightvecs = [[None] * nr_mpas for _ in range(nr_sites - var_sites)]
     rightvecs.append(leftvecs[0][:])
-    for pos in reversed(range(nr_sites - minimize_sites)):
+    for pos in reversed(range(nr_sites - var_sites)):
         _eig_sum_rightvec_add(
             mpas, ndims, rightvecs[pos], rightvecs[pos + 1],
-            pos + minimize_sites, eigvec.lt[pos + minimize_sites])
+            pos + var_sites, eigvec.lt[pos + var_sites])
 
     # The iteration pattern is very similar to
     # :func:`mpnum.mparray.MPArray._adapt_to()`. See there for more
     # comments.
-    for num_sweep in range(max_num_sweeps):
+    for num_sweep in range(num_sweeps):
         # Sweep from left to right
-        for pos in range(nr_sites - minimize_sites + 1):
+        for pos in range(nr_sites - var_sites + 1):
             if pos == 0 and num_sweep > 0:
                 # Don't do first site again if we are not in the first sweep.
                 continue
@@ -601,16 +645,16 @@ def eig_sum(mpas,
                 _eig_sum_leftvec_add(
                     mpas, ndims, leftvecs[pos], leftvecs[pos - 1],
                     pos - 1, eigvec.lt[pos - 1])
-            pos_end = pos + minimize_sites
+            pos_end = pos + var_sites
             eigval, eigvec_lten = _eig_sum_minimize_locally(
                 mpas, ndims, leftvecs[pos], slice(pos, pos_end), rightvecs[pos],
-                eigvec.lt[pos:pos_end], eigs_opts)
+                eigvec.lt[pos:pos_end], eigs)
             eigvec.lt[pos:pos_end] = eigvec_lten
 
         # Sweep from right to left (don't do last site again)
-        for pos in reversed(range(nr_sites - minimize_sites)):
-            pos_end = pos + minimize_sites
-            if pos < nr_sites - minimize_sites:
+        for pos in reversed(range(nr_sites - var_sites)):
+            pos_end = pos + var_sites
+            if pos < nr_sites - var_sites:
                 # We always do this, because we don't do the last site again.
                 eigvec.canonicalize(right=pos_end)
                 leftvecs[pos + 1] = [None] * nr_mpas
@@ -619,7 +663,7 @@ def eig_sum(mpas,
                     pos_end, eigvec.lt[pos_end])
             eigval, eigvec_lten = _eig_sum_minimize_locally(
                 mpas, ndims, leftvecs[pos], slice(pos, pos_end), rightvecs[pos],
-                eigvec.lt[pos:pos_end], eigs_opts)
+                eigvec.lt[pos:pos_end], eigs)
             eigvec.lt[pos:pos_end] = eigvec_lten
 
     return eigval, eigvec
