@@ -11,6 +11,7 @@ from numpy.testing import assert_almost_equal
 import mpnum as mp
 import mpnum.linalg
 import mpnum.factory as factory
+from mpnum.utils import physics
 
 
 @pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
@@ -100,6 +101,22 @@ def test_mineig_sum_minimize_sites(nr_sites, local_dim, rank, rgen):
     overlap = np.inner(mineig_eigvec.conj(), mineig_eigvec_mp)
     assert_almost_equal(mineig_mp, mineig)
     assert_almost_equal(abs(overlap), 1)
+
+
+@pt.mark.parametrize('nr_sites, gamma, rank, tol', [
+    (10, 0.61, 6, 1e-3),
+    pt.mark.long((50, 0.95, 16, 1e-12)),
+    pt.mark.long((130, 0.9, 2, 1e-3)),
+])
+def test_mineig_cXY(nr_sites, gamma, rank, tol, rgen, local_dim=2):
+    # Verify that linalg.eig() finds the correct ground state energy
+    # of the cyclic XY model
+    E0 = physics.cXY_E0(nr_sites, gamma)
+    mpo = physics.mpo_cH(physics.cXY_local_terms(nr_sites, gamma))
+    E0_mp, mineig_eigvec_mp = mpnum.linalg.eig(
+        mpo, startvec_rank=rank, randstate=rgen, minimize_sites=2, max_num_sweeps=3)
+    print(abs(E0_mp - E0))
+    assert abs(E0_mp - E0) <= tol
 
 
 BENCHMARK_MINEIG_PARAMS = [(20, 2, 12, 12)]
