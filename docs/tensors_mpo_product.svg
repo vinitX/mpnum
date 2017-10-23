@@ -25,9 +25,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.98994949"
-     inkscape:cx="175.02212"
-     inkscape:cy="202.98775"
+     inkscape:zoom="2.8"
+     inkscape:cx="251.05979"
+     inkscape:cy="45.24245"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -257,7 +257,7 @@
          x="276.0441"
          sodipodi:role="line"
          id="tspan90397"
-         style="font-size:9px;line-height:1.25;font-family:sans-serif">bond legs</tspan></text>
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">virtual legs</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none"
@@ -268,7 +268,7 @@
          sodipodi:role="line"
          x="428.0441"
          y="569.85889"
-         style="font-size:9px;line-height:1.25;font-family:sans-serif">bond leg</tspan></text>
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">virtual leg</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:0.5, 0.5;stroke-dashoffset:0"
        d="m 300.78076,607.45961 -5.55584,-35.1028 63.38707,35.35534"

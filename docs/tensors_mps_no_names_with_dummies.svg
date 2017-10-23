@@ -25,9 +25,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.7"
-     inkscape:cx="589.5782"
-     inkscape:cy="-26.973002"
+     inkscape:zoom="1.979899"
+     inkscape:cx="368.11615"
+     inkscape:cy="-47.12934"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -189,7 +189,7 @@
        ry="3.0000007" />
     <path
        style="display:inline;fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="m 189.64661,634.96304 -9.35229,0.0157"
+       d="m 189.64661,634.96305 -9.35229,0.0157"
        id="path93438"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0"
@@ -216,7 +216,7 @@
          x="178.21423"
          y="611.59491"
          id="tspan90351-9"
-         style="font-size:9px;line-height:1.25;font-family:sans-serif">bond legs</tspan></text>
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">virtual legs</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
@@ -227,7 +227,7 @@
          id="tspan93672"
          x="257.67981"
          y="610.27271"
-         style="font-size:9px;line-height:1.25;font-family:sans-serif">bond leg</tspan></text>
+         style="font-size:9px;line-height:1.25;font-family:sans-serif">virtual leg</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
