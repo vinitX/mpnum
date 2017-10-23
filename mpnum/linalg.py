@@ -151,9 +151,9 @@ def _eig_rightvec_add_mps(rv, lt1, lt2):
 
 
 def _eig_sum_leftvec_add(
-        mpas, mpas_plegs, leftvec_out, leftvec, pos, mps_lten):
+        mpas, mpas_ndims, leftvec_out, leftvec, pos, mps_lten):
     """Add one column to the left vector (MPA list dispatching)"""
-    for i, mpa, ndims, lv in zip(it.count(), mpas, mpas_plegs, leftvec):
+    for i, mpa, ndims, lv in zip(it.count(), mpas, mpas_ndims, leftvec):
         if ndims == 2:
             leftvec_out[i] = _eig_leftvec_add(lv, mpa.lt[pos], mps_lten)
         elif ndims == 1:
@@ -163,9 +163,9 @@ def _eig_sum_leftvec_add(
 
 
 def _eig_sum_rightvec_add(
-        mpas, mpas_plegs, rightvec_out, rightvec, pos, mps_lten):
+        mpas, mpas_ndims, rightvec_out, rightvec, pos, mps_lten):
     """Add one column to the right vector (MPA list dispatching)"""
-    for i, mpa, ndims, rv in zip(it.count(), mpas, mpas_plegs, rightvec):
+    for i, mpa, ndims, rv in zip(it.count(), mpas, mpas_ndims, rightvec):
         if ndims == 2:
             rightvec_out[i] = _eig_rightvec_add(rv, mpa.lt[pos], mps_lten)
         elif ndims == 1:
@@ -331,13 +331,13 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, user_eigs_opts):
 
 
 def _eig_sum_minimize_locally(
-        mpas, mpas_plegs, leftvec, pos, rightvec, eigvec_ltens,
+        mpas, mpas_ndims, leftvec, pos, rightvec, eigvec_ltens,
         user_eigs_opts=None):
     """Local minimization (MPA list dispatching)"""
     # Our task is quite simple: Compute the local operator for each
     # contribution in the sum and sum the results, then minimize.
     op = 0
-    for mpa, ndims, lv, rv in zip(mpas, mpas_plegs, leftvec, rightvec):
+    for mpa, ndims, lv, rv in zip(mpas, mpas_ndims, leftvec, rightvec):
         if ndims == 2:
             op += _eig_local_op(lv, list(mpa.lt[pos]), rv)
         elif ndims == 1:
