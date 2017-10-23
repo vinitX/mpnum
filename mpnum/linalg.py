@@ -363,7 +363,7 @@ def eig(mpo,
     :param randstate: numpy.random.RandomState instance or None
     :param max_num_sweeps: Maximum number of sweeps to do (default 5)
     :param eigs_opts: kwargs for `scipy.sparse.linalg.eigs()`. If you
-        supple `which`, you will probably not obtain the minimal
+        supply `which`, you will probably not obtain the minimal
         eigenvalue. `k` different from one is not supported at the moment.
     :param int minimize_sites: Number of connected sites minimization should
         be performed on (default 1)
