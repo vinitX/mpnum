@@ -176,7 +176,7 @@ def _eig_sum_rightvec_add(
 
 
 def _eig_local_op(leftvec, mpo_ltens, rightvec):
-    """Create the operator for local eigenvalue minimization on one site.
+    """Create the operator for local eigenvalue minimization on few sites
 
     :param leftvec: Left vector
         Three indices: mps bond, mpo bond, complex conjugate mps bond
@@ -263,7 +263,7 @@ def _eig_local_op_mps(lv, ltens, rv):
 
 def _eig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
                           user_eigs_opts=None):
-    """Perform the local eigenvalue minimization on one or more sites
+    """Perform the local eigenvalue minimization on few sites
 
     Return a new (expectedly smaller) eigenvalue and a new local
     tensor for the MPS eigenvector.
