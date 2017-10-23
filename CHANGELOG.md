@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Rename `LocalTensors.normal_form` -> `LocalTensors.canonical_form`
 - Rename `mparray.full_bdim` -> `mparray.full_rank`
 - Rename `mparray.outer` -> `mparray.chain`
-- Rename `mparray.louter` -> `mparray.outer`
+- Rename `mparray.louter` -> `mparray.localouter`
 - Rename `mparray.linalg.mineig` -> `mparray.linalg.eig`
 - Rename `mparray.linalg.mineig_sum` -> `mparray.linalg.eig_sum`
 - Rename `mparray.tools` -> `mparray.utils`

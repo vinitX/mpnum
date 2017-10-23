@@ -757,7 +757,7 @@ def test_inject_vs_chain(nr_sites, local_dim, rank, rgen):
 
 
 @pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
-def test_outer(nr_sites, local_dim, rank, rgen):
+def test_localouter(nr_sites, local_dim, rank, rgen):
     mpa1 = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen)
     mpa2 = factory.random_mpa(nr_sites, local_dim, rank, randstate=rgen)
     arr1 = mpa1.to_array()
@@ -765,7 +765,7 @@ def test_outer(nr_sites, local_dim, rank, rgen):
     arr2 = mpa2.to_array()
     arr2 = arr2.reshape((1, ) * nr_sites + arr2.shape)
 
-    tensor_mp = mp.outer(mpa1, mpa2)
+    tensor_mp = mp.localouter(mpa1, mpa2)
     tensor_np = arr1 * arr2
 
     assert tensor_mp.ndims == (2,) * nr_sites

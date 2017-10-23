@@ -31,7 +31,7 @@ from .mpstruct import LocalTensors
 from .utils import (block_diag, global_to_local, local_to_global, matdot,
                     truncated_svd)
 
-__all__ = ['MPArray', 'dot', 'inject', 'inner', 'local_sum', 'outer',
+__all__ = ['MPArray', 'dot', 'inject', 'inner', 'local_sum', 'localouter',
            'norm', 'normdist', 'chain', 'partialdot', 'partialtrace',
            'prune', 'regular_slices', 'sandwich', 'embed_slice',
            'trace', 'diag', 'sumup', 'full_rank']
@@ -1385,8 +1385,9 @@ def inject(mpa, pos, num=None, inject_ten=None):
     ltens = it.chain(ltens, pieces[-1])
     return MPArray(ltens)
 
-def outer(a, b):
-    """Computes the tensorproduct of :math:`a \otimes b` locally, that is
+
+def localouter(a, b):
+    """Computes the tensor product of :math:`a \otimes b` locally, that is
     when a and b have the same number of sites, the new local tensors are the
     tensorproducts of the original ones.
 
