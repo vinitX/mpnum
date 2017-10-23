@@ -718,7 +718,7 @@ class MPArray(object):
 
         Let :math:`\vert u \rangle` the original vector and let
         :math:`\vert c \rangle` the compressed vector. The
-        compressions we return have the property (cf. [:ref:`Sch11 <Sch11>,
+        compressions we return have the property (cf. [:ref:`Sch11 <Sch11>`,
         Sec. 4.5.2])
 
         .. math::
