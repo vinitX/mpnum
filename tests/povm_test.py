@@ -10,14 +10,12 @@ import mpnum as mp
 import mpnum.factory as factory
 import mpnum.mpsmpo as mpsmpo
 import mpnum.povm as povm
-import mpnum.povm.mppovm as mppovm
 import numpy as np
 import pytest as pt
 from _pytest.mark import matchmark
 from mpnum import utils
 from mpnum.utils.pmf import project_pmf
-from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
-                           assert_array_equal)
+from numpy.testing import assert_almost_equal, assert_array_almost_equal
 from six.moves import range, zip, zip_longest
 
 ALL_POVMS = {name: constructor for name, constructor in povm.__dict__.items()

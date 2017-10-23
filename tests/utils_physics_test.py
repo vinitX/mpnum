@@ -5,7 +5,6 @@ from __future__ import division, print_function
 import pytest as pt
 from scipy.sparse.linalg import eigsh
 
-import mpnum as mp
 from mpnum.utils import physics
 
 

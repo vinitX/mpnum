@@ -4,8 +4,6 @@
 from __future__ import division, print_function
 
 import numpy as np
-from scipy import linalg
-from scipy.sparse.linalg import aslinearoperator
 from six.moves import range, zip
 
 __all__ = ['block_diag', 'matdot', 'mkron', 'partial_trace',

@@ -9,7 +9,7 @@ import mpnum.factory as factory
 import mpnum.mparray as mp
 import mpnum.special as mpsp
 from mpnum._testing import assert_mpa_identical
-from mpnum.utils import global_to_local, truncated_svd
+from mpnum.utils import truncated_svd
 
 MP_INNER_PARAMETERS = [(10, 10, 5), (20, 2, 10)]
 MP_SUMUP_PARAMETERS = [(6, 2, 5000, 10, 200), (10, 2, 5000, 5, 20)]
@@ -76,7 +76,8 @@ def test_inner_slow(nr_sites, local_dim, rank, benchmark, rgen):
 @pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_sumup(nr_sites, local_dim, rank, rgen):
     rank = rank if rank is not np.nan else 1
-    mpas = [factory.random_mpa(nr_sites, local_dim, 1, dtype=np.float_, randstate=rgen)
+    mpas = [factory.random_mpa(nr_sites, local_dim, 1, dtype=np.float_,
+                               randstate=rgen)
             for _ in range(10 * rank)]
     weights = rgen.randn(len(mpas))
 

@@ -470,7 +470,7 @@ class MPArray(object):
             newshapes = it.repeat(newshapes, times=len(self))
 
         ltens = [_local_reshape(lten, newshape)
-                for lten, newshape in zip(self._lt, newshapes)]
+                 for lten, newshape in zip(self._lt, newshapes)]
         return MPArray(LocalTensors(ltens, cform=self.canonical_form))
 
     def ravel(self):

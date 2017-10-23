@@ -930,7 +930,8 @@ def test_reshape(rgen):
     mpa = factory.random_mpa(4, [(3, 2), (4,), (2, 5), (24,)], 4)
     mpa.canonicalize()
     mpa_r = mpa.reshape([(2, 3), (2, 2), (10,), (3, 2, 4)])
-    assert all(s1 == s2 for s1, s2 in zip(mpa_r.shape, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
+    assert all(s1 == s2 for s1, s2 in
+               zip(mpa_r.shape, [(2, 3), (2, 2), (10,), (3, 2, 4)]))
     assert_correct_normalization(mpa_r, *mpa.canonical_form)
 
 

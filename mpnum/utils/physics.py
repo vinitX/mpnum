@@ -24,7 +24,7 @@ pauli_Y = np.array([[0, -1j], [1j, 0]])
 pauli_Z = np.diag([1, -1])
 
 # Pauli operators as length-1 MPOs
-mpo_X, mpo_Y, mpo_Z = (mp.MPArray.from_array(x, ndims=2) 
+mpo_X, mpo_Y, mpo_Z = (mp.MPArray.from_array(x, ndims=2)
                        for x in (pauli_X, pauli_Y, pauli_Z))
 
 
@@ -38,19 +38,19 @@ def cXY_local_terms(nr_sites, gamma):
     The term :code:`terms[i]` acts on spins :code:`(i, i + 1)` and
     spin :code:`nr_sites` is the same as the first spin.
 
-    The Hamiltonian of the cyclic XY model is given by 
+    The Hamiltonian of the cyclic XY model is given by
     [:any:`LSM61 <LSM61>`, Eq. 2.1]:
 
     .. math::
 
-       H_\gamma = \sum_{i=1}^{N}   (1+\gamma) S^x_i S^x_{i+1} 
+       H_\gamma = \sum_{i=1}^{N}   (1+\gamma) S^x_i S^x_{i+1}
                                  + (1-\gamma) S^y_i S^y_{i+1}
 
     with :math:`S^j_{N+1} = S^j_{1}`. The function :func:`cXY_E0`
     returns the exact ground state energy of this Hamiltonian.
 
     """
-    local = ((1 + gamma) * 0.25 * mp.chain([mpo_X, mpo_X]) 
+    local = ((1 + gamma) * 0.25 * mp.chain([mpo_X, mpo_X])
              + (1 - gamma) * 0.25 * mp.chain([mpo_Y, mpo_Y]))
     return (local,) * nr_sites
 
@@ -96,7 +96,7 @@ def sparse_cH(terms, ldim=2):
 
     :param terms: List of nearst-neighbour terms (square array or MPO,
         see return value of :func:`cXY_local_terms`)
-    :param ldim: Local dimension 
+    :param ldim: Local dimension
 
     :returns: The Hamiltonian as sparse matrix
 
@@ -153,4 +153,3 @@ def mpo_cH(terms):
     # The last term acts on the first and last site.
     H += mp.inject(terms[-1], pos=1, num=len(H) - 2)
     return H
-
