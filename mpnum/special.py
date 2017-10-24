@@ -60,7 +60,7 @@ def sumup(mpas, rank, weights=None, svdfunc=truncated_svd):
       sumup and compression, since it computes the full SVD
     - :func:`scipy.sparse.linalg.svds`: Only computes the necessary
       singular values/vectors, but slow if `rank` is not small enough
-    - :func:`sklearn.utils.extmath.randomized_svd`: Randomized truncated
+    - :func:`mpnum.utils.extmath.randomized_svd`: Randomized truncated
       SVD, fast and efficient, but only approximation.
     """
     mpas = list(mpas)
