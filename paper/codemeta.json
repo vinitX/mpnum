@@ -1,0 +1,30 @@
+{
+  "@context": "https://raw.githubusercontent.com/codemeta/codemeta/master/codemeta.jsonld",
+  "@type": "Code",
+  "author": [
+    {
+      "@id": "0000-0002-6354-457X",
+      "@type": "Person",
+      "email": "daniel@dsuess.me",
+      "name": "Daniel Suess",
+      "affiliation": "University of Cologne"
+    },
+    {
+      "@id": "0000-0002-4687-5027",
+      "@type": "Person",
+      "email": "mail@mholzaepfel.de",
+      "name": "Milan Holzäpfel",
+      "affiliation": "Ulm University"
+    }
+  ],
+  "identifier": "",
+  "codeRepository": "https://github.com/dseuss/mpnum",
+  "datePublished": "2017-08-10",
+  "dateModified": "2017-08-10",
+  "dateCreated": "2017-08-10",
+  "description": "A matrix product representation library for python",
+  "keywords": "matrix product, tensor train, dmrg",
+  "license": "BSD-3-Clause",
+  "title": "mpnum",
+  "version": "v1.0.0"
+}
