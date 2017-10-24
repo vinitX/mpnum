@@ -5,7 +5,7 @@
 
 .. title:: mpnum documentation
 
-.. |mpnum-logo| image:: tensors_logo_120.png
+.. |mpnum-logo| image:: mpnum_logo_120.png
    :alt: mpnum
 
 |mpnum-logo|
@@ -14,9 +14,8 @@
 A matrix product representation library for Python
 ==================================================
 
-mpnum is a Python library providing flexible tools to implement new
-numerical schemes based on matrix product states (MPS).
-
+mpnum is a flexible, user-friendly, and expandable toolbox for the
+matrix product state/tensor train tensor format.
 
 .. toctree::
    :maxdepth: -1
@@ -24,7 +23,7 @@ numerical schemes based on matrix product states (MPS).
 
    intro
    mpnum
-   Example Notebook <https://nbviewer.jupyter.org/github/dseuss/mpnum/blob/master/examples/mpnum_intro.ipynb>
+   Example notebook <https://github.com/dseuss/mpnum/blob/master/examples/mpnum_intro.ipynb>
    devel
    Fork mpnum on Github <https://github.com/dseuss/mpnum>
 

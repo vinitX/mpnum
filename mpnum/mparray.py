@@ -3,11 +3,12 @@
 
   .. todo:: single site MPAs -- what is left?
   .. todo:: Local tensor ownership -- see MPArray class comment
-  .. todo:: Possible Optimization:
-     - replace integer-for loops with iterataor (not obviously possible
-    everwhere)
+  .. todo:: Possible optimization:
+
+     - replace integer-for loops with iterator (not obviously possible
+       everwhere)
      - replace internal structure as list of arrays with lazy generator of
-    arrays (might not be possible, since we often iterate both ways!)
+       arrays (might not be possible, since we often iterate both ways!)
      - more in place operations for addition, subtraction, multiplication
   .. todo:: Replace all occurences of self._ltens with self[...] or similar &
       benchmark. This will allow easier transition to lazy evaluation of
@@ -30,7 +31,7 @@ from .mpstruct import LocalTensors
 from .utils import (block_diag, global_to_local, local_to_global, matdot,
                     truncated_svd)
 
-__all__ = ['MPArray', 'dot', 'inject', 'inner', 'local_sum', 'outer',
+__all__ = ['MPArray', 'dot', 'inject', 'inner', 'local_sum', 'localouter',
            'norm', 'normdist', 'chain', 'partialdot', 'partialtrace',
            'prune', 'regular_slices', 'sandwich', 'embed_slice',
            'trace', 'diag', 'sumup', 'full_rank']
@@ -62,12 +63,8 @@ class MPArray(object):
               including each new `MPArray` instance, must take
               copies. Is this correct?
 
-    .. todo:: If we enable all special members (e.g. ``__len__``) to be
-              shown, we get things like ``__dict__`` with very long
-              contents. Therefore, special members are hidden at the
-              moment, but we should show the interesting one.
-
     .. automethod:: __init__
+    .. automethod:: __len__
 
     """
 
@@ -473,7 +470,7 @@ class MPArray(object):
             newshapes = it.repeat(newshapes, times=len(self))
 
         ltens = [_local_reshape(lten, newshape)
-                for lten, newshape in zip(self._lt, newshapes)]
+                 for lten, newshape in zip(self._lt, newshapes)]
         return MPArray(LocalTensors(ltens, cform=self.canonical_form))
 
     def ravel(self):
@@ -718,7 +715,7 @@ class MPArray(object):
 
         Let :math:`\vert u \rangle` the original vector and let
         :math:`\vert c \rangle` the compressed vector. The
-        compressions we return have the property (cf. [:ref:`Sch11 <Sch11>,
+        compressions we return have the property (cf. [:ref:`Sch11 <Sch11>`,
         Sec. 4.5.2])
 
         .. math::
@@ -780,26 +777,26 @@ class MPArray(object):
 
         .. rubric:: Parameters for ``'var'``:
 
-        :param startmpa: Start vector, also fixes the rank
-            of the result. Default: Random, with same norm as self.
-
         :param rank: Maximal rank for the result. Either
             ``startmpa`` or ``rank`` is required.
+
+        :param num_sweeps: Number of variational sweeps (required).
+
+        :param startmpa: Start vector, also fixes the rank
+            of the result. Default: Random, with same norm as self.
 
         :param randstate: ``numpy.random.RandomState`` instance used for
             random start vector. (default: ``numpy.random``).
 
-        :param num_sweeps: Maximum number of sweeps to do. (default 5)
-
-        :param var_sites: Number of sites to modify
-            simultaneausly. (default 1)
+        :param var_sites: Number of connected sites to be varied
+            simultaneously (default 1)
 
         Increasing ``var_sites`` makes it less likely to get stuck in a
         local minimum but is generally slower.
 
         References:
 
-        * ``'svd'``: Swingular value truncation, [:ref:`Sch11 <Sch11>`, Sec. 4.5.1]
+        * ``'svd'``: Singular value truncation, [:ref:`Sch11 <Sch11>`, Sec. 4.5.1]
         * ``'var'``: Variational compression, [:ref:`Sch11 <Sch11>`, Sec. 4.5.2]
 
         """
@@ -861,8 +858,8 @@ class MPArray(object):
 
         raise ValueError('{} is not a valid direction'.format(direction))
 
-    def _compression_var(self, startmpa=None, rank=None, randstate=np.random,
-                         num_sweeps=5, var_sites=1):
+    def _compression_var(self, num_sweeps, startmpa=None, rank=None,
+                         randstate=np.random, var_sites=2):
         """Return a compression of ``self`` using variational compression
         [:ref:`Sch11 <Sch11>`, Sec. 4.5.2]
 
@@ -1395,8 +1392,9 @@ def inject(mpa, pos, num=None, inject_ten=None):
     ltens = it.chain(ltens, pieces[-1])
     return MPArray(ltens)
 
-def outer(a, b):
-    """Computes the tensorproduct of :math:`a \otimes b` locally, that is
+
+def localouter(a, b):
+    """Computes the tensor product of :math:`a \otimes b` locally, that is
     when a and b have the same number of sites, the new local tensors are the
     tensorproducts of the original ones.
 

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [1.0.0] candidate
 
 ### Changed
+- `MPArray.compress`: `method='var'` requires `num_sweeps`
 - Rename `MPArray.bdims` -> `MPArray.ranks`
 - Rename `MPArray.pdims` -> `MPArray.shape`
 - Rename `MPArray.plegs` -> `MPArray.ndims`
@@ -20,15 +21,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Rename `LocalTensors.normal_form` -> `LocalTensors.canonical_form`
 - Rename `mparray.full_bdim` -> `mparray.full_rank`
 - Rename `mparray.outer` -> `mparray.chain`
-- Rename `mparray.louter` -> `mparray.outer`
+- Rename `mparray.louter` -> `mparray.localouter`
 - Rename `mparray.linalg.mineig` -> `mparray.linalg.eig`
 - Rename `mparray.linalg.mineig_sum` -> `mparray.linalg.eig_sum`
 - Rename `mparray.tools` -> `mparray.utils`
 - Rename `mparray.tools.check_nonneg_trunc` -> `mparray.utils.pmf.project_nonneg`
 - Rename `mparray.tools.check_pmf` -> `mparray.utils.pmf.project_pmf`
+- Rename `mparray.linalg.mineig` -> `mparray.linalg.eig`
+- `mparray.linalg.eig`:
+  - Rename parameter `max_num_sweeps` -> `num_sweeps` (now required)
+  - Rename parameter `minimize_sites` -> `var_sites`
+  - Change order of parameters
+  - Require `num_sweeps` and one of `startvec` and `startvec_rank`
 
 ### Removed
-- Remove `MPArray.bdim`, use `max(mpa.bdims)` instead
-- Remove `mpo_to_global`, use `to_array_global` instead
+- Remove `MPArray.bdim`, use `max(mpa.ranks)` instead
 - Remove `mpo_to_global`, use `to_array_global` instead
 - Remove `mpnum.tools.verify_real_nonnegative`, use `mpnum.utils.pmf.project_nonneg` instead

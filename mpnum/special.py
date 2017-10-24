@@ -51,15 +51,17 @@ def sumup(mpas, rank, weights=None, svdfunc=truncated_svd):
     :param weights: Iterator of same length as mpas containing weights for
         computing weighted sum (default: None)
     :param svdfunc: Function implementing the truncated svd, for required
-        signature see :func:`truncated_svd`. Possible values include
-        - :func:`truncated_svd`: Almost no speedup compared to the standard
-          sumup and compression, since it computes the full SVD
-        - :func:`scipy.sparse.linalg.svds`: Only computes the necessary
-          singular values/vectors, but slow if `rank` is not small enough
-        - :func:`sklearn.utils.extmath.randomized_svd`: Randomized truncated
-          SVD, fast and efficient, but only approximation.
+        signature see :func:`truncated_svd`.
     :returns: Sum of `mpas` with max. rank `rank`
 
+    Possible values for :code:`svdfunc` include:
+
+    - :func:`truncated_svd`: Almost no speedup compared to the standard
+      sumup and compression, since it computes the full SVD
+    - :func:`scipy.sparse.linalg.svds`: Only computes the necessary
+      singular values/vectors, but slow if `rank` is not small enough
+    - :func:`sklearn.utils.extmath.randomized_svd`: Randomized truncated
+      SVD, fast and efficient, but only approximation.
     """
     mpas = list(mpas)
     length = len(mpas[0])

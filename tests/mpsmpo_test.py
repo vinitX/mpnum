@@ -192,7 +192,7 @@ def test_reductions_pmps(nr_sites, local_dim, rank, max_red_width, rgen):
                      [(6, 2, 4, 3), (4, 3, 5, 2)])
 def test_reductions_mps(nr_sites, local_dim, rank, width, rgen):
     mps = factory.random_mps(nr_sites, local_dim, rank, randstate=rgen)
-    mpo = mp.outer(mps, mps.conj())
+    mpo = mp.localouter(mps, mps.conj())
 
     pmps_reds = mm.reductions_mps_as_mpo(mps, width)
     mpo_reds = mm.reductions_mpo(mpo, width)

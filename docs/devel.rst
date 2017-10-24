@@ -74,6 +74,17 @@ Afterwards, the HTML coverage report is available in
 :code:`htmlcov/index.html`.
 
 
+Benchmark tests
+---------------
+
+In addition to unit tests, there are benchmark tests which measure the
+runtime of certain functions. To run all benchmark tests, run
+
+.. code::
+
+   python -m pytest -m benchmark
+
+
 Building the documentation
 --------------------------
 

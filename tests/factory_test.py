@@ -10,9 +10,10 @@ from numpy.testing import assert_array_almost_equal
 import mpnum.factory as factory
 from mpnum._testing import assert_correct_normalization
 
+
 @pt.mark.parametrize('nr_sites, local_dim, rank', [(2, 3, 3), (3, 2, 4),
-                                                       (6, 2, 4), (4, 3, 5),
-                                                       (5, 2, 1)])
+                                                   (6, 2, 4), (4, 3, 5),
+                                                   (5, 2, 1)])
 def test_mpdo_positivity(nr_sites, local_dim, rank, rgen):
     rho = factory.random_mpdo(nr_sites, local_dim, rank, rgen)
     rho_dense = rho.to_array_global().reshape((local_dim**nr_sites,) * 2)

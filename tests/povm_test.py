@@ -10,14 +10,12 @@ import mpnum as mp
 import mpnum.factory as factory
 import mpnum.mpsmpo as mpsmpo
 import mpnum.povm as povm
-import mpnum.povm.mppovm as mppovm
 import numpy as np
 import pytest as pt
 from _pytest.mark import matchmark
 from mpnum import utils
 from mpnum.utils.pmf import project_pmf
-from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
-                           assert_array_equal)
+from numpy.testing import assert_almost_equal, assert_array_almost_equal
 from six.moves import range, zip, zip_longest
 
 ALL_POVMS = {name: constructor for name, constructor in povm.__dict__.items()
@@ -562,8 +560,8 @@ def test_mppovm_est(
     sum_ept, sum_var = mpp.est_lfun(coeff, funs, samples, None, eps)
     ex_sum = np.inner(coeff, p_exact.flat)
     ex_var = np.inner(coeff, np.dot(cov_ex, coeff))
-    assert abs(sum_ept - ex_sum) <= 3 / n_samples**0.5
-    assert abs(sum_var - ex_var) * n_samples <= 3 / n_samples**0.5
+    assert abs(sum_ept - ex_sum) <= 5 / n_samples**0.5
+    assert abs(sum_var - ex_var) * n_samples <= 5 / n_samples**0.5
 
     # Convert samples to counts and test again
     counts = mpp.est_pmf(samples, normalize=False, eps=eps)
@@ -605,11 +603,11 @@ def test_mppovmlist_pack_unpack_samples(
     assert all((s == u).all() for s, u in zip(samples, unpacked))
 
 
-def _pytest_want_long(request):
-    # FIXME: Is there a better way to find out whether items marked
-    # with `long` should be run or not?
+def _pytest_want_verylong(request):
+    # Is there a better way to find out whether items marked with
+    # `long` should be run or not?
     class dummy:
-        keywords = {'long': pt.mark.verylong}
+        keywords = {'verylong': pt.mark.verylong}
     return matchmark(dummy, request.config.option.markexpr)
 
 
@@ -618,11 +616,11 @@ def splitpauli(n_samples, nonuniform, request):
     # We use this fixture to skip certain value combinations for
     # non-long tests.
     #
-    # FIXME: Is there a better way to select certain value
-    # combinations from the different pt.mark.parametrize() decorators
-    # except for writing down all combinations by hand?
+    # Is there a better way to select certain value combinations from
+    # the different pt.mark.parametrize() decorators except for
+    # writing down all combinations by hand?
     splitpauli = request.param
-    if (not splitpauli) or _pytest_want_long(request) \
+    if (not splitpauli) or _pytest_want_verylong(request) \
        or (n_samples >= 10000 and nonuniform):
         return splitpauli
     pt.skip("Should only be run in long tests")
@@ -712,11 +710,11 @@ def povm_combo(function, request):
     # We use this fixture to skip certain value combinations for
     # non-long tests.
     #
-    # FIXME: Is there a better way to select certain value
-    # combinations from the different pt.mark.parametrize() decorators
-    # except for writing down all combinatiosn by hand?
+    # Is there a better way to select certain value combinations from
+    # the different pt.mark.parametrize() decorators except for
+    # writing down all combinatiosn by hand?
     combo = request.param
-    if _pytest_want_long(request):
+    if _pytest_want_verylong(request):
         return combo
     if function == 'randn' or combo == ('global', 'pauli'):
         return combo
