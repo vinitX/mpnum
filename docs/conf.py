@@ -185,7 +185,7 @@ texinfo_documents = [
 autodoc_default_flags = [
     'members',
     'undoc-members',
-    'private-members',   # _private
+    #  'private-members',   # _private
     #'special-members',   # __special__
     'show-inheritance',
 ]

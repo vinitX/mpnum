@@ -5,13 +5,12 @@
 Introduction
 ============
 
-mpnum is a Python library providing flexible tools to implement new
-numerical schemes based on matrix product states (MPS). It is
-available under the BSD license at `mpnum on Github
-<https://github.com/dseuss/mpnum>`_. So far, mpnum provides:
+mpnum is a flexible, user-friendly, and expandable toolbox for the
+matrix product state/tensor train tensor format.  It is available
+under the BSD license at `mpnum on Github
+<https://github.com/dseuss/mpnum>`_. mpnum provides:
 
-- basic tools for various matrix product based representations, such
-  as:
+- support for well-known matrix product representations, such as:
 
   - matrix product states (:ref:`MPS <intro-mps>`), also known as
     tensor trains (TT)
@@ -19,38 +18,40 @@ available under the BSD license at `mpnum on Github
   - local purification matrix product states (:ref:`PMPS <intro-pmps>`)
   - arbitrary matrix product arrays (:ref:`MPA <intro-mpa>`)
 
-- basic MPA operations: add, multiply, etc; compression (see
-  :func:`compress() <mpnum.mparray.MPArray.compress>`, SVD and
-  variational)
-- computing ground states of MPOs (see :func:`mineig()
-  <mpnum.linalg.mineig>`, which computes smallest eigenvalues and
-  eigenvectors of MPOs)
-- flexible tools to implement new schemes based on matrix product
-  representations
+- arithmetic operations: addition, multiplication, contraction etc.
+- compression, canonical forms, etc. (see :func:`compress()
+  <mpnum.mparray.MPArray.compress>`, :func:`canonicalize()
+  <mpnum.mparray.MPArray.canonicalize>`)
+- finding extremal eigenvalues and eigenvectors of MPOs (see
+  :func:`eig() <mpnum.linalg.eig>`)
+
+In this introduction, we discuss mpnum's basic data structure, the
+:class:`MPArray <mpnum.mparray.MPArray>` (MPA).  If you are familiar
+with matrix product states and want to see mpnum in action, you can
+skip to the IPython notebook :code:`mpnum_intro.ipynb` (`view
+mpnum_intro.ipynb on Github`_).
+
 
 .. contents::
 
 
-Contributing
-------------
 
-Contributions and pull requests for mpnum are very welcome. More
-information on modifying mpnum is at :ref:`mpnum-development`.
+Matrix product arrays
+---------------------
 
+The basic data structure of mpnum is the class
+:class:`mpnum.mparray.MPArray`.  It represents tensors in
+matrix-product form in an opaque manner while providing the user with
+a high-level interface similar to numpy's ``ndarray``.  Special cases
+of MPAs include matrix-product states (MPS) and operators (MPOs) used
+in quantum physics.
 
-Graphical notation for tensors
-------------------------------
+Graphical notation
+""""""""""""""""""
 
-
-Our graphical notation for tensors is very similar to the graphical
-notation used by Schollwoeck [:ref:`Sch11 <Sch11>`, e.g. Figure 38].
-
-
-Basics
-""""""
-
-Tensor contractions are much easier to write down using figures.  A
-simple case of of a tensor contraction is the product of two matrices:
+Operations on tensors such as contractions are much easier to write down using
+graphical notation [:ref:`Sch11 <Sch11>`, Figure 38].
+A simple case of of a tensor contraction is the product of two matrices:
 
 .. math::
 
@@ -104,10 +105,10 @@ The matrix product state representation of a state :math:`\vert \psi
 
    \langle i j k l \vert \psi \rangle = \psi_{ijkl} = A_i B_j C_k D_l
 
-where :math:`A_i \in \mathbb C^{1 \times D}`, :math:`B_j, C_k \in
+where each :math:`A_i \in \mathbb C^{1 \times D}`; :math:`B_j, C_k \in
 \mathbb C^{D \times D}` and :math:`D_l \in \mathbb C^{D \times 1}`
-(reference: e.g. [:ref:`Sch11 <Sch11>`]; :ref:`exact definition
-<mpsmpo-definitions>`).  This construction is also known as *tensor
+(reference: e.g. [Sch11]_; :ref:`exact definition
+<mpsmpo-definitions>`). This construction is also known as *tensor
 train* and it is given by the following simple figure:
 
 .. image:: tensors_mps.png
@@ -115,7 +116,13 @@ train* and it is given by the following simple figure:
 
 We call :math:`\psi` a *global tensor* and we call the MPS matrices
 :math:`A_i`, :math:`B_j` etc. which are associated to a certain
-subsystem *local tensors*.
+subsystem *local tensors*.  The legs/indices :math:`i`, :math:`j`,
+... of the original tensor :math:`\vert \psi \rangle` are called
+*physical legs*.  The additional legs in the matrix product
+representation are called *virtual legs*. The dimension (size) of the
+virtual legs are called the *representation ranks* or *compression
+ranks*. In the physics literature, the virtual legs are often called
+*bonds* and the representation ranks are called *bond dimensions*.
 
 Very often, we can omit the labels of all the legs.  The figure then
 becomes very simple:
@@ -124,7 +131,7 @@ becomes very simple:
    :align: center
 
 As explained in the next paragraph on MPOs, we usually add *dummy
-bonds* of size 1 to our tensors:
+virtual legs* of size 1 to our tensors:
 
 .. image:: tensors_mps_no_names_with_dummies.png
    :align: center
@@ -147,7 +154,7 @@ on three subsystems is given by
 
 where the :math:`A_{i_1j_1}` are row vectors, the :math:`B_{i_2j_2}`
 are matrices and the :math:`C_{i_3j_3}` are column vectors (reference:
-e.g. [:ref:`Sch11 <Sch11>`]; :ref:`exact definition
+e.g. [Sch11]_; :ref:`exact definition
 <mpsmpo-definitions>`). This is represented by the following figure:
 
 .. image:: tensors_mpo.png
@@ -161,19 +168,19 @@ the expression :math:`\langle i_1 i_2 i_3 \vert \rho \vert j_1 j_2 j_3
 :math:`\rho` must match the order in the MPO construction, which is
 :math:`i_1 j_1 i_2 j_2 i_3 j_3`.  We call this latter order *local
 order*. The functions :func:`global_to_local
-<mpnum._tools.global_to_local>` and :func:`local_to_global
-<mpnum._tools.local_to_global>` can convert tensors between the two
-orders.
+<mpnum.utils.array_transforms.global_to_local>` and
+:func:`local_to_global <mpnum.utils.array_transforms.local_to_global>`
+can convert tensors between the two orders.
 
 In order to simplify the implementation, it is useful to introduce
-*dummy bonds* with index size 1 on the left and the right of the MPS
-or MPO chain:
+*dummy virtual legs* with index size 1 on the left and the right of
+the MPS or MPO chain:
 
 .. image:: tensors_mpo_with_dummies.png
    :align: center
 
-With these dummy bonds, all the tensors in the representation have
-exactly two bond indices.
+With these dummy virtual legs, all the tensors in the representation
+have exactly two virtual legs.
 
 It is useful to draw the physical column indices upward from the
 global and local tensors while leaving the physical row indices
@@ -189,9 +196,9 @@ With this arrangement, we can nicely express a product of two MPOs:
 
 This figure tells us how to obtain the local tensors which represent
 the product: We have to compute new tensors as indicated by the shaded
-area.  The figure also tells us that the bond dimension of the result
-is the product of the bond dimensions of the two individual MPO
-representations.
+area.  The figure also tells us that the representation rank of the
+result is the product of the representation rank of the two individual
+MPO representations.
 
 
 .. _intro-pmps:
@@ -199,7 +206,7 @@ representations.
 Local purification form MPS (PMPS)
 """"""""""""""""""""""""""""""""""
 
-The local purification from matrix product state representation (PMPS
+The local purification form matrix product state representation (PMPS
 or LPMPS) is defined as follows:
 
 .. image:: tensors_pmps.png
@@ -221,21 +228,20 @@ The following figure describes the relation:
    :align: center
 
 It also tells us how to convert a PMPS representation into an MPO
-representation and how the bond dimension changes: The MPO bond
-dimension is the square of the PMPS bond dimension.
+representation and how the representation rank changes: The MPO
+representation rank is the square of the PMPS representation rank.
 
 
 .. _intro-mpa:
 
-Matrix product arrays
-"""""""""""""""""""""
+General matrix product arrays
+"""""""""""""""""""""""""""""
 
-The library mpnum implements the class :class:`mpnum.mparray.MPArray`
-which can be used for MPS, MPO, PMPS and other MPS-like
-representations.  :code:`MPArray` is short for *matrix product array*
-(MPA) and this class provides an MPS with an arbitrary number of
-physical legs at each site.  Each physical leg can also have an
-arbitrary dimension.  A corresponding figure could look like this:
+Up to now, all examples had the same number of legs on each
+site. However, the :class:`MPArray <mpnum.mparray.MPArray>` is not
+restricted to these cases, but can be used to express any local
+structure. An example of a inhomogenous tensor is shown in the
+following figure:
 
 .. image:: tensors_mpa.png
    :align: center
@@ -247,7 +253,23 @@ Next steps
 The ipython notebook :code:`mpnum_intro.ipynb` in the folder
 :code:`Notebooks` provides an introduction on how to use :code:`mpnum`
 for basic MPS, MPO and MPA operations. You can also `view
-mpnum_intro.ipynb on Github`_.
+mpnum_intro.ipynb on Github`_. If you open the notebook on your own
+computer, it allows you to run and modify all the commands
+interactively (more information is available in the section "Jupyter
+Notebook Quickstart" of the `Jupyter documentation`_).
 
 .. _`view mpnum_intro.ipynb on Github`:
    https://github.com/dseuss/mpnum/blob/master/examples/mpnum_intro.ipynb
+
+.. _`Jupyter documentation`:
+   https://jupyter.readthedocs.io/
+
+References
+----------
+
+  .. [Sch11] Schollwöck, U. (2011). “The density-matrix renormalization group in the age of matrix product states”. Ann. Phys. 326(1), pp. 96–192. `DOI: 10.1016/j.aop.2010.09.012`_. `arXiv: 1008.3477`_.
+
+  .. _`DOI: 10.1016/j.aop.2010.09.012`:
+     http://dx.doi.org/10.1016/j.aop.2010.09.012
+
+  .. _`arXiv: 1008.3477`: http://arxiv.org/abs/1008.3477

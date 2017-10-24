@@ -2,11 +2,11 @@
 
 .. _mpnum-development:
 
-Extending mpnum
-===============
+Contributing
+============
 
 
-This section contains information for anyone who wishes to modify
+This section contains information for anyone who wishes to contribute to
 mpnum. Contributions and pull requests for mpnum are very welcome.
 
 
@@ -16,30 +16,29 @@ mpnum. Contributions and pull requests for mpnum are very welcome.
 Code style
 ----------
 
-All warnings reported by `flake8
-<https://pypi.python.org/pypi/flake8>`_ should be fixed::
-
-  python -m flake8 .
-
+All contributions should be formated according to the `PEP8 standard
+<https://www.python.org/dev/peps/pep-0008/>`_.
 Slightly more than 80 characters can sometimes be tolerated if
-reformatting would be cumbersome.
+increased line width increases readability.
 
 
-Automated unit tests
---------------------
+Unit tests
+----------
 
-After any change to mpnum, it should be verified that automated tests
-succeed.
+After any change to mpnum, it should be verified that the test suite
+runs without any errors.
 
-A short set of tests takes only 15 seconds and is invoked with one of
+A short set of tests takes less than 30 seconds and is invoked with one of
 
 .. code::
 
    python -m pytest
    python setup.py test
 
-An intermediate set of tests takes about 2 minutes to run, is executed
-automatically on Travis and is invoked with one of
+An intermediate set of tests, which takes about 2 minutes to run, is
+executed automatically for every commit on GitHub via `Travis
+<https://travis-ci.org/dseuss/mpnum>`_ continuous integration.
+It can be run locally via
 
 .. code::
 
@@ -52,9 +51,12 @@ A long set of tests takes about 30 minutes and is invoked with
 
    python -m pytest -m 1
 
-Unit tests are implemented with `pytest
-<http://pytest.org/>`_. Additions to mpnum should always be
-accompanied by unit tests.
+Unit tests are implemented using `pytest
+<http://pytest.org/>`_.
+Every addition to mpnum should be accompanied by corresponding unit tests.
+Make sure to use the right pytest-mark for each test. The intermediate and
+long running tests should be marked with the 'long' and 'verylong' pytest
+mark, respectively.
 
 
 Test coverage
@@ -72,11 +74,30 @@ Afterwards, the HTML coverage report is available in
 :code:`htmlcov/index.html`.
 
 
+Benchmark tests
+---------------
+
+In addition to unit tests, there are benchmark tests which measure the
+runtime of certain functions. To run all benchmark tests, run
+
+.. code::
+
+   python -m pytest -m benchmark
+
+
 Building the documentation
 --------------------------
 
-The HTML documentation uses `Sphinx <http://www.sphinx-doc.org/>`_. On
-Linux, it can be built with a simple
+The HTML documentation uses `Sphinx <http://www.sphinx-doc.org/>`_.
+Building the documentation requires the
+`RTD theme <https://github.com/rtfd/sphinx_rtd_theme>`_:
+
+.. code::
+
+   conda install sphinx_rtd_theme  # or
+   pip install sphinx_rtd_theme
+
+On Linux/MacOS, the documentation can be built with a simple
 
 .. code::
 

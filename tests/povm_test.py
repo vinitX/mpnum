@@ -6,17 +6,17 @@ from __future__ import division, print_function
 import itertools as it
 from inspect import isfunction
 
-import numpy as np
-import pytest as pt
-from numpy.testing import (assert_almost_equal, assert_array_almost_equal)
-from six.moves import range, zip, zip_longest
-from _pytest.mark import matchmark
-
 import mpnum as mp
-import mpnum.povm as povm
 import mpnum.factory as factory
 import mpnum.mpsmpo as mpsmpo
-from mpnum import _tools
+import mpnum.povm as povm
+import numpy as np
+import pytest as pt
+from _pytest.mark import matchmark
+from mpnum import utils
+from mpnum.utils.pmf import project_pmf
+from numpy.testing import assert_almost_equal, assert_array_almost_equal
+from six.moves import range, zip, zip_longest
 
 ALL_POVMS = {name: constructor for name, constructor in povm.__dict__.items()
              if name.endswith('_povm') and isfunction(constructor)}
@@ -55,7 +55,7 @@ def mp_from_array_repeat(array, nr_sites):
     array.
     """
     mpa = mp.MPArray.from_array(array)
-    return mp.outer(it.repeat(mpa, nr_sites))
+    return mp.chain(it.repeat(mpa, nr_sites))
 
 
 @pt.fixture(params=['random', 'pauli'])
@@ -102,9 +102,9 @@ def test_povm_normalization_ic(dim):
                 'POVM {} is informationally complete'.format(name)
 
 
-@pt.mark.parametrize('nr_sites, local_dim, bond_dim',
+@pt.mark.parametrize('nr_sites, local_dim, rank',
                      [(6, 2, 7), (3, 3, 3), (3, 6, 3), (3, 7, 4)])
-def test_povm_ic_mpa(nr_sites, local_dim, bond_dim, rgen):
+def test_povm_ic_mpa(nr_sites, local_dim, rank, rgen):
     # Check that the tensor product of the PauliGen POVM is IC.
     paulis = povm.pauli_povm(local_dim)
     inv_map = mp_from_array_repeat(paulis.linear_inversion_map, nr_sites)
@@ -118,7 +118,7 @@ def test_povm_ic_mpa(nr_sites, local_dim, bond_dim, rgen):
     # Linear inversion works for arbitrary matrices, not only for states,
     # so we test it for an arbitrary MPA.
     # Normalize, otherwise the absolute error check below will not work.
-    mpa = factory.random_mpa(nr_sites, local_dim**2, bond_dim,
+    mpa = factory.random_mpa(nr_sites, local_dim**2, rank,
                              dtype=np.complex_, randstate=rgen, normalized=True)
     probabs = mp.dot(probab_map, mpa)
     recons = mp.dot(inv_map, probabs)
@@ -136,15 +136,15 @@ def test_povm_probability_map(local_dim, nopovm, rgen):
     assert_array_almost_equal(probab_pmap, probab_direct)
 
 
-@pt.mark.parametrize('nr_sites, width, local_dim, bond_dim',
+@pt.mark.parametrize('nr_sites, width, local_dim, rank',
                      [(6, 3, 2, 5), (4, 2, 3, 4)])
-def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim, nopovm, rgen):
+def test_mppovm_expectation(nr_sites, width, local_dim, rank, nopovm, rgen):
     # Verify that :func:`povm.MPPovm.expectations()` produces
     # correct results.
     pmap = nopovm.probability_map
     mpnopovm = povm.MPPovm.from_local_povm(nopovm, width)
     # Use a random MPO rho for testing (instead of a positive MPO).
-    rho = factory.random_mpo(nr_sites, local_dim, bond_dim, rgen)
+    rho = factory.random_mpo(nr_sites, local_dim, rank, rgen)
     reductions = mpsmpo.reductions_mpo(rho, width)
     # Compute expectation values with mpnopovm.expectations(), which
     # uses mpnopovm.probability_map.
@@ -158,7 +158,7 @@ def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim, nopovm, rgen):
             (local_dim**width,) * 2)
         evals = []
         for factors in it.product(nopovm, repeat=width):
-            elem = _tools.mkron(*factors)
+            elem = utils.mkron(*factors)
             evals.append(np.trace(np.dot(elem, rho_red_matrix)))
         evals = np.array(evals).reshape((len(nopovm),) * width)
 
@@ -174,11 +174,11 @@ def test_mppovm_expectation(nr_sites, width, local_dim, bond_dim, nopovm, rgen):
 
 
 @pt.mark.parametrize(
-    'nr_sites, local_dim, bond_dim, startsite, width',
+    'nr_sites, local_dim, rank, startsite, width',
     [(4, 2, 3, 0, 4), (7, 2, 3, 1, 3), (6, (7, 3, 2, 5, 2, 3), 3, 2, 3)]
 )
 def test_mppovm_embed_expectation(
-        nr_sites, local_dim, bond_dim, startsite, width, rgen):
+        nr_sites, local_dim, rank, startsite, width, rgen):
     if hasattr(local_dim, '__iter__'):
         local_dim2 = local_dim
     else:
@@ -187,8 +187,8 @@ def test_mppovm_embed_expectation(
 
     # Create a local POVM `red_povm`, embed it onto a larger chain
     # (`full_povm`), and go back to the reduced POVM.
-    red_povm = mp.outer(
-        povm.MPPovm.from_local_povm(mp.povm.pauli_povm(d), 1)
+    red_povm = mp.chain(
+        mp.povm.MPPovm.from_local_povm(mp.povm.pauli_povm(d), 1)
         for d, _ in local_dim2[startsite:startsite + width]
     )
     full_povm = red_povm.embed(nr_sites, startsite, local_dim)
@@ -201,7 +201,7 @@ def test_mppovm_embed_expectation(
     assert_almost_equal(mp.normdist(red_povm, red_povm2), 0.0)
 
     # Test with an arbitrary random MPO instead of an MPDO
-    mpo = mp.factory.random_mpa(nr_sites, local_dim2, bond_dim, rgen,
+    mpo = mp.factory.random_mpa(nr_sites, local_dim2, rank, rgen,
                                 dtype=np.complex_, normalized=True)
     mpo_red = next(mp.reductions_mpo(mpo, width, startsites=[startsite]))
     ept = mp.prune(full_povm.pmf(mpo, 'mpdo'), singletons=True).to_array()
@@ -209,12 +209,12 @@ def test_mppovm_embed_expectation(
     assert_array_almost_equal(ept, ept_red)
 
 
-@pt.mark.parametrize('nr_sites, width, local_dim, bond_dim',
+@pt.mark.parametrize('nr_sites, width, local_dim, rank',
                      [(6, 3, 2, 5), (4, 2, 3, 4)])
-def test_mppovm_expectation_pure(nr_sites, width, local_dim, bond_dim, rgen):
+def test_mppovm_expectation_pure(nr_sites, width, local_dim, rank, rgen):
     paulis = povm.pauli_povm(local_dim)
     mppaulis = povm.MPPovm.from_local_povm(paulis, width)
-    psi = factory.random_mps(nr_sites, local_dim, bond_dim, randstate=rgen)
+    psi = factory.random_mps(nr_sites, local_dim, rank, randstate=rgen)
     rho = mpsmpo.mps_to_mpo(psi)
     expect_psi = list(mppaulis.expectations(psi))
     expect_rho = list(mppaulis.expectations(rho))
@@ -224,12 +224,12 @@ def test_mppovm_expectation_pure(nr_sites, width, local_dim, bond_dim, rgen):
         assert_array_almost_equal(e_rho.to_array(), e_psi.to_array())
 
 
-@pt.mark.parametrize('nr_sites, width, local_dim, bond_dim',
+@pt.mark.parametrize('nr_sites, width, local_dim, rank',
                      [(6, 3, 2, 5), (4, 2, 3, 4)])
-def test_mppovm_expectation_pmps(nr_sites, width, local_dim, bond_dim, rgen):
+def test_mppovm_expectation_pmps(nr_sites, width, local_dim, rank, rgen):
     paulis = povm.pauli_povm(local_dim)
     mppaulis = povm.MPPovm.from_local_povm(paulis, width)
-    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), rank,
                               dtype=np.complex_, randstate=rgen)
     rho = mpsmpo.pmps_to_mpo(pmps)
     expect_psi = list(mppaulis.expectations(pmps, mode='pmps'))
@@ -241,15 +241,15 @@ def test_mppovm_expectation_pmps(nr_sites, width, local_dim, bond_dim, rgen):
 
 
 @pt.mark.parametrize(
-    'nr_sites, local_dim, bond_dim, startsite, width',
+    'nr_sites, local_dim, rank, startsite, width',
     [(4, 2, 3, 0, 4), (4, ((5, 2), (2, 3), (3, 2), (2, 2)), 3, 0, 4),
      (7, 2, 3, 1, 3), (6, ((5, 2), (2, 3), (3, 2), (2, 2), (5, 3), (3, 2)), 3, 2, 3)]
 )
 def test_mppovm_pmf_as_array_pmps(
-        nr_sites, local_dim, bond_dim, startsite, width, rgen):
+        nr_sites, local_dim, rank, startsite, width, rgen):
     if hasattr(local_dim, '__len__'):
         pdims = [d for d, _ in local_dim]
-        mppaulis = mp.outer(
+        mppaulis = mp.chain(
             povm.MPPovm.from_local_povm(povm.pauli_povm(d), 1)
             for d in pdims[startsite:startsite + width]
         )
@@ -258,7 +258,7 @@ def test_mppovm_pmf_as_array_pmps(
         local_dim = (local_dim, local_dim)
         mppaulis = povm.MPPovm.from_local_povm(povm.pauli_povm(pdims), width)
     mppaulis = mppaulis.embed(nr_sites, startsite, pdims)
-    pmps = factory.random_mpa(nr_sites, local_dim, bond_dim,
+    pmps = factory.random_mpa(nr_sites, local_dim, rank,
                               dtype=np.complex_, randstate=rgen, normalized=True)
     rho = mpsmpo.pmps_to_mpo(pmps)
     expect_rho = mppaulis.pmf_as_array(rho, 'mpdo')
@@ -270,27 +270,27 @@ def test_mppovm_pmf_as_array_pmps(
 
 @pt.mark.benchmark(group='pmf_as_array_pmps')
 @pt.mark.parametrize(
-    'nr_sites, local_dim, bond_dim, startsite, width', [(10, 2, 16, 0, 10)])
+    'nr_sites, local_dim, rank, startsite, width', [(10, 2, 16, 0, 10)])
 @pt.mark.parametrize('impl', ['default', 'pmps-ltr', 'pmps-symm'])
 def test_mppovm_pmf_as_array_pmps_benchmark(
-        nr_sites, local_dim, bond_dim, startsite, width, impl, rgen, benchmark):
+        nr_sites, local_dim, rank, startsite, width, impl, rgen, benchmark):
     pauli_y = povm.pauli_parts(local_dim)[1]
     mpp_y = povm.MPPovm.from_local_povm(pauli_y, width) \
                        .embed(nr_sites, startsite, local_dim)
-    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), bond_dim,
+    pmps = factory.random_mpa(nr_sites, (local_dim, local_dim), rank,
                               dtype=np.complex_, randstate=rgen, normalized=True)
     benchmark(lambda: mpp_y.pmf_as_array(pmps, 'pmps', impl=impl))
 
 
 @pt.mark.benchmark(group='pmf_as_array_pmps2', min_rounds=2)
 @pt.mark.parametrize(
-    'nr_sites, local_dim, bond_dim, startsite, width',
+    'nr_sites, local_dim, rank, startsite, width',
     [(32, 2, 20, 10, 6)])
 @pt.mark.parametrize('impl', ['default', 'pmps-ltr', 'pmps-symm'])
 def test_mppovm_pmf_as_array_pmps_benchmark2(
-        nr_sites, local_dim, bond_dim, startsite, width, impl, rgen, benchmark):
+        nr_sites, local_dim, rank, startsite, width, impl, rgen, benchmark):
     return test_mppovm_pmf_as_array_pmps_benchmark(
-        nr_sites, local_dim, bond_dim, startsite, width, impl, rgen, benchmark)
+        nr_sites, local_dim, rank, startsite, width, impl, rgen, benchmark)
 
 
 @pt.mark.parametrize(
@@ -380,11 +380,11 @@ def test_mppovm_match_elems_bell(eps=1e-10):
     proj = proj.reshape((3,) + (2,) * 5)
 
     # Big POVM: The four Bell states (repeated two times)
-    big = povm.MPPovm.from_array_global(bell_proj, plegs=3)
-    big = mp.outer([big, big])
+    big = povm.MPPovm.from_array_global(bell_proj, ndims=3)
+    big = mp.chain([big, big])
     # Small POVM: Two of the Bell states and four product states (on
     # the last two sites)
-    small = povm.MPPovm.from_array_global(proj, plegs=3).embed(4, 2, 2)
+    small = povm.MPPovm.from_array_global(proj, ndims=3).embed(4, 2, 2)
 
     # Check that the POVM is normalized: elements must sum to the identity
     for mppovm in big, small:
@@ -417,16 +417,16 @@ def test_mppovm_match_elems_bell(eps=1e-10):
 def test_mppovm_sample(
         method, n_samples, nr_sites, startsite, local_dim, rgen):
     """Check that probability estimates from samples are reasonable accurate"""
-    bond_dim = 3
+    rank = 3
     eps = 1e-10
-    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
-    mps.normalize()
+    mps = factory.random_mps(nr_sites, local_dim, rank, rgen)
+    mps.canonicalize()
 
     local_x = povm.x_povm(local_dim)
     local_y = povm.y_povm(local_dim)
     xx = povm.MPPovm.from_local_povm(local_x, 2)
     y = povm.MPPovm.from_local_povm(local_y, 1)
-    mpp = mp.outer([xx, povm.MPPovm.eye([local_dim]), y]) \
+    mpp = mp.chain([xx, povm.MPPovm.eye([local_dim]), y]) \
             .embed(nr_sites, startsite, local_dim)
 
     pmf_exact = mpp.pmf_as_array(mps, 'mps', eps)
@@ -450,10 +450,10 @@ def test_mppovm_sample(
 def test_mppovm_est_pmf_from(
         method, n_samples, nr_sites, startsite, local_dim, rgen):
     """Check that probability estimates from samples are reasonable accurate"""
-    bond_dim = 3
+    rank = 3
     eps = 1e-10
-    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
-    mps.normalize()
+    mps = factory.random_mps(nr_sites, local_dim, rank, rgen)
+    mps.canonicalize()
 
     lx = povm.x_povm(local_dim)
     ly = povm.y_povm(local_dim)
@@ -461,11 +461,11 @@ def test_mppovm_est_pmf_from(
     x = povm.MPPovm.from_local_povm(lx, 1)
     y = povm.MPPovm.from_local_povm(ly, 1)
     pauli = povm.MPPovm.from_local_povm(lp, 1)
-    xy = mp.outer((x, y))
-    mpp = mp.outer((xy,) * (nr_sites // 2))
+    xy = mp.chain((x, y))
+    mpp = mp.chain((xy,) * (nr_sites // 2))
     if (nr_sites % 2) == 1:
-        mpp = mp.outer((mpp, x))
-    small_mpp = mp.outer((pauli, povm.MPPovm.eye([local_dim]), pauli, pauli)) \
+        mpp = mp.chain((mpp, x))
+    small_mpp = mp.chain((pauli, povm.MPPovm.eye([local_dim]), pauli, pauli)) \
                   .embed(nr_sites, startsite, local_dim)
 
     x_given = np.arange(len(lp)) < len(lx)
@@ -502,20 +502,20 @@ def test_mppovm_est(
     accurate
 
     """
-    bond_dim = 3
+    rank = 3
     eps = 1e-10
-    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
-    mps.normalize()
+    mps = factory.random_mps(nr_sites, local_dim, rank, rgen)
+    mps.canonicalize()
 
     local_x = povm.x_povm(local_dim)
     local_y = povm.y_povm(local_dim)
     xx = povm.MPPovm.from_local_povm(local_x, 2)
     y = povm.MPPovm.from_local_povm(local_y, 1)
-    mpp = mp.outer([xx, povm.MPPovm.eye([local_dim]), y]) \
+    mpp = mp.chain([xx, povm.MPPovm.eye([local_dim]), y]) \
             .embed(nr_sites, startsite, local_dim)
 
     p_exact = mpp.pmf_as_array(mps, 'mps', eps)
-    p_exact = _tools.check_pmf(p_exact, eps, eps)
+    p_exact = project_pmf(p_exact, eps, eps)
 
     cov_p_exact = np.diag(p_exact.flat) - np.outer(p_exact.flat, p_exact.flat)
     samples = mpp.sample(rgen, mps, n_samples, method, 4, 'mps', eps=eps)
@@ -560,8 +560,8 @@ def test_mppovm_est(
     sum_ept, sum_var = mpp.est_lfun(coeff, funs, samples, None, eps)
     ex_sum = np.inner(coeff, p_exact.flat)
     ex_var = np.inner(coeff, np.dot(cov_ex, coeff))
-    assert abs(sum_ept - ex_sum) <= 3 / n_samples**0.5
-    assert abs(sum_var - ex_var) * n_samples <= 3 / n_samples**0.5
+    assert abs(sum_ept - ex_sum) <= 5 / n_samples**0.5
+    assert abs(sum_var - ex_var) * n_samples <= 5 / n_samples**0.5
 
     # Convert samples to counts and test again
     counts = mpp.est_pmf(samples, normalize=False, eps=eps)
@@ -579,18 +579,18 @@ def test_mppovm_est(
         ('direct', 100),
     ])
 @pt.mark.parametrize(
-    'nr_sites, local_dim, bond_dim, measure_width', [
+    'nr_sites, local_dim, rank, measure_width', [
         (3, 3, 2, 2),
         (3, 2, 3, 3),
         (5, 2, 3, 2),
     ])
 def test_mppovmlist_pack_unpack_samples(
-        method, n_samples, nr_sites, local_dim, bond_dim, measure_width,
+        method, n_samples, nr_sites, local_dim, rank, measure_width,
         rgen, eps=1e-10):
     """Check that packing and unpacking samples does not change them"""
 
-    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
-    mps.normalize()
+    mps = factory.random_mps(nr_sites, local_dim, rank, rgen)
+    mps.canonicalize()
 
     s_povm = povm.pauli_mpp(measure_width, local_dim).block(nr_sites)
     samples = tuple(s_povm.sample(
@@ -603,11 +603,11 @@ def test_mppovmlist_pack_unpack_samples(
     assert all((s == u).all() for s, u in zip(samples, unpacked))
 
 
-def _pytest_want_long(request):
-    # FIXME: Is there a better way to find out whether items marked
-    # with `long` should be run or not?
+def _pytest_want_verylong(request):
+    # Is there a better way to find out whether items marked with
+    # `long` should be run or not?
     class dummy:
-        keywords = {'long': pt.mark.verylong}
+        keywords = {'verylong': pt.mark.verylong}
     return matchmark(dummy, request.config.option.markexpr)
 
 
@@ -616,11 +616,11 @@ def splitpauli(n_samples, nonuniform, request):
     # We use this fixture to skip certain value combinations for
     # non-long tests.
     #
-    # FIXME: Is there a better way to select certain value
-    # combinations from the different pt.mark.parametrize() decorators
-    # except for writing down all combinations by hand?
+    # Is there a better way to select certain value combinations from
+    # the different pt.mark.parametrize() decorators except for
+    # writing down all combinations by hand?
     splitpauli = request.param
-    if (not splitpauli) or _pytest_want_long(request) \
+    if (not splitpauli) or _pytest_want_verylong(request) \
        or (n_samples >= 10000 and nonuniform):
         return splitpauli
     pt.skip("Should only be run in long tests")
@@ -633,29 +633,29 @@ def splitpauli(n_samples, nonuniform, request):
         pt.mark.verylong(('direct', 100000)), pt.mark.verylong(('cond', 100))
     ])
 @pt.mark.parametrize(
-    'nr_sites, local_dim, bond_dim, measure_width, local_width', [
+    'nr_sites, local_dim, rank, measure_width, local_width', [
         (4, 2, 3, 2, 2),
         pt.mark.verylong((5, 2, 2, 3, 2)),
         pt.mark.verylong((4, 3, 2, 2, 2)),
     ])
 @pt.mark.parametrize('nonuniform', [False, True])
 def test_mppovmlist_est_pmf_from(
-        method, n_samples, nr_sites, local_dim, bond_dim, measure_width,
+        method, n_samples, nr_sites, local_dim, rank, measure_width,
         local_width, nonuniform, splitpauli, rgen, eps=1e-10):
     """Verify that estimated probabilities from MPPovmList.est_pmf_from()
     are reasonable accurate
 
     """
 
-    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
-    mps.normalize()
+    mps = factory.random_mps(nr_sites, local_dim, rank, rgen)
+    mps.canonicalize()
 
     x, y = (povm.MPPovm.from_local_povm(p, 1)
             for p in povm.pauli_parts(local_dim)[:2])
     # POVM list with global support
     g_povm = povm.pauli_mpps(measure_width, local_dim).repeat(nr_sites)
     if nonuniform:
-        add_povm = mp.outer((nr_sites - 1) * (x,) + (y,))
+        add_povm = mp.chain((nr_sites - 1) * (x,) + (y,))
         g_povm = povm.MPPovmList(g_povm.mpps + (add_povm,))
     # POVM list with local support
     l_povm = povm.pauli_mpps if splitpauli else povm.pauli_mpp
@@ -710,11 +710,11 @@ def povm_combo(function, request):
     # We use this fixture to skip certain value combinations for
     # non-long tests.
     #
-    # FIXME: Is there a better way to select certain value
-    # combinations from the different pt.mark.parametrize() decorators
-    # except for writing down all combinatiosn by hand?
+    # Is there a better way to select certain value combinations from
+    # the different pt.mark.parametrize() decorators except for
+    # writing down all combinatiosn by hand?
     combo = request.param
-    if _pytest_want_long(request):
+    if _pytest_want_verylong(request):
         return combo
     if function == 'randn' or combo == ('global', 'pauli'):
         return combo
@@ -729,7 +729,7 @@ def povm_combo(function, request):
         pt.mark.verylong(('direct', 100000)),
     ])
 @pt.mark.parametrize(
-    'nr_sites, local_dim, bond_dim, measure_width, local_width', [
+    'nr_sites, local_dim, rank, measure_width, local_width', [
         (3, 2, 3, 2, 2),
         pt.mark.verylong((4, 2, 3, 3, 2)),
         pt.mark.verylong((5, 2, 3, 2, 2)),
@@ -738,7 +738,7 @@ def povm_combo(function, request):
 @pt.mark.parametrize('function',
                      ['randn', 'ones', 'signs', pt.mark.verylong('rand')])
 def test_mppovmlist_est_lfun_from(
-        method, n_samples, nr_sites, local_dim, bond_dim, measure_width,
+        method, n_samples, nr_sites, local_dim, rank, measure_width,
         local_width, nonuniform, function, povm_combo, rgen, eps=1e-10):
     """Verify that estimated probabilities from MPPovmList.est_pmf_from()
     are reasonable accurate
@@ -749,8 +749,8 @@ def test_mppovmlist_est_lfun_from(
 
     """
 
-    mps = factory.random_mps(nr_sites, local_dim, bond_dim, rgen)
-    mps.normalize()
+    mps = factory.random_mps(nr_sites, local_dim, rank, rgen)
+    mps.canonicalize()
 
     sample_povm, fun_povm = povm_combo
     estimation_impossible = (sample_povm == "all-y" and

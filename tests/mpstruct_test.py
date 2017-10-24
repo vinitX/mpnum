@@ -47,14 +47,14 @@ def test_update_normalization(mpa_norm, upd_pos, upd_norm, rgen,
     """
     n_sites = UPDATE_N_SITES
     ldim = 4
-    bdim = 3
-    mpa = factory.random_mpa(n_sites, ldim, bdim, rgen)
+    rank = 3
+    mpa = factory.random_mpa(n_sites, ldim, rank, rgen)
     assert_correct_normalization(mpa, 0, n_sites)
 
-    mpa.normalize(*mpa_norm)
+    mpa.canonicalize(*mpa_norm)
     assert_correct_normalization(mpa, *mpa_norm)
 
-    dims = mpa.dims[upd_pos]
+    dims = mpa.lt.shape[upd_pos]
     tensor = factory._zrandn(dims, rgen)
     if upd_norm == 'left':
         tensor = tensor.reshape((-1, dims[-1]))

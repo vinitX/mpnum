@@ -47,7 +47,7 @@ The :math:`k`-th local tensor is :math:`T_{l,i,r} =
 
 The vector :math:`\lvert \psi \rangle` can be a quantum state, with
 the density matrix given by :math:`\rho = \lvert \psi \rangle \langle
-\psi \rvert \in \mathcal B`.  Reference: E.g. [Sch11_].
+\psi \rvert \in \mathcal B`.  Reference: E.g. [Sch11]_.
 
 Matrix product operator (MPO)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ j})_{l,r}`.
 
 This representation can be used to represent a mixed quantum state
 :math:`\rho = M`, but it is not limited to positive semidefinite
-:math:`M`.  Reference: E.g. [Sch11_].
+:math:`M`.  Reference: E.g. [Sch11]_.
 
 Locally purified matrix product state (PMPS)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -130,7 +130,7 @@ from numpy.testing import assert_array_equal
 from six.moves import range
 
 from . import mparray as mp
-from ._tools import local_to_global, matdot
+from .utils import local_to_global, matdot
 
 
 __all__ = ['mps_to_mpo', 'mps_to_pmps', 'pmps_dm_to_array',
@@ -162,27 +162,27 @@ def pmps_dm_to_array(pmps, global_=False):
     """Convert PMPS to full array representation of the density matrix
 
     The runtime of this method scales with D**3 instead of D**6 where
-    D is the bond and D**6 is the scaling of using :func:`pmps_to_mpo`
+    D is the rank and D**6 is the scaling of using :func:`pmps_to_mpo`
     and :func:`to_array`. This is useful for obtaining reduced states
     of a PMPS on non-consecutive sites, as normalizing before using
-    :func:`pmps_to_mpo` may not be sufficient to reduce the bond
-    dimension in that case.
+    :func:`pmps_to_mpo` may not be sufficient to reduce the rank
+    in that case.
 
     .. note:: The resulting array will have dimension-1 physical legs removed.
 
     """
     out = np.ones((1, 1, 1))
-    # Axes: 0 phys, 1 upper bond, 2 lower bond
+    # Axes: 0 phys, 1 upper rank, 2 lower rank
     for lt in pmps.lt:
         out = np.tensordot(out, lt, axes=(1, 0))
-        # Axes: 0 phys, 1 lower bond, 2 phys, 3 anc, 4 upper bond
+        # Axes: 0 phys, 1 lower rank, 2 phys, 3 anc, 4 upper rank
         out = np.tensordot(out, lt.conj(), axes=((1, 3), (0, 2)))
-        # Axes: 0 phys, 1 phys, 2 upper bond, 3 phys, 4 lower bond
+        # Axes: 0 phys, 1 phys, 2 upper rank, 3 phys, 4 lower rank
         out = np.rollaxis(out, 3, 2)
-        # Axes: 0 phys, 1 phys, 2 phys, 3 upper bound, 4 lower bond
+        # Axes: 0 phys, 1 phys, 2 phys, 3 upper bound, 4 lower rank
         out = out.reshape((-1, out.shape[3], out.shape[4]))
-        # Axes: 0 phys, 1 upper bond, 2 lower bond
-    out_shape = [dim for dim, _ in pmps.pdims for rep in (1, 2) if dim > 1]
+        # Axes: 0 phys, 1 upper rank, 2 lower rank
+    out_shape = [dim for dim, _ in pmps.shape for rep in (1, 2) if dim > 1]
     out = out.reshape(out_shape)
     if global_:
         assert len(set(out_shape)) == 1
@@ -243,7 +243,7 @@ def reductions_mpo(mpa, width=None, startsites=None, stopsites=None):
     startsites, stopsites = \
         _check_reductions_args(len(mpa), width, startsites, stopsites)
 
-    assert_array_equal(mpa.plegs, 2)
+    assert_array_equal(mpa.ndims, 2)
     rem_left = {0: np.array(1, ndmin=2)}
     rem_right = rem_left.copy()
 
@@ -297,7 +297,7 @@ def reductions_pmps(pmps, width=None, startsites=None, stopsites=None):
         _check_reductions_args(len(pmps), width, startsites, stopsites)
 
     for start, stop in zip(startsites, stopsites):
-        pmps.normalize(left=start, right=stop)
+        pmps.canonicalize(left=start, right=stop)
 
         # leftmost site
         lten = pmps.lt[start]
@@ -382,7 +382,7 @@ def mps_to_pmps(mps):
     :returns: An MPA with two physical legs (system and ancilla)
 
     """
-    assert_array_equal(mps.plegs, 1)
+    assert_array_equal(mps.ndims, 1)
     ltens = (lten.reshape(lten.shape[0:2] + (1, lten.shape[2])) for lten in mps.lt)
     return mp.MPArray(ltens)
 
@@ -394,9 +394,9 @@ def pmps_to_mps(pmps):
     removed. Otherwise, an AssertionError is raised.
 
     """
-    assert all(l == 2 for l in pmps.plegs)
-    assert all(d[1] == 1 for d in pmps.pdims)
-    return pmps.reshape([(d[0],) for d in pmps.pdims])
+    assert all(l == 2 for l in pmps.ndims)
+    assert all(d[1] == 1 for d in pmps.shape)
+    return pmps.reshape([(d[0],) for d in pmps.shape])
 
 
 def mps_to_mpo(mps):

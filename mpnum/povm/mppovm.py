@@ -142,7 +142,7 @@ import numpy as np
 import mpnum.factory as factory
 import mpnum.mparray as mp
 import mpnum.mpsmpo as mpsmpo
-from mpnum._tools import check_pmf
+from ..utils.pmf import project_pmf
 
 
 class MPPovm(mp.MPArray):
@@ -169,7 +169,7 @@ class MPPovm(mp.MPArray):
         expectation values using the POVM struture brings advantages,
         we usually need the result as full array.) This function
         should also replace small negative probabilities by zero and
-        normalize the sum of all probabilities to unity (if the
+        canonicalize the sum of all probabilities to unity (if the
         deviation is non-zero but small). The same checks should also
         be implemented in localpovm.POVM.
 
@@ -183,10 +183,10 @@ class MPPovm(mp.MPArray):
 
     def __init__(self, *args, **kwargs):
         mp.MPArray.__init__(self, *args, **kwargs)
-        assert all(plegs == 3 for plegs in self.plegs), \
-            "Need 3 physical legs at each site: {!r}".format(self.pdims)
-        assert all(pdims[1] == pdims[2] for pdims in self.pdims), \
-            "Hilbert space dimension mismatch: {!r}".format(self.pdims)
+        assert all(ndims == 3 for ndims in self.ndims), \
+            "Need 3 physical legs at each site: {!r}".format(self.shape)
+        assert all(pdims[1] == pdims[2] for pdims in self.shape), \
+            "Hilbert space dimension mismatch: {!r}".format(self.shape)
         # Used to store single outcomes as np.uint8 with 255 = 0xff
         # denoting "no value" (see :func:`MPPovm.sample`,
         # :func:`MPPovm.unpack_samples`).
@@ -225,7 +225,7 @@ class MPPovm(mp.MPArray):
         `next(iter(mppovm))` would not be equal to `mppovm[0]`.
 
         """
-        return self.paxis_iter(axes=0)
+        return self.axis_iter(axes=0)
 
     @property
     def probability_map(self):
@@ -247,7 +247,7 @@ class MPPovm(mp.MPArray):
         # See :func:`.localpovm.POVM.probability_map` for explanation
         # of the transpose.
         return self.transpose((0, 2, 1)).reshape(
-            (pdim[0], -1) for pdim in self.pdims)
+            (pdim[0], -1) for pdim in self.shape)
 
     @classmethod
     def from_local_povm(cls, lelems, width):
@@ -303,7 +303,7 @@ class MPPovm(mp.MPArray):
         factors.append(self)
         if n_right > 0:
             factors.append(MPPovm.eye(local_dim[-n_right:]))
-        return mp.outer(factors)
+        return mp.chain(factors)
 
     def block(self, nr_sites):
         """Embed an MP-POVM on local blocks
@@ -331,7 +331,7 @@ class MPPovm(mp.MPArray):
 
         The resulting POVM will have length `nr_sites`. If `nr_sites`
         is not an integer multiple of `len(self)`, `self` must
-        factorize (have bond dimension one) at the position where it
+        factorize (have leg  dimension one) at the position where it
         will be cut. For example, consider the tensor product MP-POVM
         of Pauli X and Pauli Y. Calling `repeat(nr_sites=5)` will
         construct the tensor product POVM XYXYX:
@@ -340,17 +340,17 @@ class MPPovm(mp.MPArray):
         >>> import mpnum.povm as mpp
         >>> x, y = (mpp.MPPovm.from_local_povm(lp(3), 1) for lp in
         ...         (mpp.x_povm, mpp.y_povm))
-        >>> xy = mp.outer([x, y])
-        >>> xyxyx = mp.outer([x, y, x, y, x])
+        >>> xy = mp.chain([x, y])
+        >>> xyxyx = mp.chain([x, y, x, y, x])
         >>> mp.norm(xyxyx - xy.repeat(5)) <= 1e-10
         True
 
         """
         n_repeat, n_last = nr_sites // len(self), nr_sites % len(self)
         if n_last > 0:
-            assert self.bdims[n_last - 1] == 1, \
+            assert self.ranks[n_last - 1] == 1, \
                 "Partial repetition requires factorizing MP-POVM"
-        return mp.outer([self] * n_repeat
+        return mp.chain([self] * n_repeat
                         + ([MPPovm(self.lt[:n_last])] if n_last > 0 else []))
 
     def expectations(self, mpa, mode='auto'):
@@ -367,9 +367,9 @@ class MPPovm(mp.MPArray):
         """
         assert len(self) <= len(mpa)
         if mode == 'auto':
-            if all(pleg == 1 for pleg in mpa.plegs):
+            if all(pleg == 1 for pleg in mpa.ndims):
                 mode = 'mps'
-            elif all(pleg == 2 for pleg in mpa.plegs):
+            elif all(pleg == 2 for pleg in mpa.ndims):
                 mode = 'mpdo'
 
         pmap = self.probability_map
@@ -418,19 +418,19 @@ class MPPovm(mp.MPArray):
         to bottom and from left to right along the chain::
 
 
-            +-----+  PMPS bond     +---------+     PMPS bond
+            +-----+  PMPS leg      +---------+     PMPS leg
             |     |----------------| PMPS    |-------------------
             |     |                +---------+
             |     |                   |  |_______ system
             |     |           ancilla |         |
             |     |                   |         |
-            |     |  PMPS-cc bond  +---------+  |  PMPS-cc bond
+            |     |  PMPS-cc leg   +---------+  |  PMPS-cc leg
             |  p  |----------------| PMPS-cc |--|----------------
             |     |                +---------+  |
             |     |                   |         |
             |     |           system' |   ______|
             |     |                   |  |
-            |     |  POVM bond     +---------+     POVM bond
+            |     |  POVM leg      +---------+     POVM leg
             |     |----------------| MPPOVM  |-------------------
             +-----+                +---------+
               |                      |
@@ -438,7 +438,7 @@ class MPPovm(mp.MPArray):
 
         """
         p = np.ones((1, 1, 1, 1), dtype=float)
-        # Axes: 0 probab, 1 POVM bond, 2 PMPS bond, 3 PMPS-cc bond
+        # Axes: 0 probab, 1 POVM leg , 2 PMPS leg , 3 PMPS-cc leg
         for povm_lt, pmps_lt in zip(self.lt, pmps.lt):
             p = np.tensordot(p, pmps_lt, axes=(2, 0))
             # 0 probab, 1 POVM bd, 2 PMPS-cc bd, 3 system, 4 ancilla, 5 PMPS bd
@@ -448,12 +448,12 @@ class MPPovm(mp.MPArray):
             # NB: We basically transpose povm_lt by specifying suitable axes.
             # The transpose is explained in localpovm.POVM.probability_map.
             p = np.tensordot(p, povm_lt, axes=((1, 2, 4), (0, 3, 2)))
-            # 0 probab, 1 PMPS bond, 2 PMPS-cc bond, 3 probab', 4 POVM bond
+            # 0 probab, 1 PMPS leg , 2 PMPS-cc leg , 3 probab', 4 POVM leg
             p = p.transpose((0, 3, 4, 1, 2))
-            # 0 probab, 1 probab', 2 POVM bond, 3 PMPS bond, 4 PMPS-cc bond
+            # 0 probab, 1 probab', 2 POVM leg , 3 PMPS leg , 4 PMPS-cc leg
             s = p.shape
             p = p.reshape((s[0] * s[1], s[2], s[3], s[4]))
-            # 0 probab, 1 POVM bond, 2 PMPS bond, 3 PMPS-cc bond
+            # 0 probab, 1 POVM leg , 2 PMPS leg , 3 PMPS-cc leg
         if partial:
             return p
         s = self.nsoutdims
@@ -473,15 +473,15 @@ class MPPovm(mp.MPArray):
 
         """
         # Axes of p_left and p_right (below):
-        # 0 probab, 1 POVM bond, 2 PMPS bond, 3 PMPS-cc bond
+        # 0 probab, 1 POVM leg , 2 PMPS leg , 3 PMPS-cc leg
         #
         # p_size[i, j] will contain the p_left.size (i = 0) or
         # p_right.size (i = 1) for j + 1 probabilities in p_left and
         # the rest in p_right.
         cp = np.cumprod(self.outdims, dtype=int)
         p_size = np.array([cp[:-1], cp[-1] // cp[:-1]])
-        bdims = np.array(state.bdims, int)**2 * np.array(self.bdims, int)
-        p_size *= bdims[None, :]
+        ranks = np.array(state.ranks, int) ** 2 * np.array(self.ranks, int)
+        p_size *= ranks[None, :]
         # For a given possible choice of n_left, compute the maximum
         # value of max(p_left.size, p_right.size) encountered during
         # the computation. Considering all sizes during the
@@ -523,8 +523,8 @@ class MPPovm(mp.MPArray):
         :returns: PMF as shape `self.nsoutdims` ndarray
 
         The resulting (real or complex) probabilities `pmf` are passed
-        through :func:`check_pmf(pmf, eps, eps)
-        <mpnum._tools.check_pmf>` before being returned.
+        through :func:`project_pmf(pmf, eps, eps)
+        <mpnum.povm._testing.project_pmf>` before being returned.
 
         """
         assert len(self) == len(state)
@@ -544,7 +544,7 @@ class MPPovm(mp.MPArray):
             pmf = mp.prune(next(self.expectations(state, mode)), True).to_array()
         else:
             raise ValueError('Implementation {!r} unknown'.format(impl))
-        return check_pmf(pmf, eps, eps)
+        return project_pmf(pmf, eps, eps)
 
     def pmfs_as_array(self, states, mode, asarray=False, eps=1e-10):
         """.. todo:: Add docstring"""
@@ -669,15 +669,15 @@ class MPPovm(mp.MPArray):
             # `n_out + n_group` sites.
             p = marginal_pmf[min(n_sites, n_out + n_group)]
             # Obtain conditional probab. from joint `p` and marginal `out_p`
-            p = p.get_phys(tuple(out[:n_out]) + (slice(None),) * (len(p) - n_out))
-            p = check_pmf(mp.prune(p).to_array() / out_p, eps, eps)
+            p = p.get(tuple(out[:n_out]) + (slice(None),) * (len(p) - n_out))
+            p = project_pmf(mp.prune(p).to_array() / out_p, eps, eps)
             # Sample from conditional probab. for next `n_group` sites
             choice = rng.choice(p.size, p=p.flat)
             out[n_out:n_out + n_group] = np.unravel_index(choice, p.shape)
             # Update probability of the partial output
             out_p *= np.prod(p.flat[choice])
         # Verify we have the correct partial output probability
-        p = marginal_pmf[-1].get_phys(tuple(out)).to_array()
+        p = marginal_pmf[-1].get(tuple(out)).to_array()
         assert abs(p - out_p) <= eps
 
     def _sample_cond(self, rng, state, mode, n_samples, n_group, out, eps):
@@ -1038,7 +1038,7 @@ class MPPovm(mp.MPArray):
         outdims = self.outdims
         assert len(support) == len(outcome_mpa)
         assert all(dim[0] == outdims[pos]
-                   for pos, dim in zip(support, outcome_mpa.pdims))
+                   for pos, dim in zip(support, outcome_mpa.shape))
         if len(support) == len(self):
             return outcome_mpa  # Nothing to do
         # `self` does not have outcomes on the entire chain. Need
@@ -1071,7 +1071,7 @@ class MPPovm(mp.MPArray):
         assert given.any(), "Some elements are required"
         any_missing = not given.all()
         given = self._fill_outcome_mpa_holes(
-            support, mp.MPArray.from_array(given, plegs=1))
+            support, mp.MPArray.from_array(given, ndims=1))
         elem_sum = mp.dot(given, self)
         eye = factory.eye(len(self), self.hdims)
         sum_norm, eye_norm = mp.norm(elem_sum), mp.norm(eye)
@@ -1229,13 +1229,13 @@ class MPPovmList:
         >>> x, y = (mpp.MPPovm.from_local_povm(lp(ldim), 1) for lp in
         ...         (mpp.x_povm, mpp.y_povm))
         >>> e = mpp.MPPovm.eye([ldim])
-        >>> xx = mp.outer([x, x])
-        >>> xy = mp.outer([x, y])
+        >>> xx = mp.chain([x, x])
+        >>> xy = mp.chain([x, y])
         >>> mppl = mpp.MPPovmList((xx, xy))
-        >>> xxe = mp.outer([x, x, e])
-        >>> xye = mp.outer([x, y, e])
-        >>> exx = mp.outer([e, x, x])
-        >>> exy = mp.outer([e, x, y])
+        >>> xxe = mp.chain([x, x, e])
+        >>> xye = mp.chain([x, y, e])
+        >>> exx = mp.chain([e, x, x])
+        >>> exy = mp.chain([e, x, y])
         >>> expect = (xxe, xye, exx, exy)
         >>> [abs(mp.norm(a - b)) <= 1e-10
         ...  for a, b in zip(mppl.block(3).mpps, expect)]
@@ -1263,10 +1263,10 @@ class MPPovmList:
         ...         (mpp.x_povm, mpp.y_povm))
         >>> pauli = mpp.pauli_mpps(block_sites, ldim)
         >>> expect = (
-        ...     mp.outer((x, x)),
-        ...     mp.outer((x, y)),
-        ...     mp.outer((y, x)),
-        ...     mp.outer((y, y)),
+        ...     mp.chain((x, x)),
+        ...     mp.chain((x, y)),
+        ...     mp.chain((y, x)),
+        ...     mp.chain((y, y)),
         ... )
         >>> [abs(mp.norm(a - b)) <= 1e-10 for a, b in zip(pauli.mpps, expect)]
         [True, True, True, True]
@@ -1275,10 +1275,10 @@ class MPPovmList:
         :class:`MPPovmList`:
 
         >>> expect = (
-        ...     mp.outer((x, x, x, x, x)),
-        ...     mp.outer((x, y, x, y, x)),
-        ...     mp.outer((y, x, y, x, y)),
-        ...     mp.outer((y, y, y, y, y)),
+        ...     mp.chain((x, x, x, x, x)),
+        ...     mp.chain((x, y, x, y, x)),
+        ...     mp.chain((y, x, y, x, y)),
+        ...     mp.chain((y, y, y, y, y)),
         ... )
         >>> [abs(mp.norm(a - b)) <= 1e-10
         ...  for a, b in zip(pauli.repeat(5).mpps, expect)]
@@ -1553,7 +1553,7 @@ def pauli_mpp(nr_sites, local_dim):
     >>> pauli = pauli_mpp(nr_sites, local_dim)
     >>> xy = np.kron([1, -1], [1, -1j]) / 2
     >>> xyproj = np.outer(xy, xy.conj())
-    >>> proj = pauli.get_phys([1, 3], astype=mp.MPArray) \
+    >>> proj = pauli.get([1, 3], astype=mp.MPArray) \
     ...             .to_array_global().reshape((4, 4))
     >>> abs(proj - xyproj / 3**nr_sites).max() <= 1e-10
     True
@@ -1580,10 +1580,10 @@ def pauli_mpps(nr_sites, local_dim):
     ...         (mpp.x_povm, mpp.y_povm))
     >>> pauli = mpp.pauli_mpps(block_sites, ldim)
     >>> expect = (
-    ...     mp.outer((x, x)),
-    ...     mp.outer((x, y)),
-    ...     mp.outer((y, x)),
-    ...     mp.outer((y, y)),
+    ...     mp.chain((x, x)),
+    ...     mp.chain((x, y)),
+    ...     mp.chain((y, x)),
+    ...     mp.chain((y, y)),
     ... )
     >>> [abs(mp.norm(a - b)) <= 1e-10 for a, b in zip(pauli.mpps, expect)]
     [True, True, True, True]
@@ -1595,5 +1595,5 @@ def pauli_mpps(nr_sites, local_dim):
     """
     from mpnum.povm import pauli_parts
     parts = [MPPovm.from_local_povm(x, 1) for x in pauli_parts(local_dim)]
-    return MPPovmList(mp.outer(factors)
+    return MPPovmList(mp.chain(factors)
                       for factors in it.product(parts, repeat=nr_sites))

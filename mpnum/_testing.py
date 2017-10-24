@@ -1,6 +1,4 @@
 # encoding: utf-8
-
-
 """Auxiliary functions useful for writing tests"""
 
 
@@ -24,7 +22,7 @@ def assert_mpa_identical(mpa1, mpa2, decimal=np.infty):
     """Verify that two MPAs are complety identical
     """
     assert len(mpa1) == len(mpa2)
-    assert mpa1.normal_form == mpa2.normal_form
+    assert mpa1.canonical_form == mpa2.canonical_form
     assert mpa1.dtype == mpa2.dtype
 
     for i, lten1, lten2 in zip(it.count(), mpa1.lt, mpa2.lt):
@@ -36,16 +34,6 @@ def assert_mpa_identical(mpa1, mpa2, decimal=np.infty):
                                       err_msg='mismatch in lten {}'.format(i))
     # TODO: We should make a comprehensive comparison between `mpa1`
     # and `mpa2`.  Are we missing other things?
-
-
-# FIXME If we have the method, we dont need this function
-def mpo_to_global(mpo):
-    """Convert mpo to dense global array
-
-    .. todo:: Use `mpa.to_array_global()` instead.
-
-    """
-    return mpo.to_array_global()
 
 
 def _assert_lcanonical(ltens, msg=''):
@@ -62,20 +50,20 @@ def _assert_rcanonical(ltens, msg=''):
                               err_msg=msg)
 
 
-def assert_correct_normalization(lt, lnormal_target=None, rnormal_target=None):
+def assert_correct_normalization(lt, lcanon_target=None, rcanon_target=None):
     """Verify that normalization info in `lt` is correct
 
     We check that `lt` is at least as normalized as specified by the
     information. `lt` being "more normalized" than the information
     specifies is admissible and not treated as an error.
 
-    If `[lr]normal_target` are not None, verify that normalization
+    If `[lr]canon_target` are not None, verify that normalization
     info is exactly equal to the given values.
 
     """
     if hasattr(lt, 'lt'):
         lt = lt.lt  # We got an MPArray in lt, retrieve mpa.lt
-    lnormal, rnormal = lt.normal_form
+    lnormal, rnormal = lt.canonical_form
 
     # Verify that normalization info is correct
     for n in range(lnormal):
@@ -86,8 +74,55 @@ def assert_correct_normalization(lt, lnormal_target=None, rnormal_target=None):
                            .format(n, rnormal))
 
     # If targets are given, verify that the information in
-    # `lt.normal_form` matches the targets.
-    if lnormal_target is not None:
-        assert_equal(lnormal, lnormal_target)
-    if rnormal_target is not None:
-        assert_equal(rnormal, rnormal_target)
+    # `lt.canonical_form` matches the targets.
+    if lcanon_target is not None:
+        assert_equal(lnormal, lcanon_target)
+    if rcanon_target is not None:
+        assert_equal(rnormal, rcanon_target)
+
+
+def compression_svd(array, rank, direction='right', retproj=False):
+    """Re-implement MPArray.compress('svd') but on the level of the dense
+    array representation, i.e. it truncates the Schmidt-decompostion
+    on each bipartition sequentially.
+
+    :param mpa: Array to compress
+    :param rank: Compress to this rank
+    :param direction: 'right' means sweep from left to right, 'left' vice versa
+    :param retproj: Besides the compressed array, also return the projectors
+        on the appropriate eigenspaces
+    :returns: Result as numpy.ndarray
+
+    """
+    def singlecut(array, nr_left, target_rank):
+        array_shape = array.shape
+        array = array.reshape((np.prod(array_shape[:nr_left]), -1))
+        u, s, vt = np.linalg.svd(array, full_matrices=False)
+        u = u[:, :target_rank]
+        s = s[:target_rank]
+        vt = vt[:target_rank, :]
+        opt_compr = np.dot(u * s, vt)
+        opt_compr = opt_compr.reshape(array_shape)
+
+        if retproj:
+            projector_l = np.dot(u, u.T.conj())
+            projector_r = np.dot(vt.T.conj(), vt)
+            return opt_compr, (projector_l, projector_r)
+        else:
+            return opt_compr, (None, None)
+
+    nr_sites = array.ndim
+    projectors = []
+    if direction == 'right':
+        nr_left_values = range(1, nr_sites)
+    else:
+        nr_left_values = range(nr_sites-1, 0, -1)
+
+    for nr_left in nr_left_values:
+        array, proj = singlecut(array, nr_left, rank)
+        projectors.append(proj)
+
+    if direction != 'right':
+        projectors = projectors.reverse()
+
+    return (array, projectors) if retproj else array
