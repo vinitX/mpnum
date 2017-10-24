@@ -5,9 +5,6 @@
 Currently, we support computing extremal eigenvalues and eigenvectors
 of MPOs.
 
-.. [KGE14] Kliesch, Gross and Eisert (2014). Matrix-product operators and
-   states: NP-hardness and undecidability
-
 """
 
 from __future__ import absolute_import, division, print_function
@@ -380,7 +377,7 @@ def eig(mpo, num_sweeps, var_sites=2,
 
     :param MPArray mpo: A matrix product operator (MPA with two physical legs)
     :param int num_sweeps: Number of sweeps to do (required)
-    :param int var_sites: Number of neighbouring sites to be varied 
+    :param int var_sites: Number of neighbouring sites to be varied
         simultaneously
     :param startvec: Initial guess for eigenvector (default: random MPS with
         rank `startvec_rank`)
@@ -414,7 +411,7 @@ def eig(mpo, num_sweeps, var_sites=2,
        upper bound on the lowest eigenvalue of an MPO. Deciding
        whether a given MPO has an eigenvalue which is smaller than a
        given threshold has been shown to be NP-hard (in the number of
-       parameters of the MPO representation) [:any:`KGE14 <KGE14>`].
+       parameters of the MPO representation) [KGE14]_.
 
     Comments on the implementation, for :code:`var_sites = 1`:
 

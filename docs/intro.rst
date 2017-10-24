@@ -267,9 +267,16 @@ Notebook Quickstart" of the `Jupyter documentation`_).
 References
 ----------
 
-  .. [Sch11] Schollwöck, U. (2011). “The density-matrix renormalization group in the age of matrix product states”. Ann. Phys. 326(1), pp. 96–192. `DOI: 10.1016/j.aop.2010.09.012`_. `arXiv: 1008.3477`_.
+.. [Sch11] Schollwöck, U. (2011). The density-matrix renormalization group in the age of matrix product states. Ann. Phys. 326(1), pp. 96–192. `DOI: 10.1016/j.aop.2010.09.012`_. `arXiv:1008.3477`_.
 
   .. _`DOI: 10.1016/j.aop.2010.09.012`:
      http://dx.doi.org/10.1016/j.aop.2010.09.012
 
-  .. _`arXiv: 1008.3477`: http://arxiv.org/abs/1008.3477
+  .. _`arXiv:1008.3477`: http://arxiv.org/abs/1008.3477
+
+.. [KGE14] Kliesch, Gross and Eisert (2014). Matrix-product operators and states: NP-hardness and undecidability. Phys. Rev. Lett. 113, 160503. `DOI: 10.1103/PhysRevLett.113.160503`_. `arXiv:1404.4466`_.
+
+  .. _`DOI: 10.1103/PhysRevLett.113.160503`:
+    DOI:https://doi.org/10.1103/PhysRevLett.113.160503
+
+  .. _`arXiv:1404.4466`: http://arxiv.org/abs/1404.4466
