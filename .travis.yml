@@ -18,24 +18,11 @@ addons:
         packages:
             - libhdf5-serial-dev
 
-before_install:
-    # conda setup stolen from https://github.com/Jorge-C/ordination/blob/master/.travis.yml
-    - wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
-    - chmod +x miniconda.sh
-    - ./miniconda.sh -b -p /home/travis/conda
-    - export PATH=/home/travis/conda/bin:$PATH
-    # Update conda itself
-    - conda update --yes conda
-    # The next couple lines fix a crash with multiprocessing on Travis and are not specific to using Miniconda
-    - sudo rm -rf /dev/shm
-    - sudo ln -s /run/shm /dev/shm
-
 install:
-    - conda create --yes -n env_name python=$TRAVIS_PYTHON_VERSION pip numpy scipy
-    - conda remove --yes mkl || true
-    - conda install --yes -c conda-forge coveralls
-    - source activate env_name
-    - pip install .
+    - pip install --only-binary=numpy,scipy .
+    # install h5py from binaries since setup.py test doesn't
+    - pip install --only-binary=h5py h5py
+    - pip install coveralls
     - pip freeze
 
 script:
