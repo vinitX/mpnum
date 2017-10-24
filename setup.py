@@ -67,8 +67,10 @@ if __name__ == '__main__':
         license="BSD",
         description=description,
         long_description=long_description,
+
         install_requires=_get_install_requires(_install_requires),
         tests_require=_tests_require,
+        extras_require={'testdeps': _tests_require},
         setup_requires=['pytest-runner'],
         package_dir={'mpnum': 'mpnum'},
         classifiers=[

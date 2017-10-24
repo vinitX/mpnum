@@ -20,12 +20,12 @@ addons:
 
 install:
     - pip install --only-binary=numpy,scipy .
-    # install h5py from binaries since setup.py test doesn't
-    - pip install --only-binary=h5py h5py
+    # install test dependencies
+    - pip install --only-binary=h5py ".[testdeps]"
     - pip install coveralls
     - pip freeze
 
 script:
-    - travis_wait 10 bash tests/travis.sh
+    - bash tests/travis.sh
 after_success:
     coveralls
