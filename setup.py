@@ -36,8 +36,7 @@ _install_requires = [
 _tests_require = [
     'PyTest>=3.0.1',
     'h5py>=2.4',
-    'pytest_benchmark>=3',
-    'coveralls'
+    'pytest_benchmark>=3'
 ]
 
 

@@ -31,8 +31,9 @@ before_install:
     - sudo ln -s /run/shm /dev/shm
 
 install:
-    - conda create --yes -n env_name python=$TRAVIS_PYTHON_VERSION pip numpy scipy coveralls
+    - conda create --yes -n env_name python=$TRAVIS_PYTHON_VERSION pip numpy scipy
     - conda remove --yes mkl || true
+    - conda install --yes -c conda-forge coveralls
     - source activate env_name
     - pip install .
     - pip freeze
