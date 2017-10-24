@@ -3,8 +3,12 @@
 from __future__ import division, print_function
 
 import numpy as np
-from numpy.testing import assert_array_almost_equal
+import pytest as pt
+from mpnum import _testing as mptest
 from mpnum import factory, utils
+from mpnum.utils import extmath as em
+from numpy.testing import (assert_allclose, assert_array_almost_equal,
+                           assert_array_equal)
 from scipy.linalg import block_diag
 from six.moves import range
 
@@ -57,3 +61,54 @@ def test_block_diag(rgen):
                 .reshape(blockdiag_sum_explicit.shape)
 
     assert_array_almost_equal(blockdiag_sum, blockdiag_sum_explicit)
+
+
+TESTARGS_MATRIXDIMS = [(50, 50), (100, 50), (50, 75)]
+TESTARGS_RANKS = [1, 10, 'fullrank']
+
+
+@pt.mark.parametrize('rows, cols', TESTARGS_MATRIXDIMS)
+@pt.mark.parametrize('rank', TESTARGS_RANKS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('piter_normalizer', [None, 'qr', 'lu', 'auto'])
+def test_approximate_range_finder(rows, cols, rank, dtype, piter_normalizer, rgen):
+    # only guaranteed to work for low-rank matrices
+    if rank is 'fullrank':
+        return
+
+    rf_size = rank + 10
+    assert min(rows, cols) > rf_size
+
+    A = mptest.random_lowrank(rows, cols, rank, rgen=rgen, dtype=dtype)
+    A /= np.linalg.norm(A, ord='fro')
+    Q = em.approx_range_finder(A, rf_size, 7, rgen=rgen,
+                               piter_normalizer=piter_normalizer)
+
+    Q = np.asmatrix(Q)
+    assert Q.shape == (rows, rf_size)
+    normdist = np.linalg.norm(A - Q * (Q.H * A), ord='fro')
+    assert normdist < 1e-7
+
+
+@pt.mark.parametrize('rows, cols', TESTARGS_MATRIXDIMS)
+@pt.mark.parametrize('rank', TESTARGS_RANKS)
+@pt.mark.parametrize('dtype', pt.MP_TEST_DTYPES)
+@pt.mark.parametrize('transpose', [False, True, 'auto'])
+@pt.mark.parametrize('n_iter, target_gen', [(7, mptest.random_lowrank),
+                                            (20, mptest.random_fullrank)])
+def test_randomized_svd(rows, cols, rank, dtype, transpose, n_iter, target_gen,
+                        rgen):
+    rank = min(rows, cols) - 2 if rank is 'fullrank' else rank
+    A = target_gen(rows, cols, rank=rank, rgen=rgen, dtype=dtype)
+
+    U_ref, s_ref, V_ref = utils.truncated_svd(A, k=rank)
+    U, s, V = em.randomized_svd(A, rank, transpose=transpose, rgen=rgen,
+                                n_iter=n_iter)
+
+    error_U = np.abs(U.conj().T.dot(U_ref)) - np.eye(rank)
+    assert_allclose(np.linalg.norm(error_U), 0, atol=1e-3)
+    error_V = np.abs(V.dot(V_ref.conj().T)) - np.eye(rank)
+    assert_allclose(np.linalg.norm(error_V), 0, atol=1e-3)
+    assert_allclose(s.ravel() - s_ref, 0, atol=1e-3)
+    # Check that singular values are returned in descending order
+    assert_array_equal(s, np.sort(s)[::-1])

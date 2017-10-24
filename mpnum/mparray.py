@@ -767,6 +767,13 @@ class MPArray(object):
             determines whether cannonical form is enforced before compression
             (default: ``True``)
 
+        :param svdfunc: Which SVD function to use during the compression.
+            It should follow the conventios of
+            :func:`~.utils.extmath.truncated_svd()`, which is also the
+            default choice. In some circumstances, a partial SVD as provided
+            by :func:`scipy.sparse.linalg.svds()` or a randomized SVD such as
+            :func:`~.utils.extmath.randomized_svd()` might speed up
+            computations with no or little loss of accuracy.
 
         .. rubric:: Parameters for ``'var'``:
 

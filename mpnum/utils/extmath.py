@@ -4,10 +4,12 @@
 from __future__ import division, print_function
 
 import numpy as np
+from scipy import linalg
+from scipy.sparse.linalg import aslinearoperator
 from six.moves import range, zip
 
 __all__ = ['block_diag', 'matdot', 'mkron', 'partial_trace',
-           'truncated_svd']
+           'truncated_svd', 'randomized_svd']
 
 
 def partial_trace(array, traceout):
@@ -122,3 +124,195 @@ def truncated_svd(A, k):
     u, s, v = np.linalg.svd(A)
     k_prime = min(k, len(s))
     return u[:, :k_prime], s[:k_prime], v[:k_prime]
+
+
+####################
+#  Randomized SVD  #
+####################
+
+def _standard_normal(shape, rgen=np.random, dtype=np.float_):
+    """Generates a standard normal numpy array of given shape and dtype, i.e.
+    this function is equivalent to `rgen.randn(*shape)` for real dtype and
+    `rgen.randn(*shape) + 1.j * rgen.randn(shape)` for complex dtype.
+
+    :param tuple shape: Shape of array to be returned
+    :param rgen: An instance of :class:`numpy.random.RandomState` (default is
+        ``np.random``))
+    :param dtype: ``np.float_`` (default) or `np.complex_`
+
+    Returns
+    -------
+
+    A: An array of given shape and dtype with standard normal entries
+
+    """
+    if dtype == np.float_:
+        return rgen.randn(*shape)
+    elif dtype == np.complex_:
+        return rgen.randn(*shape) + 1.j * rgen.randn(*shape)
+    else:
+        raise ValueError('{} is not a valid dtype.'.format(dtype))
+
+
+def approx_range_finder(A, sketch_size, n_iter, piter_normalizer='auto',
+                        rgen=np.random):
+    """Computes an orthonormal matrix whose range approximates the range of A.
+
+    Parameters
+    ----------
+    :param A: The input data matrix, can be any type that can be converted
+        into a :class:`scipy.linalg.LinarOperator`, e.g. :class:`numpy.ndarray`,
+        or a sparse matrix.
+    :param int sketch_size: Size of the return array
+    :param int n_iter: Number of power iterations used to stabilize the result
+    :param str piter_normalizer: ``'auto'`` (default), ``'QR'``, ``'LU'``,
+        ``'none'``.  Whether the power iterations are normalized with
+        step-by-step QR factorization (the slowest but most accurate), 'none'
+        (the fastest but numerically unstable when `n_iter` is large, e.g.
+        typically 5 or larger), or 'LU' factorization (numerically stable but
+        can lose slightly in accuracy). The 'auto' mode applies no
+        normalization if `n_iter`<=2 and switches to LU otherwise.
+    :param rgen: An instance of :class:`numpy.random.RandomState` (default is
+        ``np.random``))
+
+    Returns
+    -------
+    :returns: :class:`numpy.ndarray`
+        A (A.shape[0] x sketch_size) projection matrix, the range of which
+        approximates well the range of the input matrix A.
+
+    Notes
+    -----
+
+    Follows Algorithm 4.3/4.4 of
+    Finding structure with randomness: Stochastic algorithms for constructing
+    approximate matrix decompositions
+    Halko, et al., 2009 (arXiv:909) http://arxiv.org/pdf/0909.4061
+
+    An implementation of a randomized algorithm for principal component
+    analysis
+    A. Szlam et al. 2014
+
+    Original implementation from scikit-learn.
+
+    """
+    A = aslinearoperator(A)
+
+    # note that real normal vectors might actually be sufficient
+    Q = _standard_normal((A.shape[1], sketch_size), rgen=rgen, dtype=A.dtype)
+
+    # Deal with "auto" mode
+    if piter_normalizer == 'auto':
+        if n_iter <= 2:
+            piter_normalizer = 'none'
+        else:
+            piter_normalizer = 'LU'
+
+    # Perform power iterations with Q to further 'imprint' the top
+    # singular vectors of A in Q
+    for i in range(n_iter):
+        if piter_normalizer == 'none':
+            Q = A * Q
+            Q = A.H * Q
+        elif piter_normalizer == 'LU':
+            Q, _ = linalg.lu(A * Q, permute_l=True)
+            Q, _ = linalg.lu(A.H * Q, permute_l=True)
+        elif piter_normalizer == 'QR':
+            Q, _ = linalg.qr(A * Q, mode='economic')
+            Q, _ = linalg.qr(A.H * Q, mode='economic')
+
+    # Sample the range of A using by linear projection of Q
+    # Extract an orthonormal basis
+    Q, _ = linalg.qr(A * Q, mode='economic')
+    return Q
+
+
+def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
+                   piter_normalizer='auto', transpose='auto', rgen=np.random):
+    """Computes a truncated randomized SVD. Uses the same convention as
+    :func:`scipy.sparse.linalg.svds`. However, we guarantee to return the
+    singular values in descending order.
+
+    :param M: The input data matrix, can be any type that can be converted
+        into a :class:`scipy.linalg.LinarOperator`, e.g. :class:`numpy.ndarray`,
+        or a sparse matrix.
+    :param int n_components: Number of singular values and vectors to extract.
+    :param int n_oversamples: Additional number of random vectors to sample the
+        range of `M` so as to ensure proper conditioning. The total number of
+        random vectors used to find the range of M is ``n_components +
+        n_oversamples``.  Smaller number can improve speed but can negatively
+        impact the quality of approximation of singular vectors and singular
+        values. (default 10)
+    :param n_iter: Number of power iterations. It can be used to deal with very
+        noisy problems. When ``'auto'``, it is set to 4, unless
+        ``n_components`` is small (``< .1 * min(X.shape)``). Then,
+        ``n_iter`` is set to 7.  This improves precision with few
+        components. (default ``'auto'``)
+    :param str piter_normalizer: ``'auto'`` (default), ``'QR'``\ , ``'LU'``\ ,
+        ``'none'``\ .  Whether the power iterations are normalized with
+        step-by-step QR factorization (the slowest but most accurate),
+        ``'none'`` (the fastest but numerically unstable when `n_iter` is
+        large, e.g.  typically 5 or larger), or ``'LU'`` factorization
+        (numerically stable but can lose slightly in accuracy). The 'auto' mode
+        applies no normalization if ``n_iter <= 2`` and switches to LU
+        otherwise.
+    :param transpose: ``True``, ``False`` or ``'auto'``
+        Whether the algorithm should be applied to ``M.T`` instead of ``M``.
+        The result should approximately be the same. The ``'auto'`` mode will
+        trigger the transposition if ``M.shape[1] > M.shape[0]`` since then
+        the computational overhead in the randomized SVD is generally smaller.
+        (default ``'auto'``).
+    :param rgen: An instance of :class:`numpy.random.RandomState` (default is
+        ``np.random``))
+
+    .. rubric:: Notes
+
+    This algorithm finds a (usually very good) approximate truncated
+    singular value decomposition using randomization to speed up the
+    computations. It is particularly fast on large matrices on which
+    you wish to extract only a small number of components. In order to
+    obtain further speed up, ``n_iter`` can be set <=2 (at the cost of
+    loss of precision).
+
+    .. rubric:: References
+
+    * Finding structure with randomness: Stochastic algorithms for constructing
+      approximate matrix decompositions
+      Halko, et al., 2009 http://arxiv.org/abs/arXiv:0909.4061
+
+    * A randomized algorithm for the decomposition of matrices
+      Per-Gunnar Martinsson, Vladimir Rokhlin and Mark Tygert
+
+    * An implementation of a randomized algorithm for principal component
+      analysis
+      A. Szlam et al. 2014
+    """
+    M = aslinearoperator(M)
+    sketch_size = n_components + n_oversamples
+
+    if n_iter == 'auto':
+        # Checks if the number of iterations is explicitely specified
+        # Adjust n_iter. 7 was found a good compromise for PCA.
+        n_iter = 7 if n_components < .1 * min(M.shape) else 4
+
+    if transpose == 'auto':
+        transpose = M.shape[0] < M.shape[1]
+    if transpose:
+        M = M.H
+
+    Q = approx_range_finder(M, sketch_size, n_iter, piter_normalizer, rgen)
+    # project M to the (k + p) dimensional space using the basis vectors
+    # B = Q.H * M
+    B = (M.H * Q).conj().T
+
+    # compute the SVD on the thin matrix: (k + p) wide
+    Uhat, s, V = linalg.svd(B, full_matrices=False)
+    del B
+    U = np.dot(Q, Uhat)
+    sel = slice(None, n_components, 1)
+
+    if transpose:
+        # transpose back the results according to the input convention
+        return (V[sel].conj().T, s[sel], U[:, sel].conj().T)
+    else:
+        return U[:, sel], s[sel], V[sel, :]
