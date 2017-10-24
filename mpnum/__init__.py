@@ -29,4 +29,4 @@ from .mparray import *  # noqa: F401, F403
 from .mpsmpo import *   # noqa: F401, F403
 
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
