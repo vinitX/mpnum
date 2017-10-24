@@ -32,11 +32,11 @@ For more information, see:
 
 Required packages:
 
-* six, numpy, scipy, sphinx (to build the documentation)
+* six, numpy, scipy
 
 Supported Python versions:
 
-* 2.7, 3.3, 3.4, 3.5, 3.6
+* 2.7, 3.4, 3.5, 3.6
 
 
 ## Contributors
