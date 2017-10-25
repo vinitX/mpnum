@@ -26,7 +26,9 @@ Unit tests
 ----------
 
 After any change to mpnum, it should be verified that the test suite
-runs without any errors.
+runs without any errors. For any new functionality, please provide suitable
+unit tests. Also, if you find a bug, consider adding a test that detects the
+bug before fixing it.
 
 A short set of tests takes less than 30 seconds and is invoked with one of
 

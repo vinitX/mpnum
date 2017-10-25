@@ -30,15 +30,17 @@ except:
 _install_requires = [
     'SciPy>=0.15',
     'NumPy>=1.5.1',
-    'six>=1.0',
+    'six>=1.0'
+]
+
+_tests_require = [
     'PyTest>=3.0.1',
     'h5py>=2.4',
-    'pytest_benchmark>=3',
-    'coveralls',
+    'pytest_benchmark>=3'
 ]
 
 
-def _get_install_requires(req, not_on_rtd=['scipy', 'numpy', 'h5py']):
+def _get_install_requires(req, not_on_rtd=['scipy', 'numpy']):
     """Remove packages which cannot be installed on readthedocs.org
 
     scipy and numpy are available on readthedocs as system packages,
@@ -65,7 +67,10 @@ if __name__ == '__main__':
         license="BSD",
         description=description,
         long_description=long_description,
+
         install_requires=_get_install_requires(_install_requires),
+        tests_require=_tests_require,
+        extras_require={'testdeps': _tests_require},
         setup_requires=['pytest-runner'],
         package_dir={'mpnum': 'mpnum'},
         classifiers=[
@@ -73,7 +78,6 @@ if __name__ == '__main__':
             "Operating System :: OS Independent",
             "License :: OSI Approved :: BSD License",
             "Programming Language :: Python :: 2.7",
-            "Programming Language :: Python :: 3.3",
             "Programming Language :: Python :: 3.4",
             "Programming Language :: Python :: 3.5",
             "Programming Language :: Python :: 3.6",
