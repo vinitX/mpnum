@@ -30,8 +30,13 @@ def _pytest_want_long(request):
 @pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_eig(nr_sites, local_dim, rank, which, var_sites, rgen, request):
     if nr_sites <= var_sites:
+        pt.skip("Nothing to test")
         return  # No local optimization can be defined
-    if not _pytest_want_long(request):
+    if not (_pytest_want_long(request) or
+            (nr_sites, local_dim, rank, var_sites, which) in {
+                (3, 2, 4, 1, 'SA'), (4, 3, 5, 1, 'LM'), (5, 2, 1, 2, 'LA'),
+                (6, 2, 4, 2, 'SA'),
+            }):
         pt.skip("Should only be run in long tests")
     # With startvec_rank = 2 * rank and this seed, eig() gets
     # stuck in a local minimum. With startvec_rank = 3 * rank,
@@ -57,8 +62,9 @@ def test_eig(nr_sites, local_dim, rank, which, var_sites, rgen, request):
 
 @pt.mark.parametrize('nr_sites, local_dim, rank', pt.MP_TEST_PARAMETERS)
 def test_eig_sum(nr_sites, local_dim, rank, rgen):
-    # Need at least three sites for minimize_sites = 2
+    # Need at least three sites for var_sites = 2
     if nr_sites < 3:
+        pt.skip("Nothing to test")
         return
     rank = max(1, rank // 2)
     mpo = factory.random_mpo(nr_sites, local_dim, rank, randstate=rgen,
