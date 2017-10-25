@@ -4,11 +4,12 @@
 
 ## A matrix product representation library for Python
 
+[![JOSS](http://joss.theoj.org/papers/f5d6dc694fffcffa13f0def4b42bb113/status.svg)
+[![PyPI](https://img.shields.io/pypi/v/mpnum.svg)](https://pypi.python.org/pypi/mpnum/)
 [![Travis](https://travis-ci.org/dseuss/mpnum.svg?branch=master)](https://travis-ci.org/dseuss/mpnum)
 [![Documentation Status](https://readthedocs.org/projects/mpnum/badge/?version=latest)](http://mpnum.readthedocs.org/en/latest/?badge=latest)
 [![Coverage Status](https://coveralls.io/repos/github/dseuss/mpnum/badge.svg?branch=master)](https://coveralls.io/github/dseuss/mpnum?branch=master)
 [![Code Climate](https://codeclimate.com/github/dseuss/mpnum/badges/gpa.svg)](https://codeclimate.com/github/dseuss/mpnum)
-[![PyPI](https://img.shields.io/pypi/v/mpnum.svg)](https://pypi.python.org/pypi/mpnum/)
 
 mpnum is a flexible, user-friendly, and expandable toolbox for the matrix product state/tensor train tensor format. mpnum provides:
 
