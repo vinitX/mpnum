@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [1.0.0] candidate
 
+### Added
+
+- Add `utils.extmath.randomized_svd` providing a fast approximate truncated SVD
+
 ### Changed
 - `MPArray.compress`: `method='var'` requires `num_sweeps`
 - Rename `MPArray.bdims` -> `MPArray.ranks`
@@ -35,6 +39,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Require `num_sweeps` and one of `startvec` and `startvec_rank`
 
 ### Removed
+- Remove Python 3.3 support
 - Remove `MPArray.bdim`, use `max(mpa.ranks)` instead
 - Remove `mpo_to_global`, use `to_array_global` instead
 - Remove `mpnum.tools.verify_real_nonnegative`, use `mpnum.utils.pmf.project_nonneg` instead
