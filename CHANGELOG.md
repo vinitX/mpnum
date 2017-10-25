@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] candidate
+## [unreleased]
+
+
+## [1.0.0] 2017-10-25
 
 ### Added
 
@@ -39,7 +42,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Require `num_sweeps` and one of `startvec` and `startvec_rank`
 
 ### Removed
-- Remove Python 3.3 support
 - Remove `MPArray.bdim`, use `max(mpa.ranks)` instead
 - Remove `mpo_to_global`, use `to_array_global` instead
 - Remove `mpnum.tools.verify_real_nonnegative`, use `mpnum.utils.pmf.project_nonneg` instead
+
+
+### Deprecated
+
+- Deprecate support for Python 3.3
