@@ -38,4 +38,11 @@ With these facilities, the user can express algorithms in high-level, readable c
 Examples from quantum physics include matrix-product state (MPS) and matrix-product operator (MPO) computations, DMRG, low-rank tensor recovery, and efficient quantum state estimation.
 
 
+# Acknowledgements
+
+The work of DS has been supported by the Excellence Initiative of the German Federal and State Governments (Grants ZUK 81), the ARO under contract W911NF-14-1-0098 (Quantum Characterization, Verification, and Validation), and the DFG projects GRO 4334/1,2 (SPP1798 CoSIP)
+The work of MH has been supported by an Alexander von Humboldt Professorship, the ERC Synergy grant BioQ, the EU projects QUCHIP, and the US Army Research Office Grant No. W911NF-14-1-0133.
+We furthermore acknowledge the provision of computational resources by the Regional Computing Center of the University of Cologne (RRZK) through the DFG-funded HPC system CHEOPS, the state of Baden-Württemberg through bwHPC, and the German Research Foundation (DFG) through grant no INST 40/467-1 FUGG.
+
+
 # References
