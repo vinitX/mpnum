@@ -16,8 +16,8 @@ description = "matrix product representation library"
 try:
     # can be created via pandoc:
     # pandoc --from=markdown --to=rst --output=README.rst README.md
-    long_description = open('README.rst').read()
-except FileNotFoundError:
+    long_description = open('README.txt').read()
+except IOError:
     long_description = description
 year = "2016"
 

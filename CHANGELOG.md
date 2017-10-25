@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [unreleased]
 
+## [1.0.1] 2017-10-25
+### Fixed
+
+- Fix python2 compatibility issue in setup.py
+- long_description in text format instead of RST
+
 
 ## [1.0.0] 2017-10-25
-
 ### Added
 
 - Add `utils.extmath.randomized_svd` providing a fast approximate truncated SVD
