@@ -130,14 +130,14 @@ def compression_svd(array, rank, direction='right', retproj=False):
 
 
 
-def random_lowrank(rows, cols, rank, rgen=np.random, dtype=np.float_):
+def random_lowrank(rows, cols, rank, randstate=np.random, dtype=np.float_):
     """Returns a random lowrank matrix of given shape and dtype"""
     if dtype == np.float_:
-        A = rgen.randn(rows, rank)
-        B = rgen.randn(cols, rank)
+        A = randstate.randn(rows, rank)
+        B = randstate.randn(cols, rank)
     elif dtype == np.complex_:
-        A = rgen.randn(rows, rank) + 1.j * rgen.randn(rows, rank)
-        B = rgen.randn(cols, rank) + 1.j * rgen.randn(cols, rank)
+        A = randstate.randn(rows, rank) + 1.j * randstate.randn(rows, rank)
+        B = randstate.randn(cols, rank) + 1.j * randstate.randn(cols, rank)
     else:
         raise ValueError("{} is not a valid dtype".format(dtype))
 

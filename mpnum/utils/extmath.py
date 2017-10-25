@@ -130,13 +130,13 @@ def truncated_svd(A, k):
 #  Randomized SVD  #
 ####################
 
-def _standard_normal(shape, rgen=np.random, dtype=np.float_):
+def _standard_normal(shape, randstate=np.random, dtype=np.float_):
     """Generates a standard normal numpy array of given shape and dtype, i.e.
-    this function is equivalent to `rgen.randn(*shape)` for real dtype and
-    `rgen.randn(*shape) + 1.j * rgen.randn(shape)` for complex dtype.
+    this function is equivalent to `randstate.randn(*shape)` for real dtype and
+    `randstate.randn(*shape) + 1.j * randstate.randn(shape)` for complex dtype.
 
     :param tuple shape: Shape of array to be returned
-    :param rgen: An instance of :class:`numpy.random.RandomState` (default is
+    :param randstate: An instance of :class:`numpy.random.RandomState` (default is
         ``np.random``))
     :param dtype: ``np.float_`` (default) or `np.complex_`
 
@@ -147,15 +147,15 @@ def _standard_normal(shape, rgen=np.random, dtype=np.float_):
 
     """
     if dtype == np.float_:
-        return rgen.randn(*shape)
+        return randstate.randn(*shape)
     elif dtype == np.complex_:
-        return rgen.randn(*shape) + 1.j * rgen.randn(*shape)
+        return randstate.randn(*shape) + 1.j * randstate.randn(*shape)
     else:
         raise ValueError('{} is not a valid dtype.'.format(dtype))
 
 
 def approx_range_finder(A, sketch_size, n_iter, piter_normalizer='auto',
-                        rgen=np.random):
+                        randstate=np.random):
     """Computes an orthonormal matrix whose range approximates the range of A.
 
     Parameters
@@ -172,7 +172,7 @@ def approx_range_finder(A, sketch_size, n_iter, piter_normalizer='auto',
         typically 5 or larger), or 'LU' factorization (numerically stable but
         can lose slightly in accuracy). The 'auto' mode applies no
         normalization if `n_iter`<=2 and switches to LU otherwise.
-    :param rgen: An instance of :class:`numpy.random.RandomState` (default is
+    :param randstate: An instance of :class:`numpy.random.RandomState` (default is
         ``np.random``))
 
     Returns
@@ -199,7 +199,7 @@ def approx_range_finder(A, sketch_size, n_iter, piter_normalizer='auto',
     A = aslinearoperator(A)
 
     # note that real normal vectors might actually be sufficient
-    Q = _standard_normal((A.shape[1], sketch_size), rgen=rgen, dtype=A.dtype)
+    Q = _standard_normal((A.shape[1], sketch_size), randstate=randstate, dtype=A.dtype)
 
     # Deal with "auto" mode
     if piter_normalizer == 'auto':
@@ -228,7 +228,7 @@ def approx_range_finder(A, sketch_size, n_iter, piter_normalizer='auto',
 
 
 def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
-                   piter_normalizer='auto', transpose='auto', rgen=np.random):
+                   piter_normalizer='auto', transpose='auto', randstate=np.random):
     """Computes a truncated randomized SVD. Uses the same convention as
     :func:`scipy.sparse.linalg.svds`. However, we guarantee to return the
     singular values in descending order.
@@ -262,7 +262,7 @@ def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
         trigger the transposition if ``M.shape[1] > M.shape[0]`` since then
         the computational overhead in the randomized SVD is generally smaller.
         (default ``'auto'``).
-    :param rgen: An instance of :class:`numpy.random.RandomState` (default is
+    :param randstate: An instance of :class:`numpy.random.RandomState` (default is
         ``np.random``))
 
     .. rubric:: Notes
@@ -300,7 +300,7 @@ def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
     if transpose:
         M = M.H
 
-    Q = approx_range_finder(M, sketch_size, n_iter, piter_normalizer, rgen)
+    Q = approx_range_finder(M, sketch_size, n_iter, piter_normalizer, randstate)
     # project M to the (k + p) dimensional space using the basis vectors
     # B = Q.H * M
     B = (M.H * Q).conj().T

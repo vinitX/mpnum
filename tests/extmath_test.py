@@ -79,9 +79,9 @@ def test_approximate_range_finder(rows, cols, rank, dtype, piter_normalizer, rge
     rf_size = rank + 10
     assert min(rows, cols) > rf_size
 
-    A = mptest.random_lowrank(rows, cols, rank, rgen=rgen, dtype=dtype)
+    A = mptest.random_lowrank(rows, cols, rank, randstate=rgen, dtype=dtype)
     A /= np.linalg.norm(A, ord='fro')
-    Q = em.approx_range_finder(A, rf_size, 7, rgen=rgen,
+    Q = em.approx_range_finder(A, rf_size, 7, randstate=rgen,
                                piter_normalizer=piter_normalizer)
 
     Q = np.asmatrix(Q)
@@ -99,10 +99,10 @@ def test_approximate_range_finder(rows, cols, rank, dtype, piter_normalizer, rge
 def test_randomized_svd(rows, cols, rank, dtype, transpose, n_iter, target_gen,
                         rgen):
     rank = min(rows, cols) - 2 if rank is 'fullrank' else rank
-    A = target_gen(rows, cols, rank=rank, rgen=rgen, dtype=dtype)
+    A = target_gen(rows, cols, rank=rank, randstate=rgen, dtype=dtype)
 
     U_ref, s_ref, V_ref = utils.truncated_svd(A, k=rank)
-    U, s, V = em.randomized_svd(A, rank, transpose=transpose, rgen=rgen,
+    U, s, V = em.randomized_svd(A, rank, transpose=transpose, randstate=rgen,
                                 n_iter=n_iter)
 
     error_U = np.abs(U.conj().T.dot(U_ref)) - np.eye(rank)
