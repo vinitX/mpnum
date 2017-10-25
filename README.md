@@ -23,7 +23,9 @@ mpnum is a flexible, user-friendly, and expandable toolbox for the matrix produc
 * finding [extremal eigenvalues](http://mpnum.readthedocs.org/en/latest/mpnum.html#mpnum.linalg.eig) and eigenvectors of MPOs (DMRG)
 * flexible tools for new matrix product algorithms
 
+To install the latest version run
 
+    pip install mpnum
 
 For more information, see:
 
