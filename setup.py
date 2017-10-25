@@ -13,9 +13,11 @@ authors = [u"Daniel Suess", u"Milan Holzäpfel"]
 author_emails = ["daniel@dsuess.me", "mail@mjh.name"]
 name = "mpnum"
 description = "matrix product representation library"
-if os.path.isfile('README.txt'):
-    long_description = open('README.txt').read()
-else:
+try:
+    # can be created via pandoc:
+    # pandoc --from=markdown --to=rst --output=README.rst README.md
+    long_description = open('README.rst').read()
+except FileNotFoundError:
     long_description = description
 year = "2016"
 
