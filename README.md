@@ -41,6 +41,12 @@ Supported Python versions:
 
 * 2.7, 3.4, 3.5, 3.6
 
+Alternatives:
+
+* [TT-Toolbox](https://github.com/oseledets/TT-Toolbox) for Matlab
+* [ttpy](https://github.com/oseledets/ttpy) for Python
+* [ITensor](https://github.com/ITensor/ITensor) for C++
+
 
 ## Contributors
 
