@@ -1254,16 +1254,20 @@ def inner(mpa1, mpa2):
 
 
 def sandwich(mpo, mps, mps2=None):
-    """Compute `<mps|MPO|mps>` efficiently
+    """Compute ``<mps|MPO|mps>`` efficiently
 
-    The runtime of this method scales with `D**3 Dp + D**2 Dp**3`
-    where `D` and `Dp` are the ranks of ``mps`` and ``mpo``. This
-    is more efficient than ``inner(mps, dot(mpo, mps))``, whose runtime
-    scales with `D**4 Dp**3`, and also more efficient that
-    ``dot(mps.conj(), dot(mpo, mps)).to_array()``, whose runtime scales
-    with `D**6 Dp**3`.
+    This function computes the same value as ``mp.inner(mps,
+    mp.dot(mpo, mps))`` in a more efficient way. 
 
-    If ``mps2`` is given, `<mps2|MPO|mps>` is computed instead.
+    The runtime of this method scales with ``D**3 * Dp + D**2 * Dp**3`` 
+    where ``D`` and ``Dp`` are the ranks of ``mps`` and
+    ``mpo``. This is more efficient than ``mp.inner(mps, mp.dot(mpo,
+    mps))``, whose runtime scales with ``D**4 * Dp**3``, and also more
+    efficient than ``mp.dot(mps.conj(), mp.dot(mpo,
+    mps)).to_array()``, whose runtime scales with ``D**6 * Dp**3``.
+
+    If ``mps2`` is given, ``<mps2|MPO|mps>`` is computed instead
+    (i.e. ``mp.inner(mps2, mp.dot(mpo, mps))``; see also :func:`dot()`).
 
     """
     # Fortunately, the contraction has been implemented already:
