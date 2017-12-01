@@ -9,7 +9,7 @@
 [![Travis](https://travis-ci.org/dseuss/mpnum.svg?branch=master)](https://travis-ci.org/dseuss/mpnum)
 [![Documentation Status](https://readthedocs.org/projects/mpnum/badge/?version=latest)](http://mpnum.readthedocs.org/en/latest/?badge=latest)
 [![Coverage Status](https://coveralls.io/repos/github/dseuss/mpnum/badge.svg?branch=master)](https://coveralls.io/github/dseuss/mpnum?branch=master)
-[![Code Climate](https://codeclimate.com/github/dseuss/mpnum/badges/gpa.svg)](https://codeclimate.com/github/dseuss/mpnum)
+[![Maintainability](https://api.codeclimate.com/v1/badges/4b06c328d4df622ade65/maintainability)](https://codeclimate.com/github/dseuss/mpnum/maintainability)
 
 mpnum is a flexible, user-friendly, and expandable toolbox for the matrix product state/tensor train tensor format. mpnum provides:
 
