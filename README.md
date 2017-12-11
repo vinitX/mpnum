@@ -23,15 +23,26 @@ mpnum is a flexible, user-friendly, and expandable toolbox for the matrix produc
 * finding [extremal eigenvalues](http://mpnum.readthedocs.org/en/latest/mpnum.html#mpnum.linalg.eig) and eigenvectors of MPOs (DMRG)
 * flexible tools for new matrix product algorithms
 
-To install the latest version run
+To install the latest stable version run
 
     pip install mpnum
+
+If you want to install `mpnum` from source, please run (on Unix)
+
+		git clone https://github.com/dseuss/mpnum.git
+		cd mpnum
+		pip install .
+
+In order to run the tests, you also need to install the test dependencies
+
+    pip install --only-binary=h5py ".[testdeps]"
 
 For more information, see:
 
 * [Introduction to mpnum](http://mpnum.readthedocs.org/en/latest/intro.html)
 * [Notebook with code examples](examples/mpnum_intro.ipynb)
 * [Library reference](http://mpnum.readthedocs.org/en/latest/)
+* [Contribution Guidelines](http://mpnum.readthedocs.io/en/latest/devel.html)
 
 Required packages:
 
@@ -46,6 +57,12 @@ Alternatives:
 * [TT-Toolbox](https://github.com/oseledets/TT-Toolbox) for Matlab
 * [ttpy](https://github.com/oseledets/ttpy) for Python
 * [ITensor](https://github.com/ITensor/ITensor) for C++
+
+
+## How to contribute
+Contributions of any kind are very welcome.
+Please use the [issue tracker](https://github.com/dseuss/mpnum/issues) for bug reports.
+If you want to contribute code, please see the [section on how to contribute](http://mpnum.readthedocs.io/en/latest/devel.html) in the documentation.
 
 
 ## Contributors
