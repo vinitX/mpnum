@@ -72,7 +72,8 @@ if __name__ == '__main__':
 
         install_requires=_get_install_requires(_install_requires),
         tests_require=_tests_require,
-        extras_require={'testdeps': _tests_require},
+        extras_require={'testdeps': _tests_require,
+                        'docdeps': ['sphinx', 'nbsphinx']},
         setup_requires=['pytest-runner'],
         package_dir={'mpnum': 'mpnum'},
         classifiers=[

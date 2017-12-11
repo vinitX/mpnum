@@ -250,10 +250,11 @@ following figure:
 Next steps
 ----------
 
-The ipython notebook :code:`mpnum_intro.ipynb` in the folder
-:code:`Notebooks` provides an introduction on how to use :code:`mpnum`
-for basic MPS, MPO and MPA operations. You can also `view
-mpnum_intro.ipynb on Github`_. If you open the notebook on your own
+The Jupyter notebook :code:`mpnum_intro.ipynb` in the folder
+:code:`Notebooks` provides an interactive introduction on how to use
+:code:`mpnum` for basic MPS, MPO and MPA operations. Its rendered version
+can also be viewed in the :doc:`examples/mpnum_intro`.
+If you open the notebook on your own
 computer, it allows you to run and modify all the commands
 interactively (more information is available in the section "Jupyter
 Notebook Quickstart" of the `Jupyter documentation`_).
