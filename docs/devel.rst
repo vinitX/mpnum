@@ -37,6 +37,16 @@ A short set of tests takes less than 30 seconds and is invoked with one of
    python -m pytest
    python setup.py test
 
+Note that the second command also installs the dependencies for tests if they
+are not present. However, since this command ignores wheel files for the
+dependencies, it tries to install `h5py` from source on many systems. This
+is not trivial and might take some time since it builds the HDF5 binaries
+from scratch. A better way is to install binaries for the test dependencies
+via running the following command from the `mpnum` source code root directory
+
+.. code::
+    pip install --only-binary=h5py ".[testdeps]"
+
 An intermediate set of tests, which takes about 2 minutes to run, is
 executed automatically for every commit on GitHub via `Travis
 <https://travis-ci.org/dseuss/mpnum>`_ continuous integration.
