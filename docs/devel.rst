@@ -46,7 +46,7 @@ via running the following command from the `mpnum` source code root directory
 
 .. code:: bash
 
-    pip install --only-binary=h5py ".[testdeps]"
+    pip install -r requirements.txt
 
 An intermediate set of tests, which takes about 2 minutes to run, is
 executed automatically for every commit on GitHub via `Travis

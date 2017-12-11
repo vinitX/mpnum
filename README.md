@@ -33,9 +33,9 @@ If you want to install `mpnum` from source, please run (on Unix)
     cd mpnum
     pip install .
 
-In order to run the tests, you also need to install the test dependencies
+In order to run the tests and build the documentation, you have to install the development dependencies via
 
-    pip install --only-binary=h5py ".[testdeps]"
+    pip install -r requirements.txt
 
 For more information, see:
 
