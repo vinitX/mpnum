@@ -45,6 +45,7 @@ from scratch. A better way is to install binaries for the test dependencies
 via running the following command from the `mpnum` source code root directory
 
 .. code::
+
     pip install --only-binary=h5py ".[testdeps]"
 
 An intermediate set of tests, which takes about 2 minutes to run, is

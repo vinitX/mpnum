@@ -29,9 +29,9 @@ To install the latest stable version run
 
 If you want to install `mpnum` from source, please run (on Unix)
 
-		git clone https://github.com/dseuss/mpnum.git
-		cd mpnum
-		pip install .
+    git clone https://github.com/dseuss/mpnum.git
+    cd mpnum
+    pip install .
 
 In order to run the tests, you also need to install the test dependencies
 
