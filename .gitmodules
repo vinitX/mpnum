@@ -1,0 +1,3 @@
+[submodule "docs/fig/mptikz"]
+	path = docs/fig/mptikz
+	url = git@github.com:dseuss/mptikz.git
