@@ -18,9 +18,8 @@ addons:
             - libhdf5-serial-dev
 
 install:
-    - pip install --only-binary=numpy,scipy .
     # install test dependencies
-    - pip install --only-binary=h5py ".[testdeps]"
+    - pip install --only-binary=numpy,scipy,h5py -r requirements.txt
     - pip install coveralls
     - pip freeze
 

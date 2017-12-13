@@ -2,8 +2,8 @@
 
 .. _mpnum-development:
 
-Contributing
-============
+Development & Contributing
+==========================
 
 
 This section contains information for anyone who wishes to contribute to
@@ -32,7 +32,7 @@ bug before fixing it.
 
 A short set of tests takes less than 30 seconds and is invoked with one of
 
-.. code::
+.. code:: bash
 
    python -m pytest
    python setup.py test
@@ -44,23 +44,23 @@ is not trivial and might take some time since it builds the HDF5 binaries
 from scratch. A better way is to install binaries for the test dependencies
 via running the following command from the `mpnum` source code root directory
 
-.. code::
+.. code:: bash
 
-    pip install --only-binary=h5py ".[testdeps]"
+    pip install -r requirements.txt
 
 An intermediate set of tests, which takes about 2 minutes to run, is
 executed automatically for every commit on GitHub via `Travis
 <https://travis-ci.org/dseuss/mpnum>`_ continuous integration.
 It can be run locally via
 
-.. code::
+.. code:: bash
 
    python -m pytest -m "not verylong"
    bash tests/travis.sh
 
 A long set of tests takes about 30 minutes and is invoked with
 
-.. code::
+.. code:: bash
 
    python -m pytest -m 1
 
@@ -79,7 +79,7 @@ Code not covered by unit tests can be detected with `pytest-cov
 <https://pypi.python.org/pypi/pytest-cov>`_. A HTML coverage report
 can be generated using
 
-.. code::
+.. code:: bash
 
    python -m pytest --cov-report term --cov-report html --cov=mpnum
 
@@ -93,7 +93,7 @@ Benchmark tests
 In addition to unit tests, there are benchmark tests which measure the
 runtime of certain functions. To run all benchmark tests, run
 
-.. code::
+.. code:: bash
 
    python -m pytest -m benchmark
 
@@ -105,20 +105,20 @@ The HTML documentation uses `Sphinx <http://www.sphinx-doc.org/>`_.
 Building the documentation requires the
 `RTD theme <https://github.com/rtfd/sphinx_rtd_theme>`_:
 
-.. code::
+.. code:: bash
 
    conda install sphinx_rtd_theme  # or
    pip install sphinx_rtd_theme
 
 On Linux/MacOS, the documentation can be built with a simple
 
-.. code::
+.. code:: bash
 
    make -C docs html
 
 or
 
-.. code::
+.. code:: bash
 
    cd docs; make html
 
@@ -127,10 +127,12 @@ After the build, the HTML documentation is available at
 
 `sphinx-autobuild <https://pypi.python.org/pypi/sphinx-autobuild>`_
 can be used to rebuild HTML documentation automatically anytime a
-source file is changed::
+source file is changed:
 
-  pip install sphinx-autobuild
-  make -C docs livehtml
+.. code:: bash
+
+    pip install sphinx-autobuild
+    make -C docs livehtml
 
 On Windows, :code:`docs/make.bat` may be useful. For more information,
 see the `Sphinx tutorial

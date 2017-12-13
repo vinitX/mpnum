@@ -1,0 +1,7 @@
+\directlua{mpt.defaults['tensor_width'] = 2}
+\directlua{mpt.defaults['len_horizontal_legs'] = 0.25}
+\directlua{mpt.defaults['len_vertical_legs'] = 0.5}
+
+\directlua{mpt.draw_node({S=4}, {tensor_name='A', x=-2})}
+\node at (0,0) {\Huge $=$};
+\directlua{mpt.draw_mpa(4, {S=1}, {tensor_name='B', x=2})}

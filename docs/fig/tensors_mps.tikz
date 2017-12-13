@@ -1,0 +1,33 @@
+\directlua{mpt.defaults['tensor_width'] = 2.5}
+\directlua{mpt.defaults['len_horizontal_legs'] = 0.5}
+\directlua{mpt.defaults['len_vertical_legs'] = 0.5}
+
+\directlua{mpt.draw_node({S=4}, {y=2.5, tensor_name='psi'})}
+\node at (psi) {$\psi_{ijkl}$};
+
+\node at (2.5,2.5) {\Huge $=$};
+
+\begin{luacode}
+  local labels = {'A', 'B', 'C', 'D'}
+  local indices = {'i', 'j', 'k', 'l'}
+  local bond_indices = {'a', 'b', 'c'}
+  local subscripts = {'a', 'a,b', 'b,c', 'c'}
+
+  mpt.draw_mpa(4, {S=1}, {tensor_name='A'})
+
+  for i = 1, 4 do
+    printt('\\node[anchor=west] at (psi_S%i) {$%s$};', i, indices[i])
+    printt('\\node[anchor=west] at (A_%i_S1) {$%s$};', i, indices[i])
+    printt('\\node at (A_%i) {$(%s_%s)_{%s}$};',
+    i, labels[i], indices[i], subscripts[i])
+  end
+
+  for i =1, 3 do
+    printt('\\node[anchor=north] at (A_%i_E1e) {$%s$};', i, bond_indices[i])
+  end
+\end{luacode}
+
+\draw[labelline] (psi) -- +(2,-1) node[labelnode] {global tensor};
+\draw[labelline] (A_2) -- +(1,1) node[labelnode] {local tensor};
+\draw[labelline] (A_3_E1e) -- +(0.5,1) node[labelnode] {virtual leg};
+\draw[labelline] (A_3_S1) -- +(-0.5,-0.1) node[labelnode,anchor=east] {physical leg};

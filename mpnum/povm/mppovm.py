@@ -236,7 +236,7 @@ class MPPovm(mp.MPArray):
 
         If `rho` is a matrix product density operator (MPDO), then
 
-        .. code::
+        .. code::python
 
             mp.dot(a_povm.probability_map, rho.ravel())
 

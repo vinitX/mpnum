@@ -1,0 +1,20 @@
+\directlua{mpt.defaults['tensor_width'] = 2}
+\directlua{mpt.defaults['len_horizontal_legs'] = 0.25}
+\directlua{mpt.defaults['len_vertical_legs'] = 0.5}
+
+\directlua{mpt.draw_node({S=4, E=1, W=1}, {tensor_name='A', x=-2})}
+\node at (0,0) {\Huge $=$};
+\directlua{mpt.draw_mpa(4, {S=1, E=1, W=1}, {tensor_name='B', x=2})}
+
+
+\draw[labelline, shorten >= \labellineshorten] (A_E1)
+  -- +(1.5,1) node[labelnode] {dummy virtual legs}
+  -- (B_1_W1);
+
+\draw[labelline] (B_2_E1)
+  -- +(0.3, 0.7)
+  node[labelnode,anchor=south west] {virtual leg};
+
+\draw[labelline, shorten >=\labellineshorten] (A_S4)
+  -- +(0.5,-0.5) node[labelnode,anchor=north] {physical legs}
+  -- (B_1_S1);

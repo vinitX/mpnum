@@ -1,0 +1,5 @@
+\directlua{mpt.draw_mpa(4, {S=1}, {x=-5.5})}
+\node at (0,0) {=};
+\directlua{mpt.draw_mpa(4, {S=1}, {x=1, y=0.75})}
+\directlua{mpt.draw_mpa(4, {N=1, S=1}, {x=1, y=-0.75})}
+

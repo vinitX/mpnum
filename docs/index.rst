@@ -23,9 +23,14 @@ matrix product state/tensor train tensor format.
 
    intro
    mpnum
-   Example notebook <https://github.com/dseuss/mpnum/blob/master/examples/mpnum_intro.ipynb>
+   examples/mpnum_intro
    devel
    Fork mpnum on Github <https://github.com/dseuss/mpnum>
+
+.. toctree::
+   :hidden:
+
+   gallery
 
 Indices and tables
 ==================
