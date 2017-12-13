@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [unreleased]
 
+
+## [1.0.2] 2017-12-13
+
+- Expand documentation to mpnum.sandwitch
+- Restructured and added to online documentation
+
+
 ## [1.0.1] 2017-10-25
 ### Fixed
 

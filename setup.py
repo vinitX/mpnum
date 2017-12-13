@@ -19,7 +19,7 @@ try:
     long_description = open('README.txt').read()
 except IOError:
     long_description = description
-year = "2016"
+year = "2017"
 
 
 try:
