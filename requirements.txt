@@ -6,4 +6,5 @@ h5py>=2.4
 pytest-benchmark>=3
 pytest-runner>=2.11
 sphinx>=1.6
+sphinx_rtd_theme==0.2.4
 nbsphinx>=0.2
