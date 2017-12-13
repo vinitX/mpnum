@@ -27,6 +27,11 @@ matrix product state/tensor train tensor format.
    devel
    Fork mpnum on Github <https://github.com/dseuss/mpnum>
 
+.. toctree::
+   :hidden:
+
+   gallery
+
 Indices and tables
 ==================
 
