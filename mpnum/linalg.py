@@ -418,7 +418,7 @@ def eig(mpo, num_sweeps, var_sites=2,
     References are to the arXiv version of [Sch11]_ assuming we replace
     zero-based with one-based indices there.
 
-    .. code::
+    .. code::plain
 
        leftvecs[i] is L_{i-1}  \
        rightvecs[i] is R_{i}   |  See Fig. 38 and Eq. (191) on p. 62.
