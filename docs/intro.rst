@@ -1,5 +1,3 @@
-
-
 .. _mpnum-introduction:
 
 Introduction
@@ -59,7 +57,7 @@ A simple case of of a tensor contraction is the product of two matrices:
 
 We represent this tensor contraction with the following figure:
 
-.. image:: tensors_matrixproduct.png
+.. image:: fig/tensors_matrixproduct.png
    :align: center
 
 Each of the tensors :math:`A`, :math:`B` and :math:`C` is represented
@@ -89,7 +87,7 @@ matrix:
 
 This formula is represented by the following figure:
 
-.. image:: tensors_matrixelement.png
+.. image:: fig/tensors_matrixelement.png
    :align: center
 
 
@@ -111,7 +109,7 @@ where each :math:`A_i \in \mathbb C^{1 \times D}`; :math:`B_j, C_k \in
 <mpsmpo-definitions>`). This construction is also known as *tensor
 train* and it is given by the following simple figure:
 
-.. image:: tensors_mps.png
+.. image:: fig/tensors_mps.png
    :align: center
 
 We call :math:`\psi` a *global tensor* and we call the MPS matrices
@@ -127,13 +125,13 @@ ranks*. In the physics literature, the virtual legs are often called
 Very often, we can omit the labels of all the legs.  The figure then
 becomes very simple:
 
-.. image:: tensors_mps_no_names.png
+.. image:: fig/tensors_mps_no_names.png
    :align: center
 
 As explained in the next paragraph on MPOs, we usually add *dummy
 virtual legs* of size 1 to our tensors:
 
-.. image:: tensors_mps_no_names_with_dummies.png
+.. image:: fig/tensors_mps_no_names_with_dummies.png
    :align: center
 
 
@@ -157,7 +155,7 @@ are matrices and the :math:`C_{i_3j_3}` are column vectors (reference:
 e.g. [Sch11]_; :ref:`exact definition
 <mpsmpo-definitions>`). This is represented by the following figure:
 
-.. image:: tensors_mpo.png
+.. image:: fig/tensors_mpo.png
    :align: center
 
 Be aware that the legs of :math:`\rho` are not in the order :math:`i_1
@@ -176,7 +174,7 @@ In order to simplify the implementation, it is useful to introduce
 *dummy virtual legs* with index size 1 on the left and the right of
 the MPS or MPO chain:
 
-.. image:: tensors_mpo_with_dummies.png
+.. image:: fig/tensors_mpo_with_dummies.png
    :align: center
 
 With these dummy virtual legs, all the tensors in the representation
@@ -186,12 +184,12 @@ It is useful to draw the physical column indices upward from the
 global and local tensors while leaving the physical row indices
 downward:
 
-.. image:: tensors_mpo_updown.png
+.. image:: fig/tensors_mpo_updown.png
    :align: center
 
 With this arrangement, we can nicely express a product of two MPOs:
 
-.. image:: tensors_mpo_product.png
+.. image:: fig/tensors_mpo_product.png
    :align: center
 
 This figure tells us how to obtain the local tensors which represent
@@ -209,7 +207,7 @@ Local purification form MPS (PMPS)
 The local purification form matrix product state representation (PMPS
 or LPMPS) is defined as follows:
 
-.. image:: tensors_pmps.png
+.. image:: fig/tensors_pmps.png
    :align: center
 
 Here, all the :math:`i` indices are actual sites and all the :math:`j`
@@ -224,7 +222,7 @@ representation is given by
 
 The following figure describes the relation:
 
-.. image:: tensors_pmps_to_mpo.png
+.. image:: fig/tensors_pmps_to_mpo.png
    :align: center
 
 It also tells us how to convert a PMPS representation into an MPO
@@ -243,7 +241,7 @@ restricted to these cases, but can be used to express any local
 structure. An example of a inhomogenous tensor is shown in the
 following figure:
 
-.. image:: tensors_mpa.png
+.. image:: fig/tensors_mpa.png
    :align: center
 
 
