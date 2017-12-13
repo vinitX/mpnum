@@ -1,3 +1,8 @@
+TIKZFILES := $(wildcard *.tikz)
+all: $(TIKZFILES:%.tikz=%.png)
+	echo "Done"
+.PHONY: all
+
 %.pdf: %.tikz template.tex
 	lualatex -interaction=nonstopmode --jobname $(@:%.pdf=%) "\def\inputfile{$<} \input{template.tex}"
 
