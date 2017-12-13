@@ -2,15 +2,15 @@
 \directlua{mpt.defaults['len_horizontal_legs'] = 1}
 
 \directlua{mpt.draw_mpa(1, {E=1, W=1}, {x=-2.5, tensor_name='C'})}
-\node at (C_1) {$C_{mn}$};
-\node [anchor=north] at (C_1_W1) {$m$};
-\node [anchor=north] at (C_1_E1) {$n$};
+\node at (C_1) {$C_{ij}$};
+\node [anchor=north] at (C_1_W1) {$i$};
+\node [anchor=north] at (C_1_E1) {$j$};
 
 \directlua{mpt.draw_mpa(2, {E=1, W=1}, {x=2.5, tensor_name='A'})}
-\node at (A_1) {$A_{mk}$};
-\node [anchor=north] at (A_1_W1) {$m$};
+\node at (A_1) {$A_{ik}$};
+\node [anchor=north] at (A_1_W1) {$i$};
 \node [anchor=north] at (A_1_E1e) {$k$};
-\node at (A_2) {$B_{nk}$};
-\node [anchor=north] at (A_2_E1) {$n$};
+\node at (A_2) {$B_{jk}$};
+\node [anchor=north] at (A_2_E1) {$j$};
 
 \node at (0,0) {\Huge $=$};

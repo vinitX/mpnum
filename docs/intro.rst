@@ -76,7 +76,7 @@ in the formula as well:
 
 .. math::
 
-   C_{ij} = \sum_{j} A_{ij} B_{kj}
+   C_{ij} = \sum_{k} A_{ik} B_{jk}
 
 Another simple example is the following product of two vectors and a
 matrix:
