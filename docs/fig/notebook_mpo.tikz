@@ -1,1 +1,4 @@
-\directlua{mpt.draw_mpa(4, {N=1, S=1})}
+\directlua{mpt.draw_node({N=4, S=4}, {x=-1.5, tensor_width=2})}
+\node at (0,0) {=};
+\directlua{mpt.draw_mpa(4, {N=1, S=1}, {x=1})}
+
