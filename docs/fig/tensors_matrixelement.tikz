@@ -1,0 +1,17 @@
+\directlua{mpt.defaults['len_horizontal_legs'] = 1}
+
+\directlua{mpt.draw_node({}, {x=-2.5, tensor_name='c'})}
+\node at (c) {$c$};
+
+\node at (0,0) {\Huge $=$};
+
+\directlua{mpt.draw_node({E=1}, {x=2.5, tensor_name='u'})}
+\node at (u) {$u^\ast_j$};
+
+\directlua{mpt.draw_node({W=1, E=1}, {x=5.5, tensor_name='A', tensor_width=1.5})}
+\node at (A) {$A_{jk}$};
+\node [anchor=north] at (A_W1e) {$j$};
+\node [anchor=north] at (A_E1e) {$k$};
+
+\directlua{mpt.draw_node({W=1}, {x=8.5, tensor_name='v'})}
+\node at (v) {$v_k$};

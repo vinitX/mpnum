@@ -1,6 +1,31 @@
 \RequirePackage{luatex85}
 \documentclass[crop,tikz]{standalone}
+
+\usetikzlibrary{calc,backgrounds}
 \usepackage{luatextra}
+
 \begin{document}
-\input{\inputfile}
+
+\definecolor{lightyellow}{RGB}{254,237,174}
+\newcommand{\labellineshorten}{3pt}
+\tikzstyle{tensornode}=[draw,minimum size=1, fill=lightyellow, rounded corners=0.1cm]
+\tikzstyle{tensorleg}=[thick]
+\tikzstyle{labelline}=[thin,shorten <=\labellineshorten, color=gray]
+\tikzstyle{labelnode}=[font=\sffamily, anchor=west, align=center, color=black]
+
+\begin{luacode}
+  mpt = require('mptikz/mptikz')
+  mpt.defaults['tensor_style'] = 'tensornode'
+  mpt.defaults['leg_style'] = 'tensorleg'
+
+  function printt(str, ...)
+    local arg = {...}
+    tex.print(string.format(str, unpack(arg)))
+  end
+\end{luacode}
+
+\begin{tikzpicture}
+  \input{\inputfile}
+\end{tikzpicture}
+
 \end{document}

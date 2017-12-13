@@ -1,0 +1,9 @@
+\directlua{mpt.defaults['len_vertical_legs'] = 0.5}
+
+\begin{luacode}
+  mpt.draw_node({S=1,W=1,E=1}, {})
+  mpt.draw_node({S=1,W=1,E=1}, {x=1.5})
+  mpt.draw_node({S=3,W=1,E=1}, {x=3.25, tensor_width=1.5})
+  mpt.draw_node({S=2,W=1,E=1}, {x=5.1, tensor_width=1.2})
+  mpt.draw_node({S=3,W=1,E=1}, {x=6.9, tensor_width=1.5})
+\end{luacode}
