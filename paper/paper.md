@@ -1,5 +1,5 @@
 ---
-title: 'mpnum: A matrix product representation library for python'
+title: 'mpnum: A matrix product representation library for Python'
 tags:
   - matrix-product
   - tensor-train
@@ -25,11 +25,12 @@ bibliography: references.bib
 Tensors -- or high-dimensional arrays -- are ubiquitous in science and provide the foundation for numerous numerical algorithms in scientific computing, machine learning, signal processing, and other fields.
 With their high demands in memory and computational time, tensor computations constitute the bottleneck of many such algorithms.
 This has led to the development of sparse and low-rank tensor decompositions [@Decompositions].
-One such decomposition, which was first developed under the name _"matrix product state"_ (MPS) in the study of entanglement in quantum physics[@Werner], is the _matrix product_ or _tensor train_ (TT) representation [@Schollwoeck,@Osedelets].
+One such decomposition, which was first developed under the name _"matrix product state"_ (MPS) in the study of entanglement in quantum physics [@Werner], is the _matrix product_ or _tensor train_ (TT) representation [@Schollwoeck; @Oseledets].
 
-The matrix product tensor format is often used in practice (see e.g. [@Latorre,@NMR,@QuantumChemistry,@Uncertainty,@NeuralNetworks,@Stoudenmire]) for two reasons:
-On the one hand, it captures the low-dimensional structure of many problems well. Therefore, it can be used model those problems computationally in an efficient way.
-On the other hand, the matrix product tensor format also allows for performing crucial tensor operations -- such as addition, contraction, or low-rank approximation -- efficiently [@Schollwoeck,@Osedelets,@Orus,@Dance].
+The matrix product tensor format is often used in practice [@Latorre;@NMR;@QuantumChemistry;@Uncertainty;@NeuralNetworks;@Stoudenmire] for two reasons:
+On the one hand, it captures the low-dimensional structure of many problems well.
+Therefore, it can be used model those problems computationally in an efficient way.
+On the other hand, the matrix product tensor format also allows for performing crucial tensor operations -- such as addition, contraction, or low-rank approximation -- efficiently [@Schollwoeck;@Oseledets;@Orus;@Dance].
 
 The library **mpnum** [@mpnum] provides a flexible, user-friendly, and expandable toolbox for prototyping algorithms based on the matrix-product tensor format.
 Its fundamental data structure is the `MPArray` which represents a tensor with an arbitrary number of dimensions and local structure.
