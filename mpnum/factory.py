@@ -176,7 +176,7 @@ def _generate(sites, ldim, rank, func, force_rank):
 
 def random_mpa(sites, ldim, rank, randstate=None, normalized=False,
                force_rank=False, dtype=np.float_):
-    """Returns a MPA with randomly choosen local tensors
+    """Returns an MPA with randomly choosen local tensors (real by default)
 
     :param sites: Number of sites
     :param ldim: Physical legs, depending on the type passed:
@@ -186,21 +186,25 @@ def random_mpa(sites, ldim, rank, randstate=None, normalized=False,
         * iterable of iterable: Generated MPA will have exactly this
           as `ndims`
 
-    :param rank: rank, depending on the type passed:
+    :param rank: Desired rank, depending on the type passed:
 
         * scalar: Same rank everywhere
         * iterable of length :code:`sites - 1`: Generated MPA will
           have exactly this as `ranks`
 
-    :param randn: Function used to generate random local tensors
     :param randstate: numpy.random.RandomState instance or None
     :param normalized: Resulting `mpa` has `mp.norm(mpa) == 1`
     :param force_rank: If True, the rank is exaclty `rank`.
         Otherwise, it might be reduced if we reach the maximum sensible rank.
-    :param dtype: Whicht type the returned array should have. Currently only
-        `np.real_` and `np.complex_` is implemented (default: complex)
+    :param dtype: Type of the returned MPA. Currently only
+        ``np.float_`` and ``np.complex_`` are implemented (default:
+        ``np.float_``, i.e. real values).
 
-    :returns: randomly choosen matrix product array
+    :returns: Randomly choosen matrix product array
+
+    Entries of local tensors are drawn from a normal distribution of
+    unit variance.  For complex values, the real and imaginary parts
+    are independent and have unit variance.
 
     >>> mpa = random_mpa(4, 2, 10, force_rank=True)
     >>> mpa.ranks, mpa.shape
@@ -213,6 +217,18 @@ def random_mpa(sites, ldim, rank, randstate=None, normalized=False,
     >>> mpa = random_mpa(4, [(1, ), (2, 3), (4, 5), (1, )], 10, force_rank=True)
     >>> mpa.ranks, mpa.shape
     ((10, 10, 10), ((1,), (2, 3), (4, 5), (1,)))
+
+    The following doctest verifies that we do not change how random
+    states are generated, ensuring reproducible results. In addition,
+    it verifies the returned dtype:
+
+    >>> rng = np.random.RandomState(seed=3208886881)
+    >>> random_mpa(2, 2, 3, rng).to_array()
+    array([[-0.7254321 ,  3.44263486],
+           [-0.17262967,  2.4505633 ]])
+    >>> random_mpa(2, 2, 3, rng, dtype=np.complex_).to_array()
+    array([[-0.53552415+1.39701566j, -2.12128866+0.57913253j],
+           [-0.32652114+0.51490923j, -0.32222320-0.32675463j]])
 
     """
     randfun = ft.partial(_randfuncs[dtype], randstate=randstate)
