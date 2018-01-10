@@ -57,6 +57,7 @@ Alternatives:
 * [TT-Toolbox](https://github.com/oseledets/TT-Toolbox) for Matlab
 * [ttpy](https://github.com/oseledets/ttpy) for Python
 * [ITensor](https://github.com/ITensor/ITensor) for C++
+* [t3f](https://github.com/Bihaqo/t3f) for TensorFlow
 
 
 ## How to contribute
