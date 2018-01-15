@@ -19,9 +19,12 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
+import os
+import sys
 # sys.path.insert(0, os.path.abspath('.'))
+
+# Cf. https://github.com/rtfd/readthedocs.org/issues/2139
+sys.path.insert(0, os.path.abspath('..'))
 
 
 # -- General configuration ------------------------------------------------
@@ -84,6 +87,7 @@ pygments_style = 'sphinx'
 todo_include_todos = True
 
 
+
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -103,6 +107,9 @@ html_theme_options = dict(
 
     # Options for sphinx_rtd_theme
     navigation_depth = 99,
+
+    # Show hidden items in the navigation bar
+    includehidden = False,
 )
 
 # Add any paths that contain custom static files (such as style sheets) here,
