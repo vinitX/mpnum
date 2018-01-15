@@ -84,6 +84,7 @@ pygments_style = 'sphinx'
 todo_include_todos = True
 
 
+
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -103,6 +104,9 @@ html_theme_options = dict(
 
     # Options for sphinx_rtd_theme
     navigation_depth = 99,
+
+    # Show hidden items in the navigation bar
+    includehidden = False,
 )
 
 # Add any paths that contain custom static files (such as style sheets) here,
