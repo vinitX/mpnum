@@ -79,9 +79,15 @@ Distributed under the terms of the BSD 3-Clause License (see [LICENSE](LICENSE))
 
 ## Citations
 
+If you use `mpnum` for yor paper, please cite:
+
+> Suess, Daniel and Milan Holzäpfel (2017). mpnum: A matrix product representation library for Python. Journal of Open Source Software, 2(20), 465, https://doi.org/10.21105/joss.00465
+
+* BibTeX: [mpnum.bib](paper/mpnum.bib)
+
 mpnum has been used and cited in the following publications:
 
 * I. Dhand et al. (2017), [arXiv 1710.06103](https://arxiv.org/abs/1710.06103)
 * I. Schwartz, J. Scheuer et al. (2017), [arXiv 1710.01508](https://arxiv.org/abs/1710.01508)
 * J. Scheuer et al. (2017), [arXiv 1706.01315](https://arxiv.org/abs/1706.01315)
-* B. P. Lanyon, Ch. Maier et al, [Nat. Phys. (2017)](https://doi.org/10.1038/nphys4244), [arXiv 1612.08000](https://arxiv.org/abs/1612.08000)
+* B. P. Lanyon, Ch. Maier et al, [Nature Physics 13, 1158–1162 (2017)](https://doi.org/10.1038/nphys4244), [arXiv 1612.08000](https://arxiv.org/abs/1612.08000)
