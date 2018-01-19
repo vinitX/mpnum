@@ -41,6 +41,7 @@ For more information, see:
 
 * [Introduction to mpnum](http://mpnum.readthedocs.org/en/latest/intro.html)
 * [Notebook with code examples](examples/mpnum_intro.ipynb)
+* [More examples from quantum physics](https://github.com/milan-hl/mpnum-examples/) (ground states, time evolution, unitary circuits)
 * [Library reference](http://mpnum.readthedocs.org/en/latest/)
 * [Contribution Guidelines](http://mpnum.readthedocs.io/en/latest/devel.html)
 
