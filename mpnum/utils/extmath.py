@@ -122,6 +122,7 @@ def truncated_svd(A, k):
 
     """
     u, s, v = np.linalg.svd(A)
+    print('truncated',np.shape(A))
     k_prime = min(k, len(s))
     return u[:, :k_prime], s[:k_prime], v[:k_prime]
 
