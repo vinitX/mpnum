@@ -329,6 +329,7 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
         # results" [Sch11, Sec. 6.4, p. 74]
         eigvec_lten = mp.MPArray.from_array(eigvec_lten, 1, has_virtual=True)
         eigvec_lten.compress(method='svd', rank=eigvec_rank)
+        print(np.array(eigvec_lten.ranks))
         eigvec_lten = eigvec_lten.lt
     return eigval, eigvec_lten
 
