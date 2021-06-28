@@ -124,8 +124,8 @@ def truncated_svd(A, k):
     """
     if A.size>=2**20:
         print('.',end='')
-        A=cp.array(A)
-        u, s, v = cp.linalg.svd(A)
+        A_gpu=cp.array(A)
+        u, s, v = cp.linalg.svd(A_gpu)
     else: u, s, v = np.linalg.svd(A)
            
     k_prime = min(k, len(s))
