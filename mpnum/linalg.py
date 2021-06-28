@@ -12,6 +12,7 @@ from __future__ import absolute_import, division, print_function
 import functools as ft
 import itertools as it
 import numpy as np
+import cupy as cp
 from scipy import sparse as sp
 
 from six.moves import range
