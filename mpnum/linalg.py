@@ -304,8 +304,8 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
     eigvec_lten = eigvec_ltens[0]
     for lten in eigvec_ltens[1:]:
         eigvec_lten = utils.matdot(eigvec_lten, lten)
-    print('Scipy',local_op.shape)
-    eigval, eigvec = eigs(local_op, v0=eigvec_lten.flatten())
+    print('cupy',local_op.shape)
+    eigval, eigvec = eigs(local_op) #, v0=eigvec_lten.flatten())
     if eigvec.ndim == 1:
         if len(eigval.flat) != 1:
             raise ValueError('eigvals from eigs() must be length one')
