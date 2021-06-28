@@ -4,6 +4,7 @@
 from __future__ import division, print_function
 
 import numpy as np
+import cupy as cp
 from scipy import linalg
 from scipy.sparse.linalg import aslinearoperator
 from six.moves import range, zip
@@ -121,11 +122,14 @@ def truncated_svd(A, k):
         v: right-singular vectors
 
     """
-    u, s, v = np.linalg.svd(A)
-    print('truncated',np.shape(A))
+    if A.size>=2**20:
+        print('.',end='')
+        A=cp.array(A)
+        u, s, v = cp.linalg.svd(A)
+    else: u, s, v = np.linalg.svd(A)
+           
     k_prime = min(k, len(s))
     return u[:, :k_prime], s[:k_prime], v[:k_prime]
-
 
 ####################
 #  Randomized SVD  #
