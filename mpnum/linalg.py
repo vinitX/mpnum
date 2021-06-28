@@ -295,6 +295,7 @@ def _eig_minimize_locally(leftvec, mpo_ltens, rightvec, eigvec_ltens,
 
 
 def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
+    print(np.array(eigvec_ltens.ranks))
     """Implement the main part of :func:`_eig_minimize_locally`
 
     See :func:`_eig_minimize_locally` for a description.
