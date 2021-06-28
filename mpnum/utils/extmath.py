@@ -4,6 +4,7 @@
 from __future__ import division, print_function
 
 import numpy as np
+import cupy as cp
 from scipy import linalg
 from scipy.sparse.linalg import aslinearoperator
 from six.moves import range, zip
