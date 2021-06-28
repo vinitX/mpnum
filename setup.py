@@ -57,7 +57,7 @@ if __name__ == '__main__':
         name=name,
         author=', '.join(authors),
         author_email=', '.join(author_emails),
-        url="https://github.com/dseuss/mpnum",
+        url="https://github.com/vinitX/mpnum",
         version=version,
         packages=find_packages(exclude=['tests']),
         license="BSD",
