@@ -913,6 +913,7 @@ class MPArray(object):
             ltens = self._lt[site]
             matshape = (ltens.shape[0], -1)
             if relerr is None:
+                print(svdfunc, matshape)
                 u, sv, v = svdfunc(ltens.reshape(matshape), rank)
                 rank_t = len(sv)
             else:
@@ -945,6 +946,7 @@ class MPArray(object):
             ltens = self._lt[site]
             matshape = (-1, ltens.shape[-1])
             if relerr is None:
+                print(svdfunc, matshape)
                 u, sv, v = svdfunc(ltens.reshape(matshape), rank)
                 rank_t = len(sv)
             else:
