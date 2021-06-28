@@ -917,6 +917,7 @@ class MPArray(object):
                 rank_t = len(sv)
             else:
                 u, sv, v = svd(ltens.reshape(matshape))
+                print(matshape)
                 svsum = np.cumsum(sv) / np.sum(sv)
                 rank_relerr = np.searchsorted(svsum, 1 - relerr) + 1
                 rank_t = min(ltens.shape[0], v.shape[0], rank, rank_relerr)
