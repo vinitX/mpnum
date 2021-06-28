@@ -306,8 +306,8 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
     for lten in eigvec_ltens[1:]:
         eigvec_lten = utils.matdot(eigvec_lten, lten)
     print('cupy',local_op.shape)
-    local_op=cp.array(local_op)
-    eigval, eigvec = eigs(local_op) #, v0=eigvec_lten.flatten())
+    local_op_gpu=cp.array(local_op)
+    eigval, eigvec = eigs(local_op_gpu) #, v0=eigvec_lten.flatten())
     if eigvec.ndim == 1:
         if len(eigval.flat) != 1:
             raise ValueError('eigvals from eigs() must be length one')
