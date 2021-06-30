@@ -683,6 +683,7 @@ class MPArray(object):
         for site in range(lcanon, to_site):
             ltens = self._lt[site]
             q, r = qr(ltens.reshape((-1, ltens.shape[-1])))
+            print(ltens.shape, 'right')
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
             # can be accounted by adapting rank here
             newtens = (q.reshape(ltens.shape[:-1] + (-1,)),
@@ -703,6 +704,7 @@ class MPArray(object):
         for site in range(rcanon - 1, to_site - 1, -1):
             ltens = self._lt[site]
             q, r = qr(ltens.reshape((ltens.shape[0], -1)).T)
+            print(ltens.shape, 'left')
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
             # can be accounted by adapting rank here
             newtens = (matdot(self._lt[site - 1], r.T),
