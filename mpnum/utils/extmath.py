@@ -4,6 +4,7 @@
 from __future__ import division, print_function
 
 import numpy as np
+import time
 import cupy as cp
 from scipy import linalg
 from scipy.sparse.linalg import aslinearoperator
@@ -123,6 +124,7 @@ def truncated_svd(A, k):
 
     """
     print(A.shape,'SVD')
+    tm=time.time()
     if A.size>=2**20:
         print('.',end='')
         A_gpu=cp.array(A)
@@ -131,7 +133,7 @@ def truncated_svd(A, k):
         s = s.get()
         v = v.get()
     else: u, s, v = np.linalg.svd(A)
-           
+    print(time.time()-tm)
     k_prime = min(k, len(s))
     return u[:, :k_prime], s[:k_prime], v[:k_prime]
 
