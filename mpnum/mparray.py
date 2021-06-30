@@ -22,6 +22,7 @@ import itertools as it
 
 import mpnum as mp
 import numpy as np
+import time
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
 from six.moves import range, zip, zip_longest
@@ -1086,11 +1087,15 @@ class MPArray(object):
                 if pos > 0:
                     self.canonicalize(left=pos)
                     rvecs[pos - 1] = None
+                    tm=time.time()
                     lvecs[pos] = _adapt_to_add_l(lvecs[pos - 1], self._lt[pos - 1],
                                                  target.lt[pos - 1])
+                    print(time.time()-tm, 'adapt left)
                 pos_end = pos + var_sites
+                tm=time.time()
                 new_ltens = _adapt_to_new_lten(lvecs[pos], target.lt[pos:pos_end],
                                                rvecs[pos], max_rank)
+                print(time.time()-tm, 'adapt new lten)
                 self._lt[pos:pos_end] = new_ltens
 
             # Sweep from right to left (RTL; don't do `pos = nr_sites
@@ -1101,11 +1106,15 @@ class MPArray(object):
                     # We always do this, because we don't do the last site again.
                     self.canonicalize(right=pos_end)
                     lvecs[pos + 1] = None
+                    tm=time.time()
                     rvecs[pos] = _adapt_to_add_r(rvecs[pos + 1], self._lt[pos_end],
                                                  target.lt[pos_end])
-
+                    print(time.time()-tm, 'adapt right)
+                      
+                tm=time.time()
                 new_ltens = _adapt_to_new_lten(lvecs[pos], target.lt[pos:pos_end],
                                                rvecs[pos], max_rank)
+                print(time.time()-tm, 'adapt new lten)
                 self._lt[pos:pos_end] = new_ltens
 
         # Let u the uncompressed vector and c the compression which we
