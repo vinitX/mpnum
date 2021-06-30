@@ -1088,12 +1088,12 @@ class MPArray(object):
                     tm=time.time()
                     lvecs[pos] = _adapt_to_add_l(lvecs[pos - 1], self._lt[pos - 1],
                                                  target.lt[pos - 1])
-                    print(time.time()-tm, 'adapt left)
+                    print(time.time()-tm, 'adapt left')
                 pos_end = pos + var_sites
                 tm=time.time()
                 new_ltens = _adapt_to_new_lten(lvecs[pos], target.lt[pos:pos_end],
                                                rvecs[pos], max_rank)
-                print(time.time()-tm, 'adapt new lten)
+                print(time.time()-tm, 'adapt new lten')
                 self._lt[pos:pos_end] = new_ltens
 
             # Sweep from right to left (RTL; don't do `pos = nr_sites
@@ -1107,12 +1107,12 @@ class MPArray(object):
                     tm=time.time()
                     rvecs[pos] = _adapt_to_add_r(rvecs[pos + 1], self._lt[pos_end],
                                                  target.lt[pos_end])
-                    print(time.time()-tm, 'adapt right)
+                    print(time.time()-tm, 'adapt right')
                       
                 tm=time.time()
                 new_ltens = _adapt_to_new_lten(lvecs[pos], target.lt[pos:pos_end],
                                                rvecs[pos], max_rank)
-                print(time.time()-tm, 'adapt new lten)
+                print(time.time()-tm, 'adapt new lten')
                 self._lt[pos:pos_end] = new_ltens
 
         # Let u the uncompressed vector and c the compression which we
