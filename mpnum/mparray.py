@@ -918,7 +918,6 @@ class MPArray(object):
                 rank_t = len(sv)
             else:
                 u, sv, v = svd(ltens.reshape(matshape))
-                print(ltens.shape)
                 svsum = np.cumsum(sv) / np.sum(sv)
                 rank_relerr = np.searchsorted(svsum, 1 - relerr) + 1
                 rank_t = min(ltens.shape[0], v.shape[0], rank, rank_relerr)
@@ -950,7 +949,6 @@ class MPArray(object):
                 rank_t = len(sv)
             else:
                 u, sv, v = svd(ltens.reshape(matshape))
-                print(ltens.shape)
                 svsum = np.cumsum(sv) / np.sum(sv)
                 rank_relerr = np.searchsorted(svsum, 1 - relerr) + 1
                 rank_t = min(ltens.shape[-1], u.shape[1], rank, rank_relerr)
@@ -1085,10 +1083,8 @@ class MPArray(object):
                 if pos > 0:
                     self.canonicalize(left=pos)
                     rvecs[pos - 1] = None
-                    tm=time.time()
                     lvecs[pos] = _adapt_to_add_l(lvecs[pos - 1], self._lt[pos - 1],
                                                  target.lt[pos - 1])
-                    print(time.time()-tm, 'adapt left')
                 pos_end = pos + var_sites
                 tm=time.time()
                 new_ltens = _adapt_to_new_lten(lvecs[pos], target.lt[pos:pos_end],
@@ -1104,10 +1100,8 @@ class MPArray(object):
                     # We always do this, because we don't do the last site again.
                     self.canonicalize(right=pos_end)
                     lvecs[pos + 1] = None
-                    tm=time.time()
                     rvecs[pos] = _adapt_to_add_r(rvecs[pos + 1], self._lt[pos_end],
                                                  target.lt[pos_end])
-                    print(time.time()-tm, 'adapt right')
                       
                 tm=time.time()
                 new_ltens = _adapt_to_new_lten(lvecs[pos], target.lt[pos:pos_end],
@@ -2066,7 +2060,9 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_rank):
         # here. However, this will generally increase the rank of
         # our compressed MPS, which we do not want.
         compr_ltens = MPArray.from_array(compr_lten, ndims=1, has_virtual=True)
+        tm=time.time()
         compr_ltens.compress('svd', rank=max_rank)
+        print(time.time()-tm, 'svd')
         return compr_ltens.lt
 
 
