@@ -122,6 +122,7 @@ def truncated_svd(A, k):
         v: right-singular vectors
 
     """
+    print(A.shape,'SVD')
     if A.size>=2**20:
         print('.',end='')
         A_gpu=cp.array(A)
