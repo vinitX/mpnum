@@ -10,6 +10,7 @@ Access as mpnum.named_ndarray.
 
 import numpy as np
 import cupy as cp
+import time
 
 class named_ndarray(object):
 
