@@ -897,7 +897,7 @@ class MPArray(object):
         compr = compr.ravel()
         tm=time.time()
         overlap = compr._adapt_to(self.ravel(), num_sweeps, var_sites)
-        print(time.time()-tm)
+        print(time.time()-tm, 'adapt to \n\n\n\n\n')
         compr = compr.reshape(shape)
         return compr, overlap
 
