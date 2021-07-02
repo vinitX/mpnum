@@ -92,11 +92,17 @@ class named_ndarray(object):
         new_names = [name for name in self._axisnames if name not in axes_self]
         new_names += (name for name in other._axisnames if name not in axes_other)
         
+        tm=time.time()
+        array = np.tensordot(self._array, other._array, (axespos_self, axespos_other))
+        print(time.time()-tm, 'numpy')
+        
+        tm=time.time()
         a_gpu = cp.array(self._array)
         b_gpu = cp.array(other._array)
         array = cp.tensordot(a_gpu, b_gpu, (axespos_self, axespos_other))
         array = array.get()
-        #array = np.tensordot(self._array, other._array, (axespos_self, axespos_other))
+        print(time.time()-tm, 'cupy')
+        
         return named_ndarray(array, new_names)
 
     @property
