@@ -895,9 +895,7 @@ class MPArray(object):
         # flatten the array since MPS is expected & bring back
         shape = self.shape
         compr = compr.ravel()
-        tm=time.time()
         overlap = compr._adapt_to(self.ravel(), num_sweeps, var_sites)
-        print(time.time()-tm, 'adapt to \n\n\n\n\n')
         compr = compr.reshape(shape)
         return compr, overlap
 
