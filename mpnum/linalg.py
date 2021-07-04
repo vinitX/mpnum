@@ -308,7 +308,7 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
         eigvec_lten = utils.matdot(eigvec_lten, lten)
     tm=time.time()
     eigval, eigvec = eigs(local_op, v0=eigvec_lten.flatten())
-    print(time.time()-tm, '\t Eigsh \t', local_op.shape)
+    print(time.time()-tm, '\t Eigsh \t', local_op.shape, '\t', eigval)
     
     if eigvec.ndim == 1:
         if len(eigval.flat) != 1:
@@ -526,7 +526,7 @@ def eig(mpo, num_sweeps, var_sites=2,
             eigval, eigvec_lten = _eig_minimize_locally(
                 leftvecs[pos], mpo.lt[pos:pos_end], rightvecs[pos],
                 eigvec.lt[pos:pos_end], eigs)
-            print(time.time()-tm, '\t minimize LTR')
+            print(time.time()-tm, '\t minimize LTR',eigval)
             eigvec.lt[pos:pos_end] = eigvec_lten
 
         # Sweep from right to left (don't do last site again)
@@ -542,7 +542,7 @@ def eig(mpo, num_sweeps, var_sites=2,
             eigval, eigvec_lten = _eig_minimize_locally(
                 leftvecs[pos], mpo.lt[pos:pos_end], rightvecs[pos],
                 eigvec.lt[pos:pos_end], eigs)
-            print(time.time()-tm, '\t minimize RTL')
+            print(time.time()-tm, '\t minimize RTL',eigval)
             eigvec.lt[pos:pos_end] = eigvec_lten
 
     return eigval, eigvec
