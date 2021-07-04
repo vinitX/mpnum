@@ -526,7 +526,7 @@ def eig(mpo, num_sweeps, var_sites=2,
             eigval, eigvec_lten = _eig_minimize_locally(
                 leftvecs[pos], mpo.lt[pos:pos_end], rightvecs[pos],
                 eigvec.lt[pos:pos_end], eigs)
-            print(time.time()-tm, '\t minimize')
+            print(time.time()-tm, '\t minimize LTR')
             eigvec.lt[pos:pos_end] = eigvec_lten
 
         # Sweep from right to left (don't do last site again)
@@ -538,9 +538,11 @@ def eig(mpo, num_sweeps, var_sites=2,
                 leftvecs[pos + 1] = None
                 rightvecs[pos] = _eig_rightvec_add(
                     rightvecs[pos + 1], mpo.lt[pos_end], eigvec.lt[pos_end])
+            tm=time.time()
             eigval, eigvec_lten = _eig_minimize_locally(
                 leftvecs[pos], mpo.lt[pos:pos_end], rightvecs[pos],
                 eigvec.lt[pos:pos_end], eigs)
+            print(time.time()-tm, '\t minimize RTL')
             eigvec.lt[pos:pos_end] = eigvec_lten
 
     return eigval, eigvec
