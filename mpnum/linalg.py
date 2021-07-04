@@ -14,6 +14,7 @@ import itertools as it
 import numpy as np
 import cupy as cp
 from scipy import sparse as sp
+import time
 
 from six.moves import range
 
@@ -305,7 +306,9 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
     eigvec_lten = eigvec_ltens[0]
     for lten in eigvec_ltens[1:]:
         eigvec_lten = utils.matdot(eigvec_lten, lten)
+    tm=time.time()
     eigval, eigvec = eigs(local_op, v0=eigvec_lten.flatten())
+    print(time.time()-tm, '\t Eigsh \t', local_op.shape)
     
     if eigvec.ndim == 1:
         if len(eigval.flat) != 1:
@@ -519,9 +522,11 @@ def eig(mpo, num_sweeps, var_sites=2,
                 leftvecs[pos] = _eig_leftvec_add(
                     leftvecs[pos - 1], mpo.lt[pos - 1], eigvec.lt[pos - 1])
             pos_end = pos + var_sites
+            tm=time.time()
             eigval, eigvec_lten = _eig_minimize_locally(
                 leftvecs[pos], mpo.lt[pos:pos_end], rightvecs[pos],
                 eigvec.lt[pos:pos_end], eigs)
+            print(time.time()-tm, '\t minimize')
             eigvec.lt[pos:pos_end] = eigvec_lten
 
         # Sweep from right to left (don't do last site again)
