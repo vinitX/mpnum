@@ -310,16 +310,12 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
         eigvec_lten = utils.matdot(eigvec_lten, lten)
         
     if local_op.size<2**20:
-        print('cpu')
         eigval, eigvec = eigs(local_op, v0=eigvec_lten.flatten())
-        print(eigval)
     else: 
-        print('gpu')
         loc_op_gpu=cp.array(local_op)
         l,v=eigsh(-loc_op_gpu, k=1, tol=1e-6, which='LA')
         eigval=-np.flip(l.get())
         eigvec=v.get()
-        print(eigval)
 
     if eigvec.ndim == 1:
         if len(eigval.flat) != 1:
@@ -533,11 +529,11 @@ def eig(mpo, num_sweeps, var_sites=2,
                 leftvecs[pos] = _eig_leftvec_add(
                     leftvecs[pos - 1], mpo.lt[pos - 1], eigvec.lt[pos - 1])
             pos_end = pos + var_sites
-            tm=time.time()
+
             eigval, eigvec_lten = _eig_minimize_locally(
                 leftvecs[pos], mpo.lt[pos:pos_end], rightvecs[pos],
                 eigvec.lt[pos:pos_end], eigs)
-            print(time.time()-tm, '\t minimize LTR',eigval)
+
             eigvec.lt[pos:pos_end] = eigvec_lten
 
         # Sweep from right to left (don't do last site again)
@@ -549,11 +545,11 @@ def eig(mpo, num_sweeps, var_sites=2,
                 leftvecs[pos + 1] = None
                 rightvecs[pos] = _eig_rightvec_add(
                     rightvecs[pos + 1], mpo.lt[pos_end], eigvec.lt[pos_end])
-            tm=time.time()
+
             eigval, eigvec_lten = _eig_minimize_locally(
                 leftvecs[pos], mpo.lt[pos:pos_end], rightvecs[pos],
                 eigvec.lt[pos:pos_end], eigs)
-            print(time.time()-tm, '\t minimize RTL',eigval)
+
             eigvec.lt[pos:pos_end] = eigvec_lten
 
     return eigval, eigvec
