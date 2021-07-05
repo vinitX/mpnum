@@ -13,6 +13,7 @@ import functools as ft
 import itertools as it
 import numpy as np
 import cupy as cp
+from cupyx.scipy.sparse.linalg import eigsh
 from scipy import sparse as sp
 import time
 
@@ -306,9 +307,18 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
     eigvec_lten = eigvec_ltens[0]
     for lten in eigvec_ltens[1:]:
         eigvec_lten = utils.matdot(eigvec_lten, lten)
+        
     tm=time.time()
-    eigval, eigvec = eigs(local_op, v0=eigvec_lten.flatten())
-    print(time.time()-tm, '\t Eigsh \t', local_op.shape, '\t', eigval)
+    comp_type='cpu'
+    if local_op.size>=2**20:
+        comp_type='gpu'
+        loc_op_gpu=cp.array(local_op)
+        l,v=eigsh(-loc_op_gpu, k=1, tol=1e-6, which='LA')
+        eigval=-np.flip(l.get())
+        eigvec=np.flip(v.get(), axis=1)
+    else: 
+        eigval, eigvec = eigs(local_op, v0=eigvec_lten.flatten())
+    print(time.time()-tm, '\t Eigsh \t', local_op.shape, '\t', eigval, '\t',comp_type)
     
     if eigvec.ndim == 1:
         if len(eigval.flat) != 1:
