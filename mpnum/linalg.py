@@ -14,6 +14,7 @@ import itertools as it
 import numpy as np
 import cupy as cp
 from cupyx.scipy.sparse.linalg import eigsh
+import matplotlib.pyplot as plt
 from scipy import sparse as sp
 import time
 
@@ -310,15 +311,21 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
         
     tm=time.time()
     comp_type='cpu'
-    if local_op.size>=2**20:
-        comp_type='gpu'
-        loc_op_gpu=cp.array(local_op)
-        l,v=eigsh(-loc_op_gpu, k=1, tol=1e-6, which='LA')
-        eigval=-np.flip(l.get())
-        eigvec=np.flip(v.get(), axis=1)
-    else: 
-        eigval, eigvec = eigs(local_op, v0=eigvec_lten.flatten())
+    #if local_op.size<2**20:
+    eigval1, eigvec1 = eigs(local_op, v0=eigvec_lten.flatten())
     print(time.time()-tm, '\t Eigsh \t', local_op.shape, '\t', eigval, '\t',comp_type)
+    
+    #else: 
+    tm=time.time()
+    comp_type='gpu'
+    loc_op_gpu=cp.array(local_op)
+    l,v=eigsh(-loc_op_gpu, k=1, tol=1e-6, which='LA')
+    eigval2=-np.flip(l.get())
+    eigvec2=np.flip(v.get(), axis=1)
+    print(time.time()-tm, '\t Eigsh \t', local_op.shape, '\t', eigval, '\t',comp_type)
+    
+    plt.scatter(eigval1, eigval2)
+    plt.show()
     
     if eigvec.ndim == 1:
         if len(eigval.flat) != 1:
