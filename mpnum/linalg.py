@@ -324,7 +324,7 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
     eigvec2=np.flip(v.get(), axis=1)
     print(time.time()-tm, '\t Eigsh \t', local_op.shape, '\t', eigval2, '\t',comp_type)
     
-    plt.scatter(eigval1, eigval2)
+    plt.scatter(eigvec1, eigvec2)
     plt.show()
     
     eigval=eigval1
