@@ -321,7 +321,8 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
     loc_op_gpu=cp.array(local_op)
     l,v=eigsh(-loc_op_gpu, k=1, tol=1e-6, which='LA')
     eigval2=-np.flip(l.get())
-    eigvec2=np.flip(v.get(), axis=1)
+    eigvec2=v.get()
+    #eigvec2=np.flip(v.get(), axis=1)
     print(time.time()-tm, '\t Eigsh \t', local_op.shape, '\t', eigval2, '\t',comp_type)
     
     plt.scatter(eigvec1, eigvec2)
