@@ -313,7 +313,7 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
     comp_type='cpu'
     #if local_op.size<2**20:
     eigval1, eigvec1 = eigs(local_op, v0=eigvec_lten.flatten())
-    print(time.time()-tm, '\t Eigsh \t', local_op.shape, '\t', eigval, '\t',comp_type)
+    print(time.time()-tm, '\t Eigsh \t', local_op.shape, '\t', eigval1, '\t',comp_type)
     
     #else: 
     tm=time.time()
@@ -322,10 +322,13 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
     l,v=eigsh(-loc_op_gpu, k=1, tol=1e-6, which='LA')
     eigval2=-np.flip(l.get())
     eigvec2=np.flip(v.get(), axis=1)
-    print(time.time()-tm, '\t Eigsh \t', local_op.shape, '\t', eigval, '\t',comp_type)
+    print(time.time()-tm, '\t Eigsh \t', local_op.shape, '\t', eigval2, '\t',comp_type)
     
     plt.scatter(eigval1, eigval2)
     plt.show()
+    
+    eigval=eigval1
+    eigvec=eigvec1
     
     if eigvec.ndim == 1:
         if len(eigval.flat) != 1:
