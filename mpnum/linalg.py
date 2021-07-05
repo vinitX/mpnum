@@ -310,12 +310,16 @@ def _eig_minimize_locally2(local_op, eigvec_ltens, eigs):
         eigvec_lten = utils.matdot(eigvec_lten, lten)
         
     if local_op.size<2**20:
+        print('cpu')
         eigval, eigvec = eigs(local_op, v0=eigvec_lten.flatten())
+        print(eigval)
     else: 
+        print('gpu')
         loc_op_gpu=cp.array(local_op)
         l,v=eigsh(-loc_op_gpu, k=1, tol=1e-6, which='LA')
         eigval=-np.flip(l.get())
         eigvec=v.get()
+        print(eigval)
 
     if eigvec.ndim == 1:
         if len(eigval.flat) != 1:
