@@ -123,17 +123,14 @@ def truncated_svd(A, k):
         v: right-singular vectors
 
     """
-    print(A.shape,'SVD')
-    tm=time.time()
     if A.size>=2**20:
-        print('.',end='')
         A_gpu=cp.array(A)
         u, s, v = cp.linalg.svd(A_gpu)
         u = u.get()
         s = s.get()
         v = v.get()
     else: u, s, v = np.linalg.svd(A)
-    print(time.time()-tm)
+
     k_prime = min(k, len(s))
     return u[:, :k_prime], s[:k_prime], v[:k_prime]
 
