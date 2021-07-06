@@ -22,6 +22,7 @@ import itertools as it
 
 import mpnum as mp
 import numpy as np
+import cupy as cp
 import time
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
