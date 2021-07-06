@@ -683,7 +683,12 @@ class MPArray(object):
         lcanon, rcanon = self._lt.canonical_form
         for site in range(lcanon, to_site):
             ltens = self._lt[site]
-            q, r = qr(ltens.reshape((-1, ltens.shape[-1])))
+            if ltens.size > 2**16:
+              a_gpu=cp.array(ltens)
+              q, r = cp.linalg.qr(a_gpu.reshape((-1, ltens.shape[-1])))
+              q=q.get()
+              r=r.get()
+            else: q, r = qr(ltens.reshape((-1, ltens.shape[-1])))
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
             # can be accounted by adapting rank here
             newtens = (q.reshape(ltens.shape[:-1] + (-1,)),
@@ -703,7 +708,12 @@ class MPArray(object):
         lcanon, rcanon = self.canonical_form
         for site in range(rcanon - 1, to_site - 1, -1):
             ltens = self._lt[site]
-            q, r = qr(ltens.reshape((ltens.shape[0], -1)).T)
+            if ltens.size > 2**16:
+              a_gpu=cp.array(ltens)
+              q, r = cp.linalg.qr(a_gpu.reshape((ltens.shape[0], -1)).T)
+              q=q.get()
+              r=r.get()
+            else: q, r = qr(ltens.reshape((ltens.shape[0], -1)).T)
             # if ltens.shape[-1] > prod(ltens.phys_shape) --> trivial comp.
             # can be accounted by adapting rank here
             newtens = (matdot(self._lt[site - 1], r.T),
