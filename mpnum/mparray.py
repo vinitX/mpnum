@@ -1805,7 +1805,13 @@ def _extract_factors(tens, ndims):
     elif tens.ndim < current + 2:
         raise AssertionError("Number of remaining legs insufficient.")
     else:
-        unitary, rest = qr(tens.reshape((np.prod(tens.shape[:current + 1]), -1)))
+        if tens.size > 2**8:
+          a_gpu = cp.array(tens)
+          unitary, rest = cp.linalg.qr(a_gpu.reshape((np.prod(tens.shape[:current + 1]), -1)))
+          unitary = unitary.get()
+          rest = rest.get()
+          
+        else: unitary, rest = qr(tens.reshape((np.prod(tens.shape[:current + 1]), -1)))
 
         unitary = unitary.reshape(tens.shape[:current + 1] + rest.shape[:1])
         rest = rest.reshape(rest.shape[:1] + tens.shape[current + 1:])
