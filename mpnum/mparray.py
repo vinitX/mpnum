@@ -1086,10 +1086,8 @@ class MPArray(object):
                     lvecs[pos] = _adapt_to_add_l(lvecs[pos - 1], self._lt[pos - 1],
                                                  target.lt[pos - 1])
                 pos_end = pos + var_sites
-                tm=time.time()
                 new_ltens = _adapt_to_new_lten(lvecs[pos], target.lt[pos:pos_end],
                                                rvecs[pos], max_rank)
-                print(time.time()-tm, 'adapt new lten')
                 self._lt[pos:pos_end] = new_ltens
 
             # Sweep from right to left (RTL; don't do `pos = nr_sites
@@ -1103,10 +1101,8 @@ class MPArray(object):
                     rvecs[pos] = _adapt_to_add_r(rvecs[pos + 1], self._lt[pos_end],
                                                  target.lt[pos_end])
                       
-                tm=time.time()
                 new_ltens = _adapt_to_new_lten(lvecs[pos], target.lt[pos:pos_end],
                                                rvecs[pos], max_rank)
-                print(time.time()-tm, 'adapt new lten')
                 self._lt[pos:pos_end] = new_ltens
 
         # Let u the uncompressed vector and c the compression which we
@@ -2060,9 +2056,7 @@ def _adapt_to_new_lten(leftvec, tgt_ltens, rightvec, max_rank):
         # here. However, this will generally increase the rank of
         # our compressed MPS, which we do not want.
         compr_ltens = MPArray.from_array(compr_lten, ndims=1, has_virtual=True)
-        tm=time.time()
         compr_ltens.compress('svd', rank=max_rank)
-        print(time.time()-tm, 'svd')
         return compr_ltens.lt
 
 
