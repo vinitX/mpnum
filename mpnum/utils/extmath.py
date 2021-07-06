@@ -37,7 +37,7 @@ def matdot(A, B, axes=((-1,), (0,))):
     """np.tensordot with sane defaults for matrix multiplication"""
     A_gpu = cp.array(A)
     B_gpu = cp.array(B)
-    return cpp.tensordot(A_gpu, B_gpu, axes=axes).get()
+    return cp.tensordot(A_gpu, B_gpu, axes=axes).get()
 
 
 def mkron(*args):
