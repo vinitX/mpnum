@@ -35,7 +35,9 @@ def partial_trace(array, traceout):
 
 def matdot(A, B, axes=((-1,), (0,))):
     """np.tensordot with sane defaults for matrix multiplication"""
-    return np.tensordot(A, B, axes=axes)
+    A_gpu = cp.array(A)
+    B_gpu = cp.array(B)
+    return cpp.tensordot(A_gpu, B_gpu, axes=axes).get()
 
 
 def mkron(*args):
